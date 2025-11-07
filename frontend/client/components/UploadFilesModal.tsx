@@ -71,13 +71,18 @@ export function UploadFilesModal({
     if (path) {
       return path.split("/").pop() ?? path;
     }
+    return "";
+  };
+
+  // Функция получает плейсхолдер для поля
+  const getPlaceholder = (fileType: ModalKey) => {
     switch (fileType) {
       case "currentReport":
-        return "Загрузить файл текущего детального отчета";
+        return "Файл текущего детального отчета";
       case "documentsReport":
-        return "Загрузить файл отчет по полученным и переданным документам";
+        return "Файл отчет по полученным и переданным документам";
       case "previousReport":
-        return "Загрузить файл предыдущего детального отчета (опционально)";
+        return "Файл предыдущего детального отчета (опционально)";
     }
   };
 
@@ -241,20 +246,51 @@ export function UploadFilesModal({
         </h2>
 
         {/* Кнопки загрузки файлов */}
-        <div className="space-y-4 mb-6">
+        <div className="space-y-6 mb-6">
           {/* Текущий отчет (обязательный) */}
           <div className="space-y-2">
-            <div className="relative flex justify-center">
-              <Button
-                onClick={() => triggerFileInput('currentReport')}
-                variant="outline"
-                size="sm"
-                className="w-4/5 border-gray-300 text-gray-700 hover:bg-gray-50 text-sm px-4 py-2 h-9 rounded-full"
-                disabled={localFiles.currentReport.loading}
+            <div className="flex items-center gap-3">
+              <div 
+                className={`flex-1 border-b border-gray-300 py-2 min-h-[40px] flex items-center
+                  ${!isUploaded('currentReport') ? 
+                    'cursor-pointer hover:border-green-500 transition-colors duration-200' : 
+                    'cursor-default'}`}
+                onClick={!isUploaded('currentReport') ? () => triggerFileInput('currentReport') : undefined}
               >
-                {localFiles.currentReport.loading ? 'Загрузка...' :
-                  getDisplayName('currentReport')}
-              </Button>
+                {getDisplayName('currentReport') ? (
+                  <span className="text-gray-900">✓ {getDisplayName('currentReport')}</span>
+                ) : (
+                  <span className="text-gray-400">{getPlaceholder('currentReport')}</span>
+                )}
+              </div>
+              
+              {!isUploaded('currentReport') ? (
+                <Button
+                  onClick={() => triggerFileInput('currentReport')}
+                  variant="green"
+                  size="rounded"
+                  disabled={localFiles.currentReport.loading}
+                >
+                  {localFiles.currentReport.loading ? 'Загрузка...' : 'Загрузить'}
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => triggerFileInput('currentReport')}
+                    variant="grayOutline"
+                    size="rounded"
+                  >
+                    Заменить
+                  </Button>
+                  <Button
+                    onClick={async () => { await handleRemove('currentReport'); }}
+                    variant="grayOutline"
+                    size="rounded"
+                  >
+                    Удалить
+                  </Button>
+                </div>
+              )}
               <input
                 id="file-input-currentReport"
                 type="file"
@@ -264,35 +300,54 @@ export function UploadFilesModal({
               />
             </div>
             {localFiles.currentReport.error && (
-              <p className="text-red-500 text-sm text-center">Ошибка: {localFiles.currentReport.error}</p>
-            )}
-            {isUploaded('currentReport') && (
-              <div className="flex items-center justify-center space-x-2">
-                <p className="text-green-500 text-sm">✓ Файл загружен</p>
-                <button
-                  onClick={async () => { await handleRemove('currentReport'); }}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                  title="Удалить файл"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
+              <p className="text-red-500 text-sm">Ошибка: {localFiles.currentReport.error}</p>
             )}
           </div>
 
           {/* Отчет по документам (обязательный) */}
           <div className="space-y-2">
-            <div className="relative flex justify-center">
-              <Button
-                onClick={() => triggerFileInput('documentsReport')}
-                variant="outline"
-                size="sm"
-                className="w-4/5 border-gray-300 text-gray-700 hover:bg-gray-50 text-sm px-4 py-2 h-9 rounded-full"
-                disabled={localFiles.documentsReport.loading}
+            <div className="flex items-center gap-3">
+              <div 
+                className={`flex-1 border-b border-gray-300 py-2 min-h-[40px] flex items-center
+                  ${!isUploaded('documentsReport') ? 
+                    'cursor-pointer hover:border-green-500 transition-colors duration-200' : 
+                    'cursor-default'}`}
+                onClick={!isUploaded('documentsReport') ? () => triggerFileInput('documentsReport') : undefined}
               >
-                {localFiles.documentsReport.loading ? 'Загрузка...' :
-                  getDisplayName('documentsReport')}
-              </Button>
+                {getDisplayName('documentsReport') ? (
+                  <span className="text-gray-900">✓ {getDisplayName('documentsReport')}</span>
+                ) : (
+                  <span className="text-gray-400">{getPlaceholder('documentsReport')}</span>
+                )}
+              </div>
+              
+              {!isUploaded('documentsReport') ? (
+                <Button
+                  onClick={() => triggerFileInput('documentsReport')}
+                  variant="green"
+                  size="rounded"
+                  disabled={localFiles.documentsReport.loading}
+                >
+                  {localFiles.documentsReport.loading ? 'Загрузка...' : 'Загрузить'}
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => triggerFileInput('documentsReport')}
+                    variant="grayOutline"
+                    size="rounded"
+                  >
+                    Заменить
+                  </Button>
+                  <Button
+                    onClick={async () => { await handleRemove('documentsReport'); }}
+                    variant="grayOutline"
+                    size="rounded"
+                  >
+                    Удалить
+                  </Button>
+                </div>
+              )}
               <input
                 id="file-input-documentsReport"
                 type="file"
@@ -302,36 +357,55 @@ export function UploadFilesModal({
               />
             </div>
             {localFiles.documentsReport.error && (
-              <p className="text-red-500 text-sm text-center">Ошибка: {localFiles.documentsReport.error}</p>
-            )}
-            {isUploaded('documentsReport') && (
-              <div className="flex items-center justify-center space-x-2">
-                <p className="text-green-500 text-sm">✓ Файл загружен</p>
-                <button
-                  onClick={async () => { await handleRemove('documentsReport'); }}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                  title="Удалить файл"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
+              <p className="text-red-500 text-sm">Ошибка: {localFiles.documentsReport.error}</p>
             )}
           </div>
 
           {/* Предыдущий отчет (опциональный) */}
           {featureFlags.enableComparison && (
             <div className="space-y-2">
-              <div className="relative flex justify-center">
-                <Button
-                  onClick={() => triggerFileInput('previousReport')}
-                  variant="outline"
-                  size="sm"
-                  className="w-4/5 border-gray-300 text-gray-700 hover:bg-gray-50 text-sm px-4 py-2 h-9 rounded-full"
-                  disabled={localFiles.previousReport.loading}
+              <div className="flex items-center gap-3">
+                <div 
+                  className={`flex-1 border-b border-gray-300 py-2 min-h-[40px] flex items-center
+                    ${!isUploaded('previousReport') ? 
+                      'cursor-pointer hover:border-green-500 transition-colors duration-200' : 
+                      'cursor-default'}`}
+                  onClick={!isUploaded('previousReport') ? () => triggerFileInput('previousReport') : undefined}
                 >
-                  {localFiles.previousReport.loading ? 'Загрузка...' :
-                    getDisplayName('previousReport')}
-                </Button>
+                  {getDisplayName('previousReport') ? (
+                    <span className="text-gray-900">✓ {getDisplayName('previousReport')}</span>
+                  ) : (
+                    <span className="text-gray-400">{getPlaceholder('previousReport')}</span>
+                  )}
+                </div>
+                
+                {!isUploaded('previousReport') ? (
+                  <Button
+                    onClick={() => triggerFileInput('previousReport')}
+                    variant="green"
+                    size="rounded"
+                    disabled={localFiles.previousReport.loading}
+                  >
+                    {localFiles.previousReport.loading ? 'Загрузка...' : 'Загрузить'}
+                  </Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => triggerFileInput('previousReport')}
+                      variant="grayOutline"
+                      size="rounded"
+                    >
+                      Заменить
+                    </Button>
+                    <Button
+                      onClick={async () => { await handleRemove('previousReport'); }}
+                      variant="grayOutline"
+                      size="rounded"
+                    >
+                      Удалить
+                    </Button>
+                  </div>
+                )}
                 <input
                   id="file-input-previousReport"
                   type="file"
@@ -341,19 +415,7 @@ export function UploadFilesModal({
                 />
               </div>
               {localFiles.previousReport.error && (
-                <p className="text-red-500 text-sm text-center">Ошибка: {localFiles.previousReport.error}</p>
-              )}
-              {isUploaded('previousReport') && (
-                <div className="flex items-center justify-center space-x-2">
-                  <p className="text-green-500 text-sm">✓ Файл загружен</p>
-                  <button
-                    onClick={async () => { await handleRemove('previousReport'); }}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
-                    title="Удалить файл"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
+                <p className="text-red-500 text-sm">Ошибка: {localFiles.previousReport.error}</p>
               )}
             </div>
           )}
@@ -364,8 +426,9 @@ export function UploadFilesModal({
           <div className="flex justify-center">
             <Button
               onClick={handleCalculate}
-              className="w-4/5 text-white text-sm px-4 py-2 h-9 rounded-full"
-              style={{ backgroundColor: '#1CC53C' }}
+              variant="green"
+              size="rounded"
+              className="w-4/5"
             >
               Начать расчет
             </Button>

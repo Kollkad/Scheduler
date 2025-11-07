@@ -13,7 +13,7 @@ import pandas as pd
 
 def clean_data(raw_df):
     """
-    Очистка данных детального отчета.
+    Очистка данных детального отчета с использованием векторных операций.
 
     Args:
         raw_df (pd.DataFrame): Сырые данные из Excel файла
@@ -24,52 +24,42 @@ def clean_data(raw_df):
     Raises:
         ValueError: Если не найдена строка с маркером '№ п/п'
     """
-    # Поиск строки с маркером '№ п/п' для определения начала таблицы
-    start_row = None
-    for col_idx in range(raw_df.shape[1]):
-        col_data = raw_df.iloc[:, col_idx].astype(str)
-        mask = col_data.str.strip() == "№ п/п"
-        if mask.any():
-            start_row = mask.idxmax()
-            break
+    # Векторизованный поиск '№ п/п' по ВСЕМУ DataFrame за одну операцию
+    str_df = raw_df.astype(str)
+    mask = (str_df == "№ п/п").any(axis=1)
 
-    if start_row is None:
+    if not mask.any():
         raise ValueError("Не найдена строка с '№ п/п'")
 
-    # Установка заголовков таблицы из найденной строки
-    headers = raw_df.iloc[start_row].copy()
-    df_with_headers = raw_df.iloc[start_row:].copy()
-    df_with_headers.columns = headers
+    start_row = mask.idxmax()
 
-    # Удаление строки заголовков и следующей служебной строки
-    cleaned = df_with_headers.drop([start_row, start_row + 1]).copy()
+    # Установка заголовков с обработкой дубликатов
+    headers = raw_df.iloc[start_row].reset_index(drop=True)
+    cleaned = raw_df.iloc[start_row + 2:].copy()  # Пропуск заголовка и служебной строки
+    cleaned.columns = headers
+    cleaned = cleaned.loc[:, ~cleaned.columns.duplicated()]  # Удаление дублирующихся колонок
 
-    # Поиск строки с маркером итогов для обрезки данных
-    total_idx = None
+    # Векторизованный поиск 'Итого' - РАЗДЕЛЬНО по колонкам чтобы избежать ошибки выравнивания
+    str_cleaned = cleaned.astype(str)
+    total_mask = pd.Series(False, index=cleaned.index)
 
-    # Поиск маркера итогов во всех столбцах
-    for col_idx in range(cleaned.shape[1]):
-        col_data = cleaned.iloc[:, col_idx].astype(str).str.strip().str.lower()
+    # Поиск в каждой колонке отдельно и объединение масок
+    for col in str_cleaned.columns:
+        col_mask = (
+                (str_cleaned[col] == "Итого:") |
+                (str_cleaned[col] == "Итого") |
+                (str_cleaned[col].str.startswith("Итого", na=False))
+        )
+        total_mask = total_mask | col_mask
 
-        # Объединение масок для различных вариантов написания "Итого"
-        mask1 = col_data == "итого:"
-        mask2 = col_data == "итого"
-        mask3 = col_data.str.startswith("итого")
-
-        total_mask = mask1 | mask2 | mask3
-
-        if total_mask.any():
-            total_idx = cleaned[total_mask].index[0]
-            break
-
-    # Обрезка данных до строки с маркером итогов
-    if total_idx is not None:
-        cleaned = cleaned.loc[:total_idx - 1]
-        print(f"✅ Найдена строка 'Итого:' в строке {total_idx}, данные обрезаны")
+    if total_mask.any():
+        total_idx = total_mask.idxmax()
+        cleaned = cleaned.loc[:total_idx - 1]  # Обрезка ДО строки с "Итого"
+        print(f"Найдена строка 'Итого:' в строке {total_idx}, данные обрезаны")
     else:
-        print("⚠️ Строка 'Итого:' не найдена, работаем со всеми данными")
+        print("Строка 'Итого:' не найдена, работаем со всеми данными")
 
-    # Удаление полностью пустых столбцов
-    cleaned = cleaned.dropna(axis=1, how='all')
+    # Удаление пустых колонок и сброс индекса
+    cleaned = cleaned.dropna(axis=1, how='all').reset_index(drop=True)
 
-    return cleaned.reset_index(drop=True)
+    return cleaned

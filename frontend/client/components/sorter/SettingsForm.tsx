@@ -4,6 +4,7 @@ import { ChevronDown } from "lucide-react";
 import { SmartSelect } from "./SmartSelect";
 import { SorterFormProps } from "./SorterTypes";
 import { useFilterOptions } from '@/hooks/useFilterOptions';
+import { Button } from "@/components/ui/button";
 
 export function SettingsForm({ 
   title, 
@@ -96,18 +97,12 @@ export function SettingsForm({
       <div className="flex items-center justify-between">
         <div className="flex space-x-4">
           {buttons.map((button, index) => (
-            <button
-              key={index}
-              onClick={button.type === 'secondary' ? handleClearForm : button.onClick}
-              className={`px-6 py-2 text-sm font-medium rounded-full transition-colors ${
-                button.type === 'primary'
-                  ? 'text-white'
-                  : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
-              }`}
-              style={button.type === 'primary' ? { backgroundColor: '#1CC53C' } : {}}
+            <Button
+              variant={button.type === 'primary' ? 'green' : 'grayOutline'}
+              size="rounded"
             >
               {button.text}
-            </button>
+            </Button>
           ))}
         </div>
 

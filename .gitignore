@@ -46,3 +46,10 @@ dist-ssr/
 # Configs
 .config/
 !.env 
+
+# Dev данные
+/backend/app/data/dev_data/*
+!/backend/app/data/dev_data/.gitkeep
+
+# Результаты автотестов
+/backend/app/data/auto_test/

@@ -11,9 +11,10 @@
 from typing import Dict
 import pandas as pd
 
+
 def clean_documents_data(raw_df):
     """
-    Очистка данных для отчета типа 'Документы'.
+    Очистка данных для отчета типа 'Документы' с использованием векторных операций.
 
     Args:
         raw_df (pd.DataFrame): Сырые данные из Excel файла
@@ -24,32 +25,25 @@ def clean_documents_data(raw_df):
     Raises:
         ValueError: Если не найдена строка с маркером 'Код передачи'
     """
-    # Поиск строки с маркером 'Код передачи' для определения начала таблицы
-    start_row = None
-    for idx, row in raw_df.iterrows():
-        for cell_value in row:
-            if str(cell_value).strip() == "Код передачи":
-                start_row = idx
-                break
-        if start_row is not None:
-            break
+    # Векторизованный поиск 'Код передачи'
+    str_df = raw_df.astype(str)
+    mask = (str_df == "Код передачи").any(axis=1)
 
-    if start_row is None:
+    if not mask.any():
         raise ValueError("Не найдена строка с 'Код передачи'")
 
-    # Установка заголовков таблицы из найденной строки
-    headers = raw_df.iloc[start_row].copy()
-    df_with_headers = raw_df.iloc[start_row:].copy()
-    df_with_headers.columns = headers
+    start_row = mask.idxmax()
 
-    # Удаление строки заголовков
-    cleaned = df_with_headers.drop([start_row]).copy()
+    # Установка заголовков с обработкой дубликатов
+    headers = raw_df.iloc[start_row].reset_index(drop=True)
+    cleaned = raw_df.iloc[start_row + 1:].copy()  # Пропуск строки заголовков
+    cleaned.columns = headers
+    cleaned = cleaned.loc[:, ~cleaned.columns.duplicated()]  # Удаление дублирующихся колонок
 
-    # Удаление полностью пустых столбцов
-    cleaned = cleaned.dropna(axis=1, how='all')
+    # Удаление пустых колонок и сброс индекса
+    cleaned = cleaned.dropna(axis=1, how='all').reset_index(drop=True)
 
-    return cleaned.reset_index(drop=True)
-
+    return cleaned
 
 def load_and_clean_documents_excel(filepath):
     """

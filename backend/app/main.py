@@ -10,7 +10,6 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Импорты роутеров
 from backend.app.common.routes.common import router as common_router
 from backend.app.rainbow.routes.rainbow import router as rainbow_router
-from backend.app.terms_of_support.routes.terms import router as terms_router
 from backend.app.common.routes.case import router as case_router
 from backend.app.task_manager.routes.tasks import router as tasks_router
 from backend.app.document_monitoring_v2.routes.document_terms_v2 import router as document_router
@@ -42,7 +41,6 @@ app.add_middleware(
 # Роутеры
 app.include_router(common_router)
 app.include_router(rainbow_router)
-app.include_router(terms_router)
 app.include_router(case_router)
 app.include_router(tasks_router)
 app.include_router(document_router)
