@@ -5,6 +5,7 @@ import { ArrowLeft, Loader, CheckCircle, XCircle, AlertCircle } from "lucide-rea
 import { PageContainer } from "@/components/PageContainer";
 import { apiClient } from "@/services/api/client";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
+import { Button } from "@/components/ui/button";
 
 type TaskDetails = {
     taskCode: string;
@@ -110,13 +111,15 @@ export default function TaskDetail() {
         <PageContainer>
             {/* Заголовок и навигация */}
             <div className="flex items-center justify-between mb-6">
-                <button
+                <Button 
+                    variant="grayOutline"
+                    size="rounded"
                     onClick={() => navigate(-1)}
-                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
-                >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    className="inline-flex items-center gap-2"
+                    >
+                    <ArrowLeft className="h-4 w-4" />
                     Вернуться назад
-                </button>
+                </Button>
                 
                 <div className="flex items-center gap-3">
                     {/* Статус выполнения задачи */}
@@ -132,12 +135,13 @@ export default function TaskDetail() {
                     </div>
                     
                     {/* Кнопка перехода к источнику */}
-                    <button
+                    <Button 
+                        variant="grayOutline"
+                        size="rounded"
                         onClick={handleGoToSource}
-                        className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
-                    >
+                        >
                         {taskData.sourceType === "documents" ? "Перейти к документу" : "Перейти к делу"}
-                    </button>
+                    </Button>
                 </div>
             </div>
 

@@ -1,5 +1,4 @@
 // TableTypes.ts
-
 export interface TableColumn {
   key: string;
   title: string;
@@ -28,4 +27,10 @@ export interface TableProps {
   // Поля для состояния загрузки и пустых данных
   emptyMessage?: string;
   loadingMessage?: string;
+  // Поля сортировки
+  sortConfig?: {
+    key: string;
+    direction: 'asc' | 'desc';
+  } | null;
+  onSortChange?: (sortConfig: { key: string; direction: 'asc' | 'desc' } | null) => void;
 }

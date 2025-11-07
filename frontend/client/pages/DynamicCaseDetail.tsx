@@ -6,6 +6,7 @@ import { PageContainer } from "@/components/PageContainer";
 import { TabsContainer } from "@/components/TabsContainer";
 import { FieldGroup } from "@/components/FieldGroup";
 import { CaseService, CaseDetails } from "@/services/case/caseService";
+import { Button } from "@/components/ui/button";
 
 export function DynamicCaseDetail() {
   const navigate = useNavigate();
@@ -82,13 +83,15 @@ export function DynamicCaseDetail() {
     <PageContainer>
       {/* Блок навигации и отображения общего количества полей */}
       <div className="flex items-center justify-between mb-6">
-        <button
+        <Button 
+          variant="grayOutline"
+          size="rounded"
           onClick={() => navigate(-1)}
-          className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
+          className="inline-flex items-center gap-2"
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="h-4 w-4" />
           Вернуться назад
-        </button>
+        </Button>
         
         <div className="text-sm text-gray-500">
           Всего полей: {caseData.totalFields}

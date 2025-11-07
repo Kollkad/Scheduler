@@ -1,5 +1,7 @@
 // ReusableDataTable.tsx
 import { TableProps } from './TableTypes';
+import { SortButton } from './SortButton';
+import { useState, useMemo } from 'react';
 
 export function ReusableDataTable({ 
   columns, 
@@ -7,8 +9,63 @@ export function ReusableDataTable({
   className = "", 
   onRowClick,
   isLoading = false,
-  loadingMessage = "Загрузка данных..."
+  loadingMessage = "Загрузка данных...",
+  sortConfig,
+  onSortChange
 }: TableProps) {
+
+  const [localSortConfig, setLocalSortConfig] = useState<{key: string; direction: 'asc' | 'desc'} | null>(null);
+
+  // Используем переданную конфигурацию сортировки или локальную
+  const currentSortConfig = sortConfig || localSortConfig;
+
+  // Функция для обработки сортировки
+  const handleSortChange = (columnKey: string, direction: 'asc' | 'desc' | null) => {
+    if (direction === null) {
+      // Сброс сортировки
+      if (onSortChange) {
+        onSortChange(null);
+      } else {
+        setLocalSortConfig(null);
+      }
+      return;
+    }
+
+    const newSortConfig = { key: columnKey, direction };
+    
+    if (onSortChange) {
+      // Если передан внешний обработчик, используем его
+      onSortChange(newSortConfig);
+    } else {
+      // Иначе используем локальное состояние
+      setLocalSortConfig(newSortConfig);
+    }
+  };
+
+  // Сортируем данные
+  const sortedData = useMemo(() => {
+    if (!currentSortConfig) return data;
+
+    return [...data].sort((a, b) => {
+      const aValue = a[currentSortConfig.key];
+      const bValue = b[currentSortConfig.key];
+
+      // Для числовых значений
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return currentSortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+
+      // Для строковых значений (и других типов)
+      const aString = String(aValue || '').toLowerCase();
+      const bString = String(bValue || '').toLowerCase();
+
+      if (currentSortConfig.direction === 'asc') {
+        return aString.localeCompare(bString, 'ru');
+      } else {
+        return bString.localeCompare(aString, 'ru');
+      }
+    });
+  }, [data, currentSortConfig]);
 
   // Функция форматирует значения ячеек таблицы
   const formatValue = (key: string, value: any) => {
@@ -54,13 +111,23 @@ export function ReusableDataTable({
                   width: column.width || 'auto',
                   textAlign: column.align || 'left'
                 }}
-                dangerouslySetInnerHTML={{ __html: column.title }}
-              />
+              >
+                <div className="flex items-center justify-between">
+                  <span dangerouslySetInnerHTML={{ __html: column.title }} />
+                  {column.sortable !== false && (
+                    <SortButton
+                      onSortChange={(direction) => handleSortChange(column.key, direction)}
+                      isActive={currentSortConfig?.key === column.key}
+                      currentDirection={currentSortConfig?.key === column.key ? currentSortConfig.direction : undefined}
+                    />
+                  )}
+                </div>
+              </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {data.map((row, index) => (
+          {sortedData.map((row, index) => (
             <tr
               key={index}
               onClick={() => onRowClick?.(row, index)}

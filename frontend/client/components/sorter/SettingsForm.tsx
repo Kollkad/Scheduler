@@ -98,8 +98,10 @@ export function SettingsForm({
         <div className="flex space-x-4">
           {buttons.map((button, index) => (
             <Button
+              key={index}
               variant={button.type === 'primary' ? 'green' : 'grayOutline'}
               size="rounded"
+              onClick={button.type === 'secondary' ? handleClearForm : button.onClick}
             >
               {button.text}
             </Button>

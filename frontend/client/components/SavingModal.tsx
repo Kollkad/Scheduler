@@ -45,7 +45,7 @@ interface StatusResponse {
 }
 
 export function SavingModal({ isOpen, onClose }: SavingModalProps) {
-  const [selectedType, setSelectedType] = useState<SaveDataType>('detailed-report');
+  const [selectedType, setSelectedType] = useState<SaveDataType>();
   const [isSaving, setIsSaving] = useState(false);
   const [availableData, setAvailableData] = useState<AvailableDataStatus | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -216,7 +216,7 @@ export function SavingModal({ isOpen, onClose }: SavingModalProps) {
   };
 
   const handleClearType = () => {
-    setSelectedType('detailed-report');
+    setSelectedType(undefined);
   };
 
   const selectedOption = dataTypeOptions.find(opt => opt.value === selectedType);
@@ -297,10 +297,11 @@ export function SavingModal({ isOpen, onClose }: SavingModalProps) {
         {/* Кнопка сохранения */}
         <div className="flex justify-center">
           <Button
+            variant="green"
+            size="rounded"
             onClick={handleSave}
             disabled={isSaving || !selectedType || (statusInfo && !statusInfo.loaded)}
-            className="w-4/5 text-white text-sm px-4 py-2 h-9 rounded-full flex items-center justify-center gap-2"
-            style={{ backgroundColor: '#1CC53C' }}
+            className="w-4/5 flex items-center justify-center gap-2"
           >
             {isSaving ? (
               <>

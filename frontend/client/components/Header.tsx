@@ -102,19 +102,16 @@ export function Header() {
 
         <div className="flex items-center space-x-3 ml-6">
           <Button
-            variant="default"
-            size="sm"
-            className="text-white text-sm px-6 py-2 h-9 rounded-full"
-            style={{ backgroundColor: '#1CC53C' }}
+            variant="green"
+            size="rounded"
             onClick={() => setIsUploadModalOpen(true)}
           >
             Загрузить файлы
           </Button>
-          
+                    
           <Button
-            variant="outline"
-            size="sm"
-            className="border-gray-300 text-gray-700 hover:bg-gray-50 text-sm px-6 py-2 h-9 rounded-full"
+            variant="grayOutline"
+            size="rounded"
             onClick={() => setIsSavingModalOpen(true)}
           >
             Выгрузить данные
