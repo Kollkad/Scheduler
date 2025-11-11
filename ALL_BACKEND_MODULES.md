@@ -399,7 +399,7 @@ task_manager/
 ```json
 {
     "taskCode": "TASK_0000001",
-    "taskType": "LS_CLOSED_001",
+    "failedCheck": "closed125days",
     "caseCode": "ABC123",
     "sourceType": "detailed",
     "responsibleExecutor": "Иванов И.И.",

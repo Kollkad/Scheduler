@@ -10,12 +10,21 @@ interface DefaultChartProps {
 export function DefaultChart({ data, onBarClick }: DefaultChartProps) {
   const [hoveredBar, setHoveredBar] = useState<string | null>(null);
 
-  // Функция вычисляет максимальное значение и шаг для шкалы
-  const { maxValue, tickStep } = useMemo(() => {
-    const maxVal = Math.max(...data.map(item => item.value), 1);
-    const step = Math.ceil(maxVal / 5 / 1000) * 1000;
-    return { maxValue: maxVal, tickStep: step };
-  }, [data]);
+    // Функция вычисляет максимальное значение и шаг для шкалы
+    const { maxValue, tickStep } = useMemo(() => {
+      const maxVal = Math.max(...data.map(item => item.value), 1);
+      
+      let step;
+      if (maxVal <= 12000) {
+        step = 1000;
+      } else {
+        step = 3000;
+      }
+      
+      const roundedMax = Math.ceil(maxVal / step) * step;
+      
+      return { maxValue: roundedMax, tickStep: step };
+    }, [data]);
 
   // Функция рассчитывает ширину столбца на основе значения
   const calculateWidth = (value: number) => {

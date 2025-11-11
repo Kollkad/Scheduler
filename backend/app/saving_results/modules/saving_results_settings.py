@@ -53,10 +53,16 @@ def generate_filename(report_type: str) -> str:
     Returns:
         str: Уникальное имя файла с временной меткой
     """
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime("%d-%m-%Y")
     type_names = {
         "detailed_report": "детальный_отчет",
         "documents_report": "отчет_документов",
+        "lawsuit_production": "исковое_производство",
+        "order_production": "приказное_производство",
+        "documents_analysis": "анализ_документов",
+        "tasks": "задачи",
+        "rainbow_analysis": "радуга",
+        "all_analysis": "все_анализы"
     }
 
     report_name = type_names.get(report_type, report_type)
@@ -211,7 +217,7 @@ def rename_columns_to_russian(dataframe, data_type):
         },
         "tasks": {
             "taskCode": COLUMNS["TASK_CODE"],
-            "taskType": COLUMNS["TASK_TYPE"],
+            "failedCheck": COLUMNS["FAILED_CHECK"],
             "caseCode": COLUMNS["CASE_CODE"],
             "sourceType": COLUMNS["SOURCE_TYPE"],
             "responsibleExecutor": COLUMNS["RESPONSIBLE_EXECUTOR"],
@@ -220,7 +226,6 @@ def rename_columns_to_russian(dataframe, data_type):
             "isCompleted": COLUMNS["IS_COMPLETED"],
             "taskText": COLUMNS["TASK_TEXT"],
             "reasonText": COLUMNS["REASON_TEXT"],
-            "failedChecksCount": COLUMNS["FAILED_CHECKS_COUNT"],
             "createdDate": COLUMNS["CREATED_DATE"]
         }
     }

@@ -1,4 +1,4 @@
-// components/CompactTaskList.tsx
+// frontend/client/components/CompactTaskList.tsx
 import { useState } from "react";
 
 interface CompactTaskListProps {
@@ -16,10 +16,8 @@ export function CompactTaskList({
 }: CompactTaskListProps) {
   const [hoveredTask, setHoveredTask] = useState<string | null>(null);
 
-  const getStatusColor = (failedChecksCount?: number): string => {
-    if (!failedChecksCount || failedChecksCount === 0) return "#6B7280";
-    if (failedChecksCount === 1) return "#EAB308";
-    if (failedChecksCount === 2) return "#F97316";
+  const getStatusColor = (isCompleted?: boolean): string => {
+    if (isCompleted) return "#10B981";
     return "#EF4444";
   };
 
@@ -56,30 +54,42 @@ export function CompactTaskList({
           onMouseLeave={() => setHoveredTask(null)}
         >
           <div className="flex items-center px-4 py-3">
+            {/* Индикатор статуса */}
             <div 
               className="w-3 h-3 rounded-full mr-4 flex-shrink-0"
               style={{
-                backgroundColor: getStatusColor(task.failedChecksCount)
+                backgroundColor: getStatusColor(task.isCompleted)
               }}
             />
             
-            <div className="w-1/5 pr-4 border-r border-gray-200">
+            {/* Код дела */}
+            <div className="w-1/6 pr-4 border-r border-gray-200">
               <span className="text-sm font-medium text-gray-900">
                 {task.caseCode || "Не указан"}
               </span>
             </div>
             
-            <div className="w-1/6 px-4 border-r border-gray-200">
+            {/* Этап дела */}
+            <div className="w-1/5 px-4 border-r border-gray-200">
               <span className="text-sm text-gray-700">
-                {task.taskType || "Не указан"}
+                {task.caseStage || "Не указан"}
               </span>
             </div>
             
+            {/* Проваленная проверка */}
+            <div className="flex-1 px-4">
+              <span className="text-sm text-gray-900">
+                {truncateText(task.failedCheck || "Проверка не указана")}
+              </span>
+            </div>
+
+            {/* Текст задачи */}
             <div className="flex-1 px-4">
               <span className="text-sm text-gray-900">
                 {truncateText(task.taskText || "Текст задачи не указан")}
               </span>
             </div>
+            
           </div>
         </div>
       ))}

@@ -1,4 +1,4 @@
-// src/config/tableConfig.ts
+// frontend/client/config/tableConfig.ts
 import { featureFlags } from '@/config/featureFlags';
 import { TableConfig } from "@/components/tables/TableTypes";
 
@@ -126,10 +126,10 @@ export const termsTableConfig = {
 export const tasksTableConfig: TableConfig = {
   columns: [
     { key: "taskCode", title: "Код задачи", width: "120px" },
-    { key: "taskType", title: "Тип задачи", width: "120px" },
-    { key: "caseCode", title: "Код дела", width: "150px" },
+    { key: "caseCode", title: "Код дела", width: "150px" },  
     { key: "responsibleExecutor", title: "Ответственный исполнитель", width: "200px" },
     { key: "caseStage", title: "Этап дела", width: "180px" },
+    { key: "failedCheck", title: "Название проверки", width: "120px" },
     { key: "monitoringStatus", title: "Статус мониторинга", width: "150px" },
     { key: "taskText", title: "Текст задачи", width: "300px" },
   ],

@@ -190,7 +190,6 @@ export function TermsOfSupport() {
         <div className="space-y-4">
           <SegmentedChart 
             data={currentData} 
-            maxValue={Math.max(...currentData.map(item => item.total), 100)} 
             onSegmentClick={handleSegmentClick}
           />
         </div>
@@ -211,7 +210,6 @@ export function TermsOfSupport() {
           <div className="space-y-4">
             <SegmentedChart 
               data={documentsData} 
-              maxValue={Math.max(...documentsData.map(item => item.total), 100)} 
               onSegmentClick={handleDocumentsSegmentClick}
             />
           </div>

@@ -28,9 +28,9 @@ jobs:
     - name: Run file loader test
       run: |
         cd backend
-        python app/common/tests/auto/file_loader_test.py
+        PYTHONPATH=$GITHUB_WORKSPACE python -m app.common.tests.auto.file_loader_test
         
     - name: Run task manager test  
       run: |
         cd backend
-        python app/common/tests/auto/task_manager_test.py
+        PYTHONPATH=$GITHUB_WORKSPACE python -m app.common.tests.auto.task_manager_test

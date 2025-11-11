@@ -1,4 +1,4 @@
-// UploadFilesModal.tsx
+// frontend/client/components/UploadFilesModal.tsx
 import { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -251,19 +251,23 @@ export function UploadFilesModal({
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <div 
-                className={`flex-1 border-b border-gray-300 py-2 min-h-[40px] flex items-center
+                className={`flex-1 border-b border-gray-300 py-2 min-h-[40px] flex items-center overflow-hidden
                   ${!isUploaded('currentReport') ? 
                     'cursor-pointer hover:border-green-500 transition-colors duration-200' : 
                     'cursor-default'}`}
                 onClick={!isUploaded('currentReport') ? () => triggerFileInput('currentReport') : undefined}
               >
                 {getDisplayName('currentReport') ? (
-                  <span className="text-gray-900">✓ {getDisplayName('currentReport')}</span>
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <div className="text-green-600 flex-shrink-0">✓</div>
+                    <span className="text-gray-900 truncate">{getDisplayName('currentReport')}</span>
+                  </div>
                 ) : (
                   <span className="text-gray-400">{getPlaceholder('currentReport')}</span>
                 )}
               </div>
               
+              {/* Остальной код без изменений */}
               {!isUploaded('currentReport') ? (
                 <Button
                   onClick={() => triggerFileInput('currentReport')}
@@ -308,19 +312,23 @@ export function UploadFilesModal({
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <div 
-                className={`flex-1 border-b border-gray-300 py-2 min-h-[40px] flex items-center
+                className={`flex-1 border-b border-gray-300 py-2 min-h-[40px] flex items-center overflow-hidden
                   ${!isUploaded('documentsReport') ? 
                     'cursor-pointer hover:border-green-500 transition-colors duration-200' : 
                     'cursor-default'}`}
                 onClick={!isUploaded('documentsReport') ? () => triggerFileInput('documentsReport') : undefined}
               >
                 {getDisplayName('documentsReport') ? (
-                  <span className="text-gray-900">✓ {getDisplayName('documentsReport')}</span>
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <div className="text-green-600 flex-shrink-0">✓</div>
+                    <span className="text-gray-900 truncate">{getDisplayName('documentsReport')}</span>
+                  </div>
                 ) : (
                   <span className="text-gray-400">{getPlaceholder('documentsReport')}</span>
                 )}
               </div>
               
+              {/* Остальной код без изменений */}
               {!isUploaded('documentsReport') ? (
                 <Button
                   onClick={() => triggerFileInput('documentsReport')}
@@ -366,19 +374,23 @@ export function UploadFilesModal({
             <div className="space-y-2">
               <div className="flex items-center gap-3">
                 <div 
-                  className={`flex-1 border-b border-gray-300 py-2 min-h-[40px] flex items-center
+                  className={`flex-1 border-b border-gray-300 py-2 min-h-[40px] flex items-center overflow-hidden
                     ${!isUploaded('previousReport') ? 
                       'cursor-pointer hover:border-green-500 transition-colors duration-200' : 
                       'cursor-default'}`}
                   onClick={!isUploaded('previousReport') ? () => triggerFileInput('previousReport') : undefined}
                 >
                   {getDisplayName('previousReport') ? (
-                    <span className="text-gray-900">✓ {getDisplayName('previousReport')}</span>
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div className="text-green-600 flex-shrink-0">✓</div>
+                      <span className="text-gray-900 truncate">{getDisplayName('previousReport')}</span>
+                    </div>
                   ) : (
                     <span className="text-gray-400">{getPlaceholder('previousReport')}</span>
                   )}
                 </div>
                 
+                {/* Остальной код без изменений */}
                 {!isUploaded('previousReport') ? (
                   <Button
                     onClick={() => triggerFileInput('previousReport')}
@@ -420,7 +432,6 @@ export function UploadFilesModal({
             </div>
           )}
         </div>
-
         {/* Кнопка расчета */}
         {requiredFilesUploaded && (
           <div className="flex justify-center">

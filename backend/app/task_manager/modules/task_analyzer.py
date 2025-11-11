@@ -16,7 +16,7 @@ from datetime import datetime
 
 from backend.app.common.config.column_names import COLUMNS, VALUES
 from backend.app.common.config.task_mappings import TASK_MAPPINGS
-
+from backend.app.common.config.check_display_names import CHECK_DISPLAY_NAMES
 
 class TaskAnalyzer:
     """
@@ -41,6 +41,9 @@ class TaskAnalyzer:
         task_code = f"TASK_{self._task_counter:07d}"
         self._task_counter += 1
         return task_code
+
+    def _get_failed_check_display_name(self, failed_check_name: str) -> str:
+        return CHECK_DISPLAY_NAMES.get(failed_check_name, failed_check_name)
 
     def analyze_all_tasks(self) -> List[Dict[str, Any]]:
         """
@@ -241,17 +244,16 @@ class TaskAnalyzer:
 
         return {
             "taskCode": self._generate_task_code(),
-            "taskType": task_data["task_code"],
             "caseCode": case_code,
-            "sourceType": "detailed",
             "responsibleExecutor": responsible_executor,
             "caseStage": case_stage,
-            "monitoringStatus": row.get("monitoringStatus", "unknown"),
-            "isCompleted": False,
+            "failedCheck": self._get_failed_check_display_name(task_data["failed_check_name"]),
             "taskText": task_data["task_text"],
-            "reasonText": reason_text,
-            "failedChecksCount": len(failed_checks),
-            "createdDate": datetime.now().isoformat()
+            "reasonText": task_data["reason_text"],
+            "monitoringStatus": row.get("monitoringStatus", "unknown"),
+            "sourceType": "detailed",
+            "isCompleted": False,
+            "createdDate": datetime.now().strftime("%d.%m.%Y")
         }
 
     def _format_order_task(self, row: pd.Series, failed_checks: List[Dict],
@@ -282,17 +284,16 @@ class TaskAnalyzer:
 
         return {
             "taskCode": self._generate_task_code(),
-            "taskType": task_data["task_code"],
             "caseCode": case_code,
-            "sourceType": "detailed",
             "responsibleExecutor": responsible_executor,
             "caseStage": case_stage,
-            "monitoringStatus": row.get("monitoringStatus", "unknown"),
-            "isCompleted": False,
+            "failedCheck": self._get_failed_check_display_name(task_data["failed_check_name"]),
             "taskText": task_data["task_text"],
-            "reasonText": reason_text,
-            "failedChecksCount": len(failed_checks),
-            "createdDate": datetime.now().isoformat()
+            "reasonText": task_data["reason_text"],
+            "monitoringStatus": row.get("monitoringStatus", "unknown"),
+            "sourceType": "detailed",
+            "isCompleted": False,
+            "createdDate": datetime.now().strftime("%d.%m.%Y")
         }
 
     def _format_document_task(self, row: pd.Series, task_config: Dict,
@@ -326,17 +327,16 @@ class TaskAnalyzer:
 
         return {
             "taskCode": self._generate_task_code(),
-            "taskType": task_config["task_code"],
             "caseCode": case_code,
-            "sourceType": "documents",
             "responsibleExecutor": responsible_executor,
             "caseStage": "executionDocumentReceived",
-            "monitoringStatus": row.get("monitoringStatus", "unknown"),
-            "isCompleted": False,
+            "failedCheck": self._get_failed_check_display_name(task_config["failed_check_name"]),
             "taskText": task_config["task_text"],
-            "reasonText": reason_text,
-            "failedChecksCount": 1,
-            "createdDate": datetime.now().isoformat()
+            "reasonText": task_config["reason_text"],
+            "monitoringStatus": row.get("monitoringStatus", "unknown"),
+            "sourceType": "documents",
+            "isCompleted": False,
+            "createdDate": datetime.now().strftime("%d.%m.%Y")
         }
 
     def _check_document_task_conditions(self, row: pd.Series, task_config: Dict) -> bool:

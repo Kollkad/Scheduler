@@ -1,5 +1,5 @@
 // SegmentedChart.tsx
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { calculateBarHeights, generateTicks } from '@/utils/chartUtils';
 
 interface Segment {
@@ -19,14 +19,39 @@ interface SegmentedChartProps {
   onSegmentClick?: (stage: string, status: string, count: number) => void;
 }
 
-export function SegmentedChart({ data, maxValue = 140, onSegmentClick }: SegmentedChartProps) {
+// Функция расчета максимального значения и шага
+const calculateMaxValueAndTicks = (data: Array<{ total: number }>, customMaxValue?: number) => {
+  if (customMaxValue) {
+    return { maxValue: customMaxValue, tickStep: 1000 };
+  }
+  
+  const maxVal = Math.max(...data.map(item => item.total), 1);
+  
+  let step;
+  if (maxVal <= 12000) {
+    step = 1000;
+  } else {
+    step = 3000;
+  }
+  
+  const roundedMax = Math.ceil(maxVal / step) * step;
+  
+  return { maxValue: roundedMax, tickStep: step };
+};
+
+export function SegmentedChart({ data, maxValue, onSegmentClick }: SegmentedChartProps) {
   const [hoveredBar, setHoveredBar] = useState<string | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   
+  // Расчет максимального значения и делений с новой логикой
+  const { maxValue: calculatedMaxValue, tickStep } = useMemo(() => {
+    return calculateMaxValueAndTicks(data, maxValue);
+  }, [data, maxValue]);
+  
   // Расчет точных высот элементов графика
   const { barHeight, barGap, barsAreaHeight, xAxisHeight, totalChartHeight } = calculateBarHeights(data.length);
-  const xTicks = generateTicks(maxValue);
+  const xTicks = generateTicks(calculatedMaxValue, tickStep);
 
   // Получение ширины контейнера для расчета минимальной ширины в пикселях
   useEffect(() => {
@@ -48,7 +73,7 @@ export function SegmentedChart({ data, maxValue = 140, onSegmentClick }: Segment
 
   // Функция рассчитывает фактические ширины сегментов с учетом минимального размера
   const calculateSegmentWidths = (segments: Segment[], totalValue: number, barTotalWidth: number) => {
-    const minWidthPixels = 10;
+    const minWidthPixels = 15;
     
     return segments.map(segment => {
       if (segment.value === 0) return '0%';
@@ -101,6 +126,7 @@ export function SegmentedChart({ data, maxValue = 140, onSegmentClick }: Segment
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'flex-end',
+                  textAlign: 'right',
                   marginBottom: index < data.length - 1 ? `${barGap}px` : '0px',
                   fontSize: '12px',
                   fontWeight: isHovered ? 'bold' : 'normal',
@@ -139,7 +165,7 @@ export function SegmentedChart({ data, maxValue = 140, onSegmentClick }: Segment
               const isHovered = hoveredBar === item.title;
               
               // Ширина всей полосы в пикселях
-              const barTotalWidth = containerWidth * (item.total / maxValue);
+              const barTotalWidth = containerWidth * (item.total / calculatedMaxValue);
               
               // Расчет ширины для всех сегментов
               const segmentWidths = calculateSegmentWidths(item.segments, item.total, barTotalWidth);
@@ -174,7 +200,7 @@ export function SegmentedChart({ data, maxValue = 140, onSegmentClick }: Segment
                     {/* Сегментированный столбец */}
                     <div style={{
                       height: '100%',
-                      width: `${(item.total / maxValue) * 100}%`,
+                      width: `${(item.total / calculatedMaxValue) * 100}%`,
                       display: 'flex',
                       borderRadius: '5px',
                       overflow: 'visible', 
@@ -225,7 +251,7 @@ export function SegmentedChart({ data, maxValue = 140, onSegmentClick }: Segment
                 style={{
                   position: 'absolute',
                   bottom: '0',
-                  left: `${(tick / maxValue) * 100}%`,
+                  left: `${(tick / calculatedMaxValue) * 100}%`,
                   transform: 'translateX(-50%)',
                   textAlign: 'center'
                 }}

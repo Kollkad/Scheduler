@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { PageContainer } from "@/components/PageContainer";
 import { SettingsForm } from "@/components/sorter/SettingsForm";
 import { ReusableDataTable } from "@/components/tables/ReusableDataTable";
+import { CompactTaskList } from "@/components/CompactTaskList";
+import { Button } from "@/components/ui/button";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { apiClient } from "@/services/api/client";
 import { sorterConfig } from "@/config/sorterConfig";
@@ -11,14 +13,13 @@ import { tasksTableConfig, mapBackendDataTasks } from "@/config/tableConfig";
 
 type TaskItem = {
   taskCode: string;
-  taskType: string; 
+  failedCheck: string;
   caseCode: string;
   responsibleExecutor: string;
   caseStage: string;
   taskText: string;
   monitoringStatus: string;
   isCompleted?: boolean;
-  failedChecksCount?: number;
 };
 
 export default function Tasks() {
@@ -28,9 +29,10 @@ export default function Tasks() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedExecutor, setSelectedExecutor] = useState<string>("");
   const [filteredCount, setFilteredCount] = useState<number>(0);
+  const [viewMode, setViewMode] = useState<'table' | 'compact'>('table');
 
-  // Обработчик клика по строке таблицы для перехода к деталям задачи
-  const handleRowClick = (task: TaskItem) => {
+  // Обработчик клика по задаче для перехода к деталям
+  const handleTaskClick = (task: TaskItem) => {
     if (task.taskCode && task.taskCode !== "Выберите сотрудника и нажмите 'Найти задачи'") {
       navigate(`/task/${task.taskCode}`);
     }
@@ -58,19 +60,6 @@ export default function Tasks() {
       onClick: async () => {
         await handleFindTasks();
       },
-    },
-  ];
-
-  // Данные по умолчанию для таблицы до поиска
-  const defaultTableData = [
-    {
-      taskCode: "Выберите сотрудника и нажмите 'Найти задачи'", 
-      taskType: "-", 
-      caseCode: "-",
-      responsibleExecutor: "-",
-      caseStage: "-",
-      taskText: "-",
-      monitoringStatus: "-",
     },
   ];
 
@@ -108,14 +97,13 @@ export default function Tasks() {
         // Формирование данных для таблицы с обработкой отсутствующих значений
         const tableData = mappedTasks.map(task => ({
           taskCode: task.taskCode || "Не указан",
-          taskType: task.taskType || "Не указан",
+          failedCheck: task.failedCheck || "Не указан",
           caseCode: task.caseCode || "Не указан",
           responsibleExecutor: task.responsibleExecutor || executor,
           caseStage: task.caseStage,
           taskText: task.taskText || "Не указано",
           monitoringStatus: task.monitoringStatus,
-          isCompleted: task.isCompleted,
-          failedChecksCount: task.failedChecksCount
+          isCompleted: task.isCompleted
         }));
 
         setTasks(tableData);
@@ -134,6 +122,9 @@ export default function Tasks() {
     }
   };
 
+  // Проверка, выбран ли сотрудник
+  const hasSelectedExecutor = Boolean(filters["responsibleExecutor"]);
+
   return (
     <PageContainer>
       <div className="mb-8">
@@ -150,26 +141,67 @@ export default function Tasks() {
         onFiltersChange={handleFiltersChange}
       />
 
-      {/* Блок отображения результатов поиска */}
-      {tasks.length > 0 && (
-        <div className="mt-4 flex items-center gap-2 text-gray-600">
-          <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-          </svg>
-          <span>
-            Найдено <span className="font-bold">{filteredCount}</span> задач для <span className="font-bold">{selectedExecutor}</span>
-          </span>
+      {/* Блок отображения результатов поиска И переключатель режима */}
+      <div className="mt-4 flex items-center justify-between">
+        {/* Статус поиска */}
+        {tasks.length > 0 ? (
+          <div className="flex items-center gap-2 text-gray-600">
+            <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            <span>
+              Найдено <span className="font-bold">{filteredCount}</span> задач для <span className="font-bold">{selectedExecutor}</span>
+            </span>
+          </div>
+        ) : (
+          <div className="text-gray-500">
+             
+          </div>
+        )}
+        
+        {/* Переключатель режима просмотра */}
+        <div className="flex gap-2">
+          <Button
+            variant={viewMode === 'table' ? 'green' : 'grayOutline'}
+            size="rounded"
+            onClick={() => setViewMode('table')}
+          >
+            Таблица
+          </Button>
+          <Button
+            variant={viewMode === 'compact' ? 'green' : 'grayOutline'}
+            size="rounded"
+            onClick={() => setViewMode('compact')}
+          >
+            Компактный вид
+          </Button>
         </div>
-      )}
+      </div>
 
       <div className="mt-6">
-        <ReusableDataTable
-          columns={tasksTableConfig.columns}
-          data={tasks.length > 0 ? tasks : defaultTableData}
-          isLoading={isLoading}
-          loadingMessage="Поиск задач..."
-          onRowClick={handleRowClick}
-        />
+        {!hasSelectedExecutor ? (
+          // Сообщение когда сотрудник не выбран
+          <div className="flex justify-center items-center h-32">
+            <div className="text-gray-500">Выберите сотрудника и нажмите "Найти задачи"</div>
+          </div>
+        ) : viewMode === 'table' ? (
+          // Табличный режим
+          <ReusableDataTable
+            columns={tasksTableConfig.columns}
+            data={tasks.length > 0 ? tasks : []}
+            isLoading={isLoading}
+            loadingMessage="Поиск задач..."
+            onRowClick={handleTaskClick}
+          />
+        ) : (
+          // Компактный режим
+          <CompactTaskList
+            tasks={tasks.length > 0 ? tasks : []}
+            onTaskClick={handleTaskClick}
+            isLoading={isLoading}
+            emptyMessage="Задачи не найдены"
+          />
+        )}
       </div>
     </PageContainer>
   );

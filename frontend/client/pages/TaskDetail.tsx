@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 
 type TaskDetails = {
     taskCode: string;
-    taskType: string;
+    failedCheck: string;
     caseCode: string;
     responsibleExecutor: string;
     caseStage: string;
@@ -17,11 +17,9 @@ type TaskDetails = {
     reasonText?: string;
     monitoringStatus: string;
     isCompleted: boolean;
-    failedChecksCount: number;
     sourceType: string;
     createdDate: string;
 };
-
 export default function TaskDetail() {
     const navigate = useNavigate();
     const { taskCode } = useParams<{ taskCode: string }>();
@@ -164,8 +162,8 @@ export default function TaskDetail() {
                         </div>
                         
                         <div>
-                            <h3 className="text-sm font-medium text-gray-500">Тип задачи</h3>
-                            <p className="mt-1 text-sm text-gray-900">{taskData.taskType}</p>
+                            <h3 className="text-sm font-medium text-gray-500">Название проверки</h3>
+                            <p className="mt-1 text-sm text-gray-900">{taskData.failedCheck}</p>
                         </div>
                         
                         <div>
@@ -189,11 +187,6 @@ export default function TaskDetail() {
                         <div>
                             <h3 className="text-sm font-medium text-gray-500">Статус мониторинга</h3>
                             <p className="mt-1 text-sm text-gray-900">{taskData.monitoringStatus}</p>
-                        </div>
-                        
-                        <div>
-                            <h3 className="text-sm font-medium text-gray-500">Количество проваленных проверок</h3>
-                            <p className="mt-1 text-sm text-gray-900">{taskData.failedChecksCount || 0}</p>
                         </div>
                         
                         <div>
