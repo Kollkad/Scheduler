@@ -107,6 +107,8 @@ def prepare_case_data(row: pd.Series, stage: str, status: str) -> Dict[str, Any]
         """
         if pd.isna(val):
             return "Не указано"
+        if hasattr(val, 'strftime'):
+            return str(val)
         if isinstance(val, float) and (val != val or val == float('inf') or val == float('-inf')):
             return "Не указано"
         return val
@@ -351,6 +353,10 @@ def build_production_table(df: pd.DataFrame, production_type: str) -> pd.DataFra
             COLUMNS["CASE_STATUS"]: "caseStatus",
         }
         staged_df = staged_df.rename(columns=rename_map)
+        staged_df["filingDate"] = df_clean.apply(
+            lambda row: get_filing_date(row, use_all_fields=False) or "Не указано",
+            axis=1
+        )
 
         # 4. Сохранение обработанных данных в менеджер данных
         data_manager.set_processed_data(f"{production_type}_staged", staged_df)

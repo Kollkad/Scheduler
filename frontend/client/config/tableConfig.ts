@@ -67,7 +67,7 @@ export const formatMonitoringStatus = (statusString: string): string => {
 // Конфигурация колонок для таблицы Rainbow
 export const rainbowTableConfig = {
   columns: [
-    { key: 'caseCode', title: 'Код дела', width: '150px' },
+    { key: 'caseCode', title: 'Код дела', width: '200px' },
     { key: 'responsibleExecutor', title: 'Ответственный исполнитель', width: '200px' },
     { key: 'gosb', title: 'ГОСБ', width: '120px' },
     { key: 'currentPeriodColor', title: 'Цвет (тек. период)', width: '120px' },
@@ -82,7 +82,7 @@ export const rainbowTableConfig = {
 // Конфигурация колонок для таблицы фильтрованных дел
 export const filteredCasesTableConfig = {
   columns: [
-    { key: 'caseCode', title: 'Код дела', width: '150px' },
+    { key: 'caseCode', title: 'Код дела', width: '170px' },
     { key: 'responsibleExecutor', title: 'Ответственный исполнитель', width: '200px' },
     { key: 'gosb', title: 'ГОСБ', width: '120px' },
     { key: 'currentPeriodColor', title: 'Цвет (тек. период)', width: '120px' },
@@ -126,7 +126,7 @@ export const termsTableConfig = {
 export const tasksTableConfig: TableConfig = {
   columns: [
     { key: "taskCode", title: "Код задачи", width: "120px" },
-    { key: "caseCode", title: "Код дела", width: "150px" },  
+    { key: "caseCode", title: "Код дела", width: "170px" },  
     { key: "responsibleExecutor", title: "Ответственный исполнитель", width: "200px" },
     { key: "caseStage", title: "Этап дела", width: "180px" },
     { key: "failedCheck", title: "Название проверки", width: "120px" },
@@ -158,7 +158,7 @@ export const monitoringStatusMapping: Record<string, string> = {
 export const stageTableConfig = {
   lawsuit: {
     columns: [
-      { key: 'caseCode', title: 'Код дела', width: '150px' },
+      { key: 'caseCode', title: 'Код дела', width: '170px' },
       { key: 'responsibleExecutor', title: 'Ответственный исполнитель', width: '200px' },
       { key: 'courtProtectionMethod', title: 'Способ судебной защиты', width: '150px' },
       { key: 'gosb', title: 'ГОСБ', width: '120px' },
@@ -171,7 +171,7 @@ export const stageTableConfig = {
   },
   order: {
     columns: [
-      { key: 'caseCode', title: 'Код дела', width: '150px' },
+      { key: 'caseCode', title: 'Код дела', width: '170px' },
       { key: 'responsibleExecutor', title: 'Ответственный исполнитель', width: '200px' },
       { key: 'gosb', title: 'ГОСБ', width: '120px' },
       { key: 'caseStage', title: 'Этап дела', width: '150px' },
@@ -183,7 +183,7 @@ export const stageTableConfig = {
   },
   documents: {
     columns: [
-      { key: 'requestCode', title: 'Код запроса', width: '150px' },
+      { key: 'requestCode', title: 'Код запроса', width: '170px' },
       { key: 'caseCode', title: 'Код дела', width: '150px' },
       { key: 'documentType', title: 'Тип документа', width: '180px' },
       { key: 'department', title: 'Подразделение', width: '180px' },

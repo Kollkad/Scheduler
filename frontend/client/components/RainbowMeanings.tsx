@@ -56,67 +56,23 @@ const rainbowMeanings: RainbowMeaning[] = [
 
 export function RainbowMeanings() {
   return (
-    <div className="color-meanings">
+    <div className="p-5 bg-white rounded-2xl border-2 border-green-500 w-full">
       {rainbowMeanings.map((meaning, index) => (
-        <div key={index} className="meaning-item">
+        <div key={index} className="flex items-start mb-3 text-sm leading-relaxed">
           <div
-            className="meaning-color"
+            className="w-4 h-4 rounded-sm mr-2 mt-0.5 flex-shrink-0"
             style={{
               backgroundColor: meaning.color,
               border: meaning.color === '#FFFFFF' ? '1px solid #ccc' : 'none'
             }}
           ></div>
-          <div className="meaning-text">
-            <span className="color-name">{meaning.colorName}</span>
-            <span className="separator"> – </span>
+          <div className="flex-1 text-gray-800">
+            <span className="font-bold">{meaning.colorName}</span>
+            <span className="text-gray-800"> – </span>
             <span>{meaning.text}</span>
           </div>
         </div>
       ))}
-
-      <style jsx>{`
-        .color-meanings {
-          padding: 20px;
-          background: white;
-          border-radius: 20px;
-          border: 2px solid #1CC53C;
-          width: 100%;
-        }
-
-        .meaning-item {
-          display: flex;
-          align-items: flex-start;
-          margin-bottom: 12px;
-          font-size: 14px;
-          line-height: 1.4;
-        }
-
-        .meaning-item:last-child {
-          margin-bottom: 0;
-        }
-
-        .meaning-color {
-          width: 16px;
-          height: 16px;
-          border-radius: 3px;
-          margin-right: 8px;
-          margin-top: 1px;
-          flex-shrink: 0;
-        }
-
-        .meaning-text {
-          flex: 1;
-          color: #333;
-        }
-
-        .color-name {
-          font-weight: bold;
-        }
-
-        .separator {
-          color: #333;
-        }
-      `}</style>
     </div>
   );
 }

@@ -98,39 +98,21 @@ export function SegmentedChart({ data, maxValue, onSegmentClick }: SegmentedChar
   };
 
   return (
-    <div style={{
-      fontFamily: 'Arial, sans-serif',
-      maxWidth: '800px',
-      margin: '0 auto',
-      padding: '20px',
-      background: 'white',
-      borderRadius: '8px',
-      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)'
-    }}>
-      <div style={{ display: 'flex', height: `${totalChartHeight}px` }}>
+    <div className="w-full max-w-[800px] mx-auto p-4 bg-white rounded-md shadow-sm pb-12">
+      <div className="flex">
         {/* Подписи оси Y */}
-        <div style={{
-          width: '200px',
-          display: 'flex',
-          flexDirection: 'column',
-          paddingRight: '10px',
-          height: `${barsAreaHeight}px`
-        }}>
+        <div className="w-48 flex flex-col pr-2">
           {data.map((item, index) => {
             const isHovered = hoveredBar === item.title;
             return (
               <div 
                 key={`label-${index}`} 
+                className={`flex items-center justify-end text-right text-sm ${
+                  isHovered ? 'font-bold text-green-500' : ''
+                }`}
                 style={{
                   height: `${barHeight}px`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'flex-end',
-                  textAlign: 'right',
-                  marginBottom: index < data.length - 1 ? `${barGap}px` : '0px',
-                  fontSize: '12px',
-                  fontWeight: isHovered ? 'bold' : 'normal',
-                  color: isHovered ? '#1CC53C' : 'inherit'
+                  marginBottom: index < data.length - 1 ? `${barGap}px` : '0px'
                 }}
               >
                 {item.title}
@@ -142,25 +124,20 @@ export function SegmentedChart({ data, maxValue, onSegmentClick }: SegmentedChar
         {/* Область графика */}
         <div 
           ref={containerRef}
-          style={{ flexGrow: 1, position: 'relative', height: `${totalChartHeight}px` }}
+          className="flex-grow relative"
         >
           {/* Линия оси Y */}
-          <div style={{
-            position: 'absolute',
-            left: '0',
-            top: '0',
-            height: `${barsAreaHeight}px`,
-            width: '1px',
-            background: '#333',
-            zIndex: 2
-          }}></div>
+          <div className="absolute left-0 top-0 bg-gray-800 z-10"
+            style={{
+              height: `${barsAreaHeight}px`,
+              width: '1px'
+            }}
+          ></div>
 
           {/* Контейнер столбцов */}
-          <div style={{ 
-            height: `${barsAreaHeight}px`,
-            display: 'flex',
-            flexDirection: 'column'
-          }}>
+          <div className="flex flex-col"
+            style={{ height: `${barsAreaHeight}px` }}
+          >
             {data.map((item, index) => {
               const isHovered = hoveredBar === item.title;
               
@@ -173,40 +150,26 @@ export function SegmentedChart({ data, maxValue, onSegmentClick }: SegmentedChar
               return (
                 <div 
                   key={`bar-${index}`}
+                  className={`flex items-center transition-all duration-200 cursor-pointer ${
+                    isHovered ? 'opacity-90 translate-x-0.5' : ''
+                  }`}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
                     height: `${barHeight}px`,
-                    marginBottom: index < data.length - 1 ? `${barGap}px` : '0px',
-                    cursor: 'pointer',
-                    opacity: isHovered ? 0.9 : 1,
-                    transform: isHovered ? 'translateX(2px)' : 'none',
-                    transition: 'all 0.2s ease'
+                    marginBottom: index < data.length - 1 ? `${barGap}px` : '0px'
                   }}
                   onMouseEnter={() => handleBarHover(item.title)}
                   onMouseLeave={() => handleBarHover(null)}
                   title={isHovered ? `Всего: ${item.total} дел` : ''}
                 >
-                  <div style={{
-                    flexGrow: 1,
-                    height: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    background: 'rgba(0, 0, 0, 0.05)',
-                    borderRadius: '4px',
-                    overflow: 'hidden',
-                    position: 'relative'
-                  }}>
+                  <div className="flex-grow h-full flex items-center bg-gray-100 rounded overflow-hidden relative">
                     {/* Сегментированный столбец */}
-                    <div style={{
-                      height: '100%',
-                      width: `${(item.total / calculatedMaxValue) * 100}%`,
-                      display: 'flex',
-                      borderRadius: '5px',
-                      overflow: 'visible', 
-                      border: '1px solid #ccc',
-                      boxShadow: isHovered ? '0 0 8px rgba(0,0,0,0.3)' : 'none'
-                    }}>
+                    <div className={`h-full flex rounded border border-gray-300 overflow-visible ${
+                      isHovered ? 'shadow-lg' : ''
+                    }`}
+                      style={{
+                        width: `${(item.total / calculatedMaxValue) * 100}%`
+                      }}
+                    >
                       {item.segments.map((segment, segIndex) => {
                         if (segment.value === 0) return null;
                         
@@ -215,14 +178,10 @@ export function SegmentedChart({ data, maxValue, onSegmentClick }: SegmentedChar
                         return (
                           <div
                             key={segIndex}
+                            className="h-full flex-shrink-0 min-w-[2px] border-r border-white last:border-r-0"
                             style={{
                               width: segmentWidths[segIndex],
-                              height: '100%',
-                              backgroundColor: segment.color,
-                              borderRight: segIndex < item.segments.length - 1 ? '1px solid #fff' : 'none',
-                              flexShrink: 0,
-                              minWidth: '2px',
-                              cursor: isSegmentClickable ? 'pointer' : 'default'
+                              backgroundColor: segment.color
                             }}
                             title={`${segment.label}: ${segment.value}`}
                             onClick={() => handleSegmentClick(item.title, segment)}
@@ -237,36 +196,23 @@ export function SegmentedChart({ data, maxValue, onSegmentClick }: SegmentedChar
           </div>
 
           {/* Ось X с делениями */}
-          <div style={{
-            position: 'absolute',
-            top: `${barsAreaHeight}px`,
-            left: '0',
-            right: '0',
-            height: `${xAxisHeight}px`,
-            borderTop: '1px solid #333'
-          }}>
+          <div className="absolute left-0 right-0 border-t border-gray-800"
+            style={{
+              top: `${barsAreaHeight}px`,
+              height: `${xAxisHeight}px`
+            }}
+          >
             {xTicks.map(tick => (
               <div 
                 key={`tick-${tick}`}
+                className="absolute bottom-0 text-center"
                 style={{
-                  position: 'absolute',
-                  bottom: '0',
                   left: `${(tick / calculatedMaxValue) * 100}%`,
-                  transform: 'translateX(-50%)',
-                  textAlign: 'center'
+                  transform: 'translateX(-50%)'
                 }}
               >
-                <div style={{
-                  height: '5px',
-                  width: '1px',
-                  background: '#333',
-                  margin: '0 auto'
-                }}></div>
-                <div style={{
-                  fontSize: '12px',
-                  color: '#666',
-                  marginTop: '3px'
-                }}>
+                <div className="h-1 w-px bg-gray-800 mx-auto"></div>
+                <div className="text-sm text-gray-600 mt-0.5">
                   {tick}
                 </div>
               </div>

@@ -47,6 +47,7 @@ COLUMNS = {
     "LAST_REQUEST_DATE": "Дата поступления запроса в ЮП согласно SLA",
     "LAST_REQUEST_DATE_IN_UP": "Дата последнего поступления запроса в ЮП",
     "LAWSUIT_FILING_DATE": "Дата подачи иска/заявления",
+    "FIRST_LAWSUIT_FILING_DATE": "Дата первой подачи иска/заявления",
     "PREVIOUS_HEARING_DATE": "Дата предыдущего заседания суда",
     "NEXT_HEARING_DATE": "Дата ближайшего заседания суда",
     "COURT_HEARING_DATE": "Дата ближайшего заседания суда",

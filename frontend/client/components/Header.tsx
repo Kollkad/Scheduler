@@ -19,7 +19,7 @@ export function Header() {
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
   
   const { searchTerm, setSearchTerm, searchResults, hasResults } = useCaseSearch();
-  const { runAnalysis } = useAnalysis(); 
+  const { isAnalyzing, runAnalysis } = useAnalysis(); 
 
   // Обработчик клика вне области поиска для скрытия результатов
   useEffect(() => {
@@ -54,17 +54,28 @@ export function Header() {
       setIsProgressModalOpen(false);
     }
   };
+  // "Загрузить файлы"
+  const handleUploadClick = () => {
+    if (isAnalyzing) {
+      setIsProgressModalOpen(true);
+    } else {
+      setIsUploadModalOpen(true);
+    }
+  };
 
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-3 fixed top-0 left-80 right-0 z-10">
+    <header className="bg-white border-b border-gray-200 px-6 py-3 fixed top-0 left-80 right-0 z-10"
+      style={{ 
+      width: 'calc(100vw - 22rem)'
+    }}>
       <div className="flex items-center justify-between">
         <div className="flex-1 max-w-md relative" ref={searchRef}>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
+           <Input
               type="text"
               placeholder="Поиск по коду дела"
-              className="pl-10 pr-10 h-9 bg-gray-50 border-gray-300 focus:border-rainbow-green focus:ring-rainbow-green text-sm rounded-xl"
+              className="pl-10 pr-10 h-9 bg-gray-50 border-gray-300 focus:border-blue-400 focus:ring-blue-400 text-sm rounded-xl"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onFocus={() => setIsSearchFocused(true)}
@@ -104,7 +115,7 @@ export function Header() {
           <Button
             variant="green"
             size="rounded"
-            onClick={() => setIsUploadModalOpen(true)}
+            onClick={handleUploadClick}
           >
             Загрузить файлы
           </Button>

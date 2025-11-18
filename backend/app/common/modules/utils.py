@@ -53,29 +53,33 @@ def calculate_x_axis_max_value(counts: list) -> int:
     return rounded_max
 
 
-def get_filing_date(row) -> pd.Timestamp | None:
+def get_filing_date(row, use_all_fields: bool = True) -> pd.Timestamp | None:
     """
     Извлекает дату подачи документа из данных дела.
 
-    Проверяет основные и альтернативные поля с датами подачи,
-    возвращает первую найденную корректную дату.
-
     Args:
         row: Строка данных дела
+        use_all_fields (bool): Если True - проверяет все доступные поля дат,
+                              если False - только основные поля подачи иска
 
     Returns:
         pd.Timestamp | None: Дата подачи или None при отсутствии данных
     """
     try:
-        # Получение даты подачи из основного поля
+        # Получение даты подачи из основных полей
+        first_filing_date = row.get(COLUMNS["FIRST_LAWSUIT_FILING_DATE"])
+        if pd.notna(first_filing_date):
+            return pd.to_datetime(first_filing_date)
+
         filing_date = row.get(COLUMNS["LAWSUIT_FILING_DATE"])
         if pd.notna(filing_date):
             return pd.to_datetime(filing_date)
 
-        # Получение даты из альтернативного поля
-        alt_date = row.get(COLUMNS["LAST_REQUEST_DATE_IN_UP"])
-        if pd.notna(alt_date):
-            return pd.to_datetime(alt_date)
+        # Проверка альтернативных полей только если разрешено
+        if use_all_fields:
+            alt_date = row.get(COLUMNS["LAST_REQUEST_DATE_IN_UP"])
+            if pd.notna(alt_date):
+                return pd.to_datetime(alt_date)
 
         # Возврат None при отсутствии данных во всех полях
         return None

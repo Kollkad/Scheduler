@@ -1,8 +1,8 @@
 export const calculateBarHeights = (
   dataLength: number, 
-  barHeight: number = 32, 
-  barGap: number = 8,
-  xAxisHeight: number = 30
+  barHeight: number = 28, 
+  barGap: number = 7,
+  xAxisHeight: number = 26
 ) => {
   const barsAreaHeight = dataLength * barHeight + (dataLength - 1) * barGap;
   const totalChartHeight = barsAreaHeight + xAxisHeight;

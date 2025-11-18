@@ -1,5 +1,6 @@
 // SortButton.tsx
 import { useState } from 'react';
+import { Filter } from 'lucide-react';
 
 interface SortButtonProps {
   onSortChange: (direction: 'asc' | 'desc' | null) => void;
@@ -19,33 +20,11 @@ export function SortButton({ onSortChange, isActive, currentDirection }: SortBut
     setIsOpen(false);
   };
 
-  // Список доступных фильтров
   const filterOptions = [
     { value: null as 'asc' | 'desc' | null, label: '✕ Сбросить', show: isActive },
     { value: 'asc' as const, label: 'А-Я' },
     { value: 'desc' as const, label: 'Я-А' },
   ];
-
-  // Иконка фильтра в SVG
-  const FilterIcon = () => (
-    <svg 
-      width="16" 
-      height="16" 
-      viewBox="0 0 16 16" 
-      fill="none" 
-      xmlns="http://www.w3.org/2000/svg"
-      className={`${isActive ? 'text-blue-500' : 'text-gray-500'}`}
-    >
-      <path 
-        d="M14 2H2L6.5 8.5V14L9.5 12V8.5L14 2Z" 
-        stroke="currentColor" 
-        strokeWidth="1.5" 
-        strokeLinecap="round" 
-        strokeLinejoin="round"
-        fill="none"
-      />
-    </svg>
-  );
 
   return (
     <div className="relative inline-block">
@@ -57,12 +36,12 @@ export function SortButton({ onSortChange, isActive, currentDirection }: SortBut
         `}
         title="Сортировка"
       >
-        <FilterIcon />
+        <Filter className="h-4 w-4" /> 
       </button>
       
+      {/* Список фильтров */}
       {isOpen && (
         <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-32 overflow-hidden">
-          {/* Список фильтров */}
           {filterOptions
             .filter(option => option.show !== false)
             .map((option, index) => (

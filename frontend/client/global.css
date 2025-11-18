@@ -1,7 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
+html {font-size: 12px;}
 @layer base {
   /**
    * Tailwind CSS theme
@@ -56,7 +56,7 @@
     --sidebar-ring: 217.2 91.2% 59.8%;
 
     /* Rainbow theme colors - exact hex from design */
-    --rainbow-green: 28 76% 67%; /* #1CC53C */
+    --rainbow-green: 120 76% 50%; /* #1CC53C */
     --rainbow-green-light: 28 76% 67%; /* #1CC53C at 20% opacity will be handled in CSS */
     --rainbow-green-dark: 28 65% 42%; /* #158F2C for border */
     --rainbow-green-active: 28 76% 67%; /* #1CC53C at 30% opacity for active state */
