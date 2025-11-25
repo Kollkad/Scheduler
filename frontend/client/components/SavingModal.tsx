@@ -158,39 +158,30 @@ export function SavingModal({ isOpen, onClose }: SavingModalProps) {
         link.style.display = 'none';
         document.body.appendChild(link);
         
-        // Запуск загрузки в фоновом режиме
-        savingService.saveData(selectedType)
-        .then(blob => {
-            // Создание URL для скачивания
-            const url = window.URL.createObjectURL(blob);
-            link.href = url;
-            link.download = fileName;
-            
-            // Автоматический запуск скачивания
-            link.click();
-            
-            // Очистка ресурсов
-            setTimeout(() => {
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(link);
-            }, 100);
-        })
-        .catch(error => {
-            console.error('Ошибка загрузки файла:', error);
-            alert('Ошибка при загрузке файла. Проверьте консоль для подробностей.');
-            document.body.removeChild(link);
-        });
+        // Запуск загрузки
+        const blob = await savingService.saveData(selectedType);
         
-        // Закрытие модального окна без ожидания завершения загрузки
-        onClose();
+        // Создание URL для скачивания
+        const url = window.URL.createObjectURL(blob);
+        link.href = url;
+        link.download = fileName;
+        
+        // Автоматический запуск скачивания
+        link.click();
+        
+        // Очистка ресурсов
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(link);
+        }, 100);
         
     } catch (error) {
-        console.error('Ошибка подготовки сохранения:', error);
-        alert('Ошибка при подготовке сохранения.');
+        console.error('Ошибка загрузки файла:', error);
+        alert('Ошибка при загрузке файла. Проверьте консоль для подробностей.');
     } finally {
         setIsSaving(false);
     }
-    };
+  };
 
   // Функция получает информацию о статусе данных для выбранного типа
   const getDataStatusInfo = (type: SaveDataType) => {
@@ -238,6 +229,7 @@ export function SavingModal({ isOpen, onClose }: SavingModalProps) {
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-1 hover:bg-gray-100 rounded-full transition-colors"
+          disabled={isSaving}
         >
           <X className="h-5 w-5" style={{ color: '#1F1F1F' }} />
         </button>

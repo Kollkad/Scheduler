@@ -1,6 +1,6 @@
 // SettingsForm.tsx
 import { useState, useEffect } from "react";
-import { ChevronDown } from "lucide-react";
+import { EyeOff, Eye } from "lucide-react";
 import { SmartSelect } from "./SmartSelect";
 import { SorterFormProps } from "./SorterTypes";
 import { useFilterOptions } from '@/hooks/useFilterOptions';
@@ -15,6 +15,7 @@ export function SettingsForm({
 }: SorterFormProps) {
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const { options, loading, loadOptions } = useFilterOptions();
+  const [showAdditionalFilters, setShowAdditionalFilters] = useState(false);
 
   // Загрузка опций фильтров при монтировании компонента
   useEffect(() => {
@@ -94,6 +95,15 @@ export function SettingsForm({
         })}
       </div>
 
+      {/* TODO: фильтры */}
+      {showAdditionalFilters && (
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <p className="text-sm text-gray-600 text-center">
+            Нет дополнительных фильтров
+          </p>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div className="flex space-x-4">
           {buttons.map((button, index) => (
@@ -109,12 +119,20 @@ export function SettingsForm({
         </div>
 
         {additionalFiltersButton && (
-          <button className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors">
+          <button 
+            className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
+            onClick={() => setShowAdditionalFilters(!showAdditionalFilters)}
+          >
             <span>Дополнительные фильтры</span>
-            <ChevronDown className="h-4 w-4 ml-2" style={{ color: '#1F1F1F' }} />
+            {showAdditionalFilters ? (
+              <Eye className="h-4 w-4 ml-2" style={{ color: '#1F1F1F' }} />
+            ) : (
+              <EyeOff className="h-4 w-4 ml-2" style={{ color: '#1F1F1F' }} />
+            )}
           </button>
         )}
       </div>
     </div>
   );
+
 }

@@ -148,12 +148,11 @@ def evaluate_order_court_reaction_row(row: pd.Series, today: date) -> tuple:
         has_court_order = (court_determination == VALUES["COURT_ORDER"])
 
         # Условие 2: Даты получения и передачи ИД должны быть заполнены
-        has_receipt_date = pd.notna(safe_get_column(row, COLUMNS["ACTUAL_RECEIPT_DATE"])) and safe_get_column(row,
-                                                                                                              COLUMNS[
-                                                                                                                  "ACTUAL_RECEIPT_DATE"]) != "no_data"
-        has_transfer_date = pd.notna(safe_get_column(row, COLUMNS["ACTUAL_TRANSFER_DATE"])) and safe_get_column(row,
-                                                                                                                COLUMNS[
-                                                                                                                    "ACTUAL_TRANSFER_DATE"]) != "no_data"
+        has_receipt_date = (pd.notna(safe_get_column(row, COLUMNS["ACTUAL_RECEIPT_DATE"]))
+                            and safe_get_column(row, COLUMNS["ACTUAL_RECEIPT_DATE"]) != "no_data")
+
+        has_transfer_date = (pd.notna(safe_get_column(row, COLUMNS["ACTUAL_TRANSFER_DATE"]))
+                             and safe_get_column(row, COLUMNS["ACTUAL_TRANSFER_DATE"]) != "no_data")
 
         # Условие 3: Статус дела должен быть "Условно закрыто"
         current_status = safe_get_column(row, COLUMNS["CASE_STATUS"])

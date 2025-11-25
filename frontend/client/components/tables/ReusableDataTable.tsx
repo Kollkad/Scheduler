@@ -15,8 +15,19 @@ export function ReusableDataTable({
 }: TableProps) {
 
   const [localSortConfig, setLocalSortConfig] = useState<{key: string; direction: 'asc' | 'desc'} | null>(null);
+  const [filters, setFilters] = useState<Record<string, string[]>>({});
 
   const currentSortConfig = sortConfig || localSortConfig;
+
+  const getUniqueValuesForColumn = (columnKey: string) => {
+    const values = data.map(row => row[columnKey]).filter(value => value != null && value !== '');
+    const uniqueValues = [...new Set(values)];
+    
+    return uniqueValues.map(value => ({
+      value: String(value),
+      label: String(value)
+    }));
+  };
 
   const handleSortChange = (columnKey: string, direction: 'asc' | 'desc' | null) => {
     if (direction === null) {
@@ -37,10 +48,31 @@ export function ReusableDataTable({
     }
   };
 
-  const sortedData = useMemo(() => {
-    if (!currentSortConfig) return data;
+  const handleFilterChange = (columnKey: string, selectedValues: string[]) => {
+    setFilters(prev => ({
+      ...prev,
+      [columnKey]: selectedValues
+    }));
+  };
 
-    return [...data].sort((a, b) => {
+  const filteredData = useMemo(() => {
+    let result = data;
+    
+    Object.entries(filters).forEach(([columnKey, selectedValues]) => {
+      if (selectedValues.length > 0) {
+        result = result.filter(row => 
+          selectedValues.includes(String(row[columnKey]))
+        );
+      }
+    });
+    
+    return result;
+  }, [data, filters]);
+
+  const sortedData = useMemo(() => {
+    if (!currentSortConfig) return filteredData;
+
+    return [...filteredData].sort((a, b) => {
       const aValue = a[currentSortConfig.key];
       const bValue = b[currentSortConfig.key];
 
@@ -57,7 +89,7 @@ export function ReusableDataTable({
         return bString.localeCompare(aString, 'ru');
       }
     });
-  }, [data, currentSortConfig]);
+  }, [filteredData, currentSortConfig]);
 
   const formatValue = (key: string, value: any) => {
     if (!value) return '';
@@ -107,7 +139,10 @@ export function ReusableDataTable({
                   {column.sortable !== false && (
                     <SortButton
                       onSortChange={(direction) => handleSortChange(column.key, direction)}
-                      isActive={currentSortConfig?.key === column.key}
+                      onFilterChange={(selectedValues) => handleFilterChange(column.key, selectedValues)}
+                      filterOptions={getUniqueValuesForColumn(column.key)}
+                      selectedFilterValues={filters[column.key] || []}
+                      isActive={currentSortConfig?.key === column.key || (filters[column.key] && filters[column.key].length > 0)}
                       currentDirection={currentSortConfig?.key === column.key ? currentSortConfig.direction : undefined}
                     />
                   )}
