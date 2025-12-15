@@ -41,9 +41,11 @@ npm install
 ---
 **ProjectConverter.py** - утилита для конвертации файлов проекта в текстовый формат и обратно. Сохраняет структуру папок и расширения файлов, добавляя их в названия. Используется для безопасного переноса проектов между системами. Запуск: `python ProjectConverter.py` с выбором режима через консоль.
 
+## Архитектура приложения
+
 ```mermaid
 graph LR
-    A[User] --> B[Interface] 
-    B --> C[Backend]
-    C --> 
+    A[User] --> B[Frontend &lpar;React&rpar;]
+    B --> C[ApiClient]
+    C --> D[Backend &lpar;FastAPI&rpar;]
 ```
