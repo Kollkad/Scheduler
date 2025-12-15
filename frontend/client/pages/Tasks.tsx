@@ -4,12 +4,12 @@ import { useNavigate } from "react-router-dom";
 import { PageContainer } from "@/components/PageContainer";
 import { SettingsForm } from "@/components/sorter/SettingsForm";
 import { ReusableDataTable } from "@/components/tables/ReusableDataTable";
-import { CompactTaskList } from "@/components/CompactTaskList";
+import { tasksTableConfig, mapBackendDataTasks } from "@/config/tableConfig";
+import { sorterConfig } from "@/config/sorterConfig";
 import { Button } from "@/components/ui/button";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { apiClient } from "@/services/api/client";
-import { sorterConfig } from "@/config/sorterConfig";
-import { tasksTableConfig, mapBackendDataTasks } from "@/config/tableConfig";
+import { CompactTaskList } from "@/components/CompactTaskList";
 
 type TaskItem = {
   taskCode: string;
@@ -24,114 +24,81 @@ type TaskItem = {
 
 export default function Tasks() {
   const navigate = useNavigate();
+
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [selectedExecutor, setSelectedExecutor] = useState<string>("");
   const [filteredCount, setFilteredCount] = useState<number>(0);
-  const [viewMode, setViewMode] = useState<'table' | 'compact'>('table');
+  const [reportStatus, setReportStatus] = useState<"idle" | "loading" | "ready">("idle");
+  const [viewMode, setViewMode] = useState<"table" | "compact">("table");
 
-  // Обработчик клика по задаче для перехода к деталям
+  const handleClearAll = () => {
+    setFilters({});
+    setTasks([]);
+    setSelectedExecutor("");
+    setFilteredCount(0);
+    setReportStatus("idle");
+  };
+
   const handleTaskClick = (task: TaskItem) => {
-    if (task.taskCode && task.taskCode !== "Выберите сотрудника и нажмите 'Найти задачи'") {
+    if (task.taskCode) {
       navigate(`/task/${task.taskCode}`);
     }
   };
 
-  // Конфигурация полей формы с динамической загрузкой опций
   const formFields = sorterConfig.rainbow.fields
     .filter((f) => f.id === "responsibleExecutor")
     .map((f) => ({ ...f, options: [] }));
 
-  // Конфигурация кнопок формы с обработчиками
   const formButtons = [
-    {
-      type: "secondary" as const,
-      text: "Очистить",
-      onClick: () => {
-        setFilters({});
-        setTasks([]);
-        setSelectedExecutor("");
-      },
-    },
-    {
-      type: "primary" as const,
-      text: "Найти задачи",
-      onClick: async () => {
-        await handleFindTasks();
-      },
-    },
+    { type: "secondary" as const, text: "Очистить", onClick: handleClearAll, onClearAll: handleClearAll },
+    { type: "primary" as const, text: "Найти задачи", onClick: async () => await handleFindTasks() },
   ];
 
-  // Обработчик изменений фильтров в форме
   const handleFiltersChange = (newFilters: Record<string, string>) => {
     setFilters(newFilters);
     setSelectedExecutor(newFilters["responsibleExecutor"] || "");
   };
 
-  // Функция выполняет поиск задач по выбранному исполнителю
   const handleFindTasks = async () => {
     const executor = filters["responsibleExecutor"];
-    if (!executor) {
-      console.warn("Выберите ответственного исполнителя");
-      return;
-    }
+    if (!executor) return;
 
     setIsLoading(true);
+    setReportStatus("loading");
+
     try {
       const url = `${API_ENDPOINTS.TASKS_LIST}?responsibleExecutor=${encodeURIComponent(executor)}`;
-      
-      const response = await apiClient.get<{ 
-        success: boolean; 
-        tasks: TaskItem[]; 
-        message?: string;
-        filteredCount?: number;    
-      }>(url);
+      const response = await apiClient.get<{ success: boolean; tasks: TaskItem[]; filteredCount?: number }>(url);
 
-      if (response && response.success) {
-        const tasksData = response.tasks || [];
-        const mappedTasks = mapBackendDataTasks(tasksData);
-        const count = response.filteredCount || tasksData.length;
-        setFilteredCount(count);
-        
-        // Формирование данных для таблицы с обработкой отсутствующих значений
-        const tableData = mappedTasks.map(task => ({
-          taskCode: task.taskCode || "Не указан",
-          failedCheck: task.failedCheck || "Не указан",
-          caseCode: task.caseCode || "Не указан",
-          responsibleExecutor: task.responsibleExecutor || executor,
-          caseStage: task.caseStage,
-          taskText: task.taskText || "Не указано",
-          monitoringStatus: task.monitoringStatus,
-          isCompleted: task.isCompleted
-        }));
-
-        setTasks(tableData);
-        console.log(`Найдено задач: ${count}`);
+      if (response?.success) {
+        const mappedTasks = mapBackendDataTasks(response.tasks || []);
+        setTasks(mappedTasks);
+        setFilteredCount(response.filteredCount || mappedTasks.length);
+        setReportStatus("ready");
       } else {
-        console.error("Ошибка при получении задач:", response?.message || "unknown");
         setTasks([]);
         setFilteredCount(0);
+        setReportStatus("ready");
       }
     } catch (e) {
       console.error("Ошибка загрузки задач:", e);
       setTasks([]);
       setFilteredCount(0);
+      setReportStatus("ready");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Проверка, выбран ли сотрудник
   const hasSelectedExecutor = Boolean(filters["responsibleExecutor"]);
 
   return (
     <PageContainer>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Задачи сотрудников</h1>
-        <p className="text-gray-600">
-          Выберите сотрудника для просмотра его задач
-        </p>
+        <p className="text-gray-600">Выберите сотрудника для просмотра его задач</p>
       </div>
 
       <SettingsForm
@@ -141,66 +108,59 @@ export default function Tasks() {
         onFiltersChange={handleFiltersChange}
       />
 
-      {/* Блок отображения результатов поиска И переключатель режима */}
       <div className="mt-4 flex items-center justify-between">
-        {/* Статус поиска */}
-        {tasks.length > 0 ? (
-          <div className="flex items-center gap-2 text-gray-600">
-            <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-            <span>
-              Найдено <span className="font-bold">{filteredCount}</span> задач для <span className="font-bold">{selectedExecutor}</span>
-            </span>
-          </div>
-        ) : (
-          <div className="text-gray-500">
-             
-          </div>
-        )}
-        
-        {/* Переключатель режима просмотра */}
-        <div className="flex gap-2">
-          <Button
-            variant={viewMode === 'table' ? 'green' : 'grayOutline'}
-            size="rounded"
-            onClick={() => setViewMode('table')}
-          >
+        <div className="flex items-center gap-2 text-gray-600">
+          {tasks.length > 0 && (
+            <>
+              <span>
+                Найдено <span className="font-bold">{filteredCount}</span> задач для <span className="font-bold">{selectedExecutor}</span>
+              </span>
+            </>
+          )}
+        </div>
+
+        <div className="flex gap-2 ml-auto">
+          <Button variant={viewMode === "table" ? "green" : "grayOutline"} size="rounded" onClick={() => setViewMode("table")}>
             Таблица
           </Button>
-          <Button
-            variant={viewMode === 'compact' ? 'green' : 'grayOutline'}
-            size="rounded"
-            onClick={() => setViewMode('compact')}
-          >
+          <Button variant={viewMode === "compact" ? "green" : "grayOutline"} size="rounded" onClick={() => setViewMode("compact")}>
             Компактный вид
           </Button>
         </div>
       </div>
 
       <div className="mt-6">
-        {!hasSelectedExecutor ? (
-          // Сообщение когда сотрудник не выбран
-          <div className="flex justify-center items-center h-32">
-            <div className="text-gray-500">Выберите сотрудника и нажмите "Найти задачи"</div>
+        {reportStatus === "idle" && (
+          <div className="text-gray-500 text-center py-6">
+            Выберите сотрудника и нажмите "Найти задачи"
           </div>
-        ) : viewMode === 'table' ? (
-          // Табличный режим
+        )}
+
+        {reportStatus === "loading" && (
+          <div className="text-gray-500 text-center py-6">Задачи формируются...</div>
+        )}
+
+        {reportStatus === "ready" && viewMode === "table" && (
           <ReusableDataTable
             columns={tasksTableConfig.columns}
             data={tasks.length > 0 ? tasks : []}
             isLoading={isLoading}
-            loadingMessage="Поиск задач..."
             onRowClick={handleTaskClick}
           />
-        ) : (
-          // Компактный режим
+        )}
+
+        {reportStatus === "ready" && viewMode === "compact" && (
           <CompactTaskList
-            tasks={tasks.length > 0 ? tasks : []}
+            tasks={tasks}
             onTaskClick={handleTaskClick}
             isLoading={isLoading}
-            emptyMessage="Задачи не найдены"
+            emptyMessage={hasSelectedExecutor ? "Задачи не найдены" : "Выберите сотрудника"}
           />
+        )}
+
+
+        {reportStatus === "ready" && tasks.length === 0 && hasSelectedExecutor && (
+          <div className="text-gray-500 text-center py-6">Задачи не найдены</div>
         )}
       </div>
     </PageContainer>

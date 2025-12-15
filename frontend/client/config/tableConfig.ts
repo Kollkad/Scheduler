@@ -67,7 +67,7 @@ export const formatMonitoringStatus = (statusString: string): string => {
 // Конфигурация колонок для таблицы Rainbow
 export const rainbowTableConfig = {
   columns: [
-    { key: 'caseCode', title: 'Код дела', width: '200px' },
+    { key: 'caseCode', title: 'Код дела', width: '120px' },
     { key: 'responsibleExecutor', title: 'Ответственный исполнитель', width: '200px' },
     { key: 'gosb', title: 'ГОСБ', width: '120px' },
     { key: 'currentPeriodColor', title: 'Цвет (тек. период)', width: '120px' },
@@ -82,7 +82,7 @@ export const rainbowTableConfig = {
 // Конфигурация колонок для таблицы фильтрованных дел
 export const filteredCasesTableConfig = {
   columns: [
-    { key: 'caseCode', title: 'Код дела', width: '170px' },
+    { key: 'caseCode', title: 'Код дела', width: '120px' },
     { key: 'responsibleExecutor', title: 'Ответственный исполнитель', width: '200px' },
     { key: 'gosb', title: 'ГОСБ', width: '120px' },
     { key: 'currentPeriodColor', title: 'Цвет (тек. период)', width: '120px' },
@@ -126,11 +126,11 @@ export const termsTableConfig = {
 export const tasksTableConfig: TableConfig = {
   columns: [
     { key: "taskCode", title: "Код задачи", width: "120px" },
-    { key: "caseCode", title: "Код дела", width: "170px" },  
+    { key: "caseCode", title: "Код дела", width: "120px" },  
     { key: "responsibleExecutor", title: "Ответственный исполнитель", width: "200px" },
     { key: "caseStage", title: "Этап дела", width: "180px" },
     { key: "failedCheck", title: "Название проверки", width: "120px" },
-    { key: "monitoringStatus", title: "Статус мониторинга", width: "150px" },
+    { key: "monitoringStatus", title: "Статус проверки", width: "150px" },
     { key: "taskText", title: "Текст задачи", width: "300px" },
   ],
   pageSize: 20,

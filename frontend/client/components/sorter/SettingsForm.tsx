@@ -5,31 +5,31 @@ import { SmartSelect } from "./SmartSelect";
 import { SorterFormProps } from "./SorterTypes";
 import { useFilterOptions } from '@/hooks/useFilterOptions';
 import { Button } from "@/components/ui/button";
+import { useAnalysis } from "@/contexts/AnalysisContext";
 
 export function SettingsForm({ 
   title, 
   fields, 
   buttons, 
   additionalFiltersButton = true,
-  onFiltersChange
+  onFiltersChange,
 }: SorterFormProps) {
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const { options, loading, loadOptions } = useFilterOptions();
   const [showAdditionalFilters, setShowAdditionalFilters] = useState(false);
+  const { analysisStatus } = useAnalysis();
 
-  // Загрузка опций фильтров при монтировании компонента
+  // Загрузка опций фильтров после завершения анализа (или если фильтры ещё не загружены)
   useEffect(() => {
-    const loadFilterOptions = async () => {
-      try {
-        await loadOptions();
-        console.log('✅ Опции фильтров загружены');
-      } catch (error) {
-        console.error('Ошибка загрузки опций фильтров:', error);
-      }
-    };
+    if (Object.keys(options).length === 0) {
+      const loadFilters = async () => {
+        try { await loadOptions(); } 
+        catch (err) { console.error(err); }
+      };
+      loadFilters();
+    }
+  }, [analysisStatus.isComplete]);
 
-    loadFilterOptions();
-  }, []);
 
   // Функция получает опции для конкретного поля
   const getOptionsForField = (fieldId: string) => {
@@ -95,7 +95,7 @@ export function SettingsForm({
         })}
       </div>
 
-      {/* TODO: фильтры */}
+      {/* TODO: фильтры пользователя*/}
       {showAdditionalFilters && (
         <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
           <p className="text-sm text-gray-600 text-center">
@@ -111,7 +111,14 @@ export function SettingsForm({
               key={index}
               variant={button.type === 'primary' ? 'green' : 'grayOutline'}
               size="rounded"
-              onClick={button.type === 'secondary' ? handleClearForm : button.onClick}
+              onClick={
+                button.type === 'secondary'
+                  ? () => {
+                      handleClearForm();
+                      buttons[index].onClearAll?.();
+                    }
+                  : button.onClick
+              }
             >
               {button.text}
             </Button>

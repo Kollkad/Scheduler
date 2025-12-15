@@ -10,8 +10,8 @@ import { UploadFilesModal } from "@/components/UploadFilesModal";
 import { useAnalysis } from "@/contexts/AnalysisContext";
 import { featureFlags } from '@/config/featureFlags';
 import { rainbowChartConfig } from '@/config/chartConfig';
-import { sorterConfig } from "@/config/sorterConfig";
-import { rainbowTableConfig } from "@/config/tableConfig";
+import { sorterConfig } from '@/config/sorterConfig';
+import { rainbowTableConfig } from '@/config/tableConfig';
 import { transformRainbowData } from '@/utils/dataTransform';
 import { useFilterOptions } from '@/hooks/useFilterOptions';
 import { FilterService } from '@/services/filter/FilterService';
@@ -58,6 +58,7 @@ export default function Rainbow() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [tableData, setTableData] = useState<any[]>([]); 
   const [currentFilters, setCurrentFilters] = useState<Record<string, string>>({});
+  const [reportStatus, setReportStatus] = useState<"idle" | "loading" | "ready">("idle");
 
   // Данные по умолчанию для таблицы до формирования отчета
   const defaultTableData = [{
@@ -79,12 +80,13 @@ export default function Rainbow() {
       }
 
       console.log('Отправляем фильтры:', currentFilters);
-      
+      setReportStatus("loading");
+
       const result = await FilterService.applyFilters(currentFilters);
-      
+
       if (result.success) {
         console.log('Данные получены, записей:', result.data.length);
-        
+
         // Преобразование данных для таблицы с безопасным извлечением значений
         const fullTableData = result.data.map((caseItem: any) => {
           const getValue = (field: string, defaultValue = "Не указан") => {
@@ -106,16 +108,18 @@ export default function Rainbow() {
             })
           };
         });
-        
+
         setTableData(fullTableData);
+        setReportStatus("ready");
         console.log('Таблица обновлена. Записей:', fullTableData.length);
-        
       } else {
         console.error('Ошибка при формировании отчета:', result.message);
+        setReportStatus("idle");
       }
       
     } catch (error) {
       console.error('Ошибка формирования отчета:', error);
+      setReportStatus("idle");
     }
   };
 
@@ -124,10 +128,10 @@ export default function Rainbow() {
     { 
       type: 'secondary' as const, 
       text: 'Очистить форму',
-      onClick: () => {
-        setCurrentFilters({});
-        setTableData(defaultTableData);
-        console.log('Форма очищена');
+      onClick: undefined,
+      onClearAll: () => {
+        setTableData([]);
+        setReportStatus("idle");
       }
     },
     { 
@@ -135,10 +139,7 @@ export default function Rainbow() {
       text: 'Сформировать отчет',
       onClick: handleGenerateReport
     }
-  ].map(button => ({
-    ...button,
-    onClick: button.onClick || (() => {})
-  }));
+  ];
 
   // Обработчик изменений фильтров в форме
   const handleFiltersChange = (filters: Record<string, string>) => {
@@ -200,20 +201,32 @@ export default function Rainbow() {
       <SettingsForm
         title={sorterConfig.rainbow.title}
         fields={rainbowFormFields}
-        buttons={rainbowFormButtons.map(button => 
-          button.type === 'primary' 
-            ? { ...button, onClick: handleGenerateReport }
-            : button
-        )}
+        buttons={rainbowFormButtons}
         onFiltersChange={handleFiltersChange}
       />
 
-      <ReusableDataTable
-        columns={tableColumns}
-        data={tableData.length > 0 ? tableData : defaultTableData}
-        onRowClick={handleRowClick}
-        isLoading={isAnalyzing}
-      />
+      <div className="mt-6">
+        {reportStatus === "idle" && (
+          <div className="text-gray-500 text-center py-6">
+            После формирования отчёта здесь появится таблица
+          </div>
+        )}
+
+        {reportStatus === "loading" && (
+          <div className="text-gray-500 text-center py-6">
+            Отчет формируется..
+          </div>
+        )}
+
+        {reportStatus === "ready" && (
+          <ReusableDataTable
+            columns={tableColumns}
+            data={tableData.length > 0 ? tableData : defaultTableData}
+            onRowClick={handleRowClick}
+            isLoading={isAnalyzing}
+          />
+        )}
+      </div>
       
       <UploadFilesModal
         isOpen={isUploadModalOpen}

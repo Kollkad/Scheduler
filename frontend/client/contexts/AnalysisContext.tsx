@@ -12,6 +12,7 @@ import {
 import { apiClient } from '@/services/api/client';
 import { API_ENDPOINTS } from '@/services/api/endpoints';
 import { featureFlags } from '@/config/featureFlags';
+import { useFilterOptions } from '@/hooks/useFilterOptions';
 
 // Интерфейс статуса загруженных файлов для анализа
 export interface FilesStatus {
@@ -80,7 +81,8 @@ export const AnalysisProvider: React.FC<AnalysisProviderProps> = ({ children }) 
   const [tasksResult, setTasksResult] = useState<AnalysisResult | null>(null);
   const [uniqueValuesResult, setUniqueValuesResult] = useState<AnalysisResult | null>(null);
   const [documentsChartsResult, setDocumentsChartsResult] = useState<AnalysisResult | null>(null);
-
+  const { clearCache } = useFilterOptions();
+  
   // Статус выполнения анализа и информация об ошибках
   const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus>({
     completed: [],
@@ -302,7 +304,7 @@ export const AnalysisProvider: React.FC<AnalysisProviderProps> = ({ children }) 
 
       setProgress({ currentTask: 'Анализ завершен', progress: 100, totalTasks: analysisSequence.length });
       setAnalysisStatus(finalStatus);
-      
+      clearCache();
       // Обновление статуса файлов после завершения анализа
       await refreshFilesStatus();
 

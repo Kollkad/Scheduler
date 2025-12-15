@@ -19,6 +19,7 @@ export interface SorterButton {
   type: 'primary' | 'secondary';
   text: string;
   onClick?: () => void;
+  onClearAll?: () => void;
 }
 
 export interface SorterFormProps {
