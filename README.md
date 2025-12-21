@@ -13,18 +13,40 @@
 
 ---
 
-## Зависимости
+## Запуск приложения
 
-**Бэкенд** (requirements.txt):
+### 1. Первичная установка зависимостей и запуск
+
+**Бэкенд**:
+
 ```bash
 cd backend
 pip install -r requirements.txt
+python app/main.py
 ```
 
-**Фронтенд** (package.json):
+**Фронтенд**:
+
 ```bash
 cd frontend
 npm install
+npm run dev
+```
+
+---
+
+### 2. Запуск с помощью скрипта
+
+**Windows**:
+
+```bash
+run_project.bat
+```
+
+**Linux**:
+
+```bash
+./run_project.sh
 ```
 
 ---
