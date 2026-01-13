@@ -143,7 +143,7 @@ class RainbowClassifier:
             color_column.append(color)
 
         # Добавление колонки с цветами в DataFrame
-        df_with_color['Цвет (текущий период)'] = color_column
+        df_with_color[COLUMNS["CURRENT_PERIOD_COLOR"]] = color_column
         return df_with_color
 
     @staticmethod

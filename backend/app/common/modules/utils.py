@@ -52,6 +52,23 @@ def calculate_x_axis_max_value(counts: list) -> int:
     rounded_max = math.ceil(max_count / 1000) * 1000
     return rounded_max
 
+def extract_value(value) -> str:
+    """
+    Безопасно извлекает значение из различных типов данных.
+
+    Args:
+        value: Любое значение или объект pandas (Series, DataFrame)
+
+    Returns:
+        str: Строковое представление значения или "Не указано"
+    """
+    if isinstance(value, (pd.Series, pd.DataFrame)):
+        if len(value) > 0:
+            first_val = value.iloc[0] if hasattr(value, "iloc") else value.values[0]
+            return str(first_val) if pd.notna(first_val) else "Не указано"
+        return "Не указано"
+
+    return str(value) if pd.notna(value) else "Не указано"
 
 def get_filing_date(row, use_all_fields: bool = True) -> pd.Timestamp | None:
     """

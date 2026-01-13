@@ -24,32 +24,9 @@ try:
     from backend.app.rainbow.modules.rainbow_classifier import RainbowClassifier
     from backend.app.common.routes.common import current_files
     from backend.app.common.config.column_names import COLUMNS
+    from backend.app.common.modules.utils import extract_value
 except ImportError as e:
-    print(f"❌ Ошибка импорта rainbow модулей: {e}")
-
-    # Заглушки для случаев ошибок импорта
-    def load_excel_data(*args):
-        """Заглушка функции загрузки данных."""
-        return pd.DataFrame()
-
-
-    def clean_data(*args):
-        """Заглушка функции очистки данных."""
-        return pd.DataFrame()
-
-
-    class RainbowClassifier:
-        """Заглушка классификатора радуги для тестирования."""
-
-        @staticmethod
-        def classify_cases(*args):
-            """Возвращает тестовые данные цветовой классификации."""
-            return [743, 23, 0, 211, 0, 0, 3989, 6702, 7373]
-
-
-    def clear_memory(*args):
-        """Заглушка функции очистки памяти."""
-        pass
+    raise RuntimeError("Ошибка инициализации rainbow routes") from e
 
 # Маппинг цветовых категорий для преобразования английских кодов в русские названия
 COLOR_MAPPING = {
@@ -144,84 +121,68 @@ async def get_cases_by_color(
         }
 
     Raises:
-        HTTPException: 404 если отчет не загружен или данные не найдены
         HTTPException: 400 при неверном параметре цвета
-        HTTPException: 500 при ошибках обработки данных
+        HTTPException: 404 если детальный отчет не загружен
+        HTTPException: 500 при нарушении контракта данных или ошибках обработки
     """
+    # Проверка наличия загруженного детального отчета
     if not current_files["current_detailed_report"]:
         raise HTTPException(status_code=404, detail="Текущий детальный отчет не загружен")
 
     try:
-        # Получение данных с цветовой классификацией
+        # Получение подготовленных данных с цветовой колонкой
         detailed_df = data_manager.get_colored_data("detailed")
-        if detailed_df is None:
-            raise HTTPException(status_code=404, detail="Данные с цветом не найдены")
 
-        # Преобразование входного параметра в русское название цвета
-        russian_color = color
+        # Преобразование входного параметра цвета в русское название
+        russian_color = COLOR_MAPPING.get(color, color)
 
-        # Преобразование английского кода в русское название
-        if color in COLOR_MAPPING:
-            russian_color = COLOR_MAPPING[color]
+        # Формирование списка допустимых русских названий цветов
+        valid_russian_colors = list(COLOR_MAPPING.values()) + ["ИК"]
 
-        # Валидация русского названия цвета
-        valid_russian_colors = list(COLOR_MAPPING.values())
-        if russian_color not in valid_russian_colors and russian_color != "ИК":
+        # Проверка корректности параметра цвета
+        if russian_color not in valid_russian_colors:
             raise HTTPException(
                 status_code=400,
-                detail=f"Неверный цвет. Допустимые значения: {', '.join(valid_russian_colors + ['ИК'])}"
+                detail=(
+                    "Неверный цвет. Допустимые значения: "
+                    f"{', '.join(valid_russian_colors)}"
+                )
             )
 
-        print(f"🔍 Поиск дел с цветом: '{russian_color}' (исходный параметр: '{color}')")
+        color_column_name = COLUMNS["CURRENT_PERIOD_COLOR"]
 
-        # Определение имени столбца с цветовой классификацией
-        color_column_name = 'Цвет (текущий период)'
+        # Проверка соблюдения подготовки данных
         if color_column_name not in detailed_df.columns:
-            raise HTTPException(status_code=500, detail="Столбец с цветом не найден в данных")
+            raise RuntimeError(
+                f"В данных отсутствует обязательный столбец "
+                f"'{color_column_name}'. Нарушен этап подготовки данных."
+            )
 
-        # Фильтрация данных по указанному цвету
+        # Фильтрация DataFrame по указанной цветовой категории
         filtered_df = detailed_df[detailed_df[color_column_name] == russian_color]
-
-        print(f"✅ Найдено {len(filtered_df)} дел с цветом '{russian_color}'")
 
         # Формирование структурированных данных дел
         cases_data = []
         for _, row in filtered_df.iterrows():
-
-            def extract_value(value):
-                """
-                Безопасное извлечение значения из различных типов данных.
-
-                Args:
-                    value: Значение для извлечения
-
-                Returns:
-                    str: Строковое представление значения или "Не указано"
-                """
-                # Обработка pandas структур
-                if isinstance(value, (pd.Series, pd.DataFrame)):
-                    if len(value) > 0:
-                        first_val = value.iloc[0] if hasattr(value, 'iloc') else value.values[0]
-                        return str(first_val) if pd.notna(first_val) else "Не указано"
-                    else:
-                        return "Не указано"
-                else:
-                    # Обработка обычных значений
-                    return str(value) if pd.notna(value) else "Не указано"
-
-            # Формирование структуры данных дела
+            # Формирование словаря данных одного дела
             case_data = {
-                "caseCode": extract_value(row.get(COLUMNS.get("CASE_CODE", "Код дела"), "Не указано")),
+                "caseCode": extract_value(row.get(COLUMNS.get("CASE_CODE", "Код дела"))),
                 "responsibleExecutor": extract_value(
-                    row.get(COLUMNS.get("RESPONSIBLE_EXECUTOR", "Ответственный исполнитель"), "Не указано")),
-                "gosb": extract_value(row.get(COLUMNS.get("GOSB", "ГОСБ"), "Не указано")),
-                "currentPeriodColor": extract_value(row.get(color_column_name, "Не указано")),
+                    row.get(COLUMNS.get("RESPONSIBLE_EXECUTOR", "Ответственный исполнитель"))
+                ),
+                "gosb": extract_value(row.get(COLUMNS.get("GOSB", "ГОСБ"))),
+                "currentPeriodColor": extract_value(row.get(color_column_name)),
                 "courtProtectionMethod": extract_value(
-                    row.get(COLUMNS.get("METHOD_OF_PROTECTION", "Способ судебной защиты"), "Не указано")),
+                    row.get(COLUMNS.get("METHOD_OF_PROTECTION", "Способ судебной защиты"))
+                ),
                 "courtReviewingCase": extract_value(
-                    row.get(COLUMNS.get("COURT", "Суд, рассматривающий дело"), "Не указано")),
-                "caseStatus": extract_value(row.get(COLUMNS.get("CASE_STATUS", "Статус дела"), "Не указано")),
-                "previousPeriodColor": "Не доступно"  # Заглушка для предыдущего периода
+                    row.get(COLUMNS.get("COURT", "Суд, рассматривающий дело"))
+                ),
+                "caseStatus": extract_value(
+                    row.get(COLUMNS.get("CASE_STATUS", "Статус дела"))
+                ),
+                # TODO: Значение предыдущего периода пока не реализовано
+                "previousPeriodColor": "Не доступно"
             }
             cases_data.append(case_data)
 
@@ -235,13 +196,14 @@ async def get_cases_by_color(
         }
 
     except HTTPException:
-        # Перевыброс HTTP исключений без изменений
         raise
+
     except Exception as e:
-        print(f"❌ ОШИБКА получения дел по цвету '{color}': {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Ошибка получения дел: {str(e)}")
+        # Обработка непредвиденных ошибок обработки данных
+        raise HTTPException(
+            status_code=500,
+            detail=f"Ошибка получения дел по цвету: {str(e)}"
+        )
 
 
 @router.get("/quick-test")
