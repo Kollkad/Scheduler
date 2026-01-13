@@ -43,6 +43,12 @@ def format_monitoring_status(status_string):
 
     return '; '.join(formatted_parts)
 
+# Форматирование задач
+DEFAULT_VALUE_FORMATTERS = {
+    COLUMNS["MONITORING_STATUS"]: format_monitoring_status,
+    COLUMNS["CASE_STAGE"]: lambda x: CASE_STAGE_MAPPING.get(x, x) if pd.notna(x) else "Не указан"
+}
+
 def generate_filename(report_type: str) -> str:
     """
     Генерация уникального имени файла для экспорта с временной меткой.
@@ -69,7 +75,7 @@ def generate_filename(report_type: str) -> str:
     return f"{report_name}_{timestamp}.xlsx"
 
 
-def save_with_xlsxwriter_formatting(dataframe, filepath, sheet_name, data_type=None):
+def save_with_xlsxwriter_formatting(dataframe, filepath, sheet_name, data_type=None, value_formatters=None):
     """
     Сохраняет DataFrame с профессиональным форматированием используя xlsxwriter.
 
@@ -89,11 +95,15 @@ def save_with_xlsxwriter_formatting(dataframe, filepath, sheet_name, data_type=N
         bool: True при успешном сохранении, False при использовании fallback
     """
     try:
-        if data_type == "tasks":
-            dataframe = apply_task_data_mapping(dataframe)
-        # Переименование колонок если указан data_type
+        # 1. Переименование колонок, если указано
         if data_type:
             dataframe = rename_columns_to_russian(dataframe, data_type)
+
+        # 2. Авто-применение форматеров
+        if value_formatters is None:
+            value_formatters = {col: func for col, func in DEFAULT_VALUE_FORMATTERS.items() if col in dataframe.columns}
+        for col, func in value_formatters.items():
+            dataframe[col] = dataframe[col].apply(func)
 
         with pd.ExcelWriter(filepath, engine='xlsxwriter') as writer:
             dataframe.to_excel(writer, sheet_name=sheet_name, index=False)
@@ -190,18 +200,20 @@ def save_with_xlsxwriter_formatting(dataframe, filepath, sheet_name, data_type=N
         return False
 
 
-def rename_columns_to_russian(dataframe, data_type):
+def rename_columns_to_russian(dataframe, data_type, value_formatters=None):
     """
     Переименование столбцов DataFrame с английских названий на русские согласно конфигурации.
+    Опционально применяет форматирование значений колонок через value_formatters.
 
     Args:
         dataframe: DataFrame для переименования
         data_type (str): Тип данных для определения набора переименований
+        value_formatters (dict, optional): Словарь {русское_имя_колонки: функция},
+                                           который применяется к значениям колонок после переименования
 
     Returns:
-        DataFrame: DataFrame с переименованными колонками
+        DataFrame: DataFrame с переименованными колонками и отформатированными значениями
     """
-    # Словари переименования для разных типов данных
     rename_mappings = {
         "production": {
             "caseStage": COLUMNS["CASE_STAGE"],
@@ -227,8 +239,30 @@ def rename_columns_to_russian(dataframe, data_type):
             "taskText": COLUMNS["TASK_TEXT"],
             "reasonText": COLUMNS["REASON_TEXT"],
             "createdDate": COLUMNS["CREATED_DATE"]
+        },
+        "documents": {
+            "requestCode": COLUMNS["DOCUMENT_REQUEST_CODE"],
+            "caseCode": COLUMNS["CASE_CODE"],
+            "document": COLUMNS["DOCUMENT_TYPE"],
+            "department": COLUMNS["DEPARTMENT_CATEGORY"],
+            "responseEssence": COLUMNS["ESSENSE_OF_THE_ANSWER"],
+            "monitoringStatus": COLUMNS["MONITORING_STATUS"],
         }
     }
+
+    mapping = rename_mappings.get(data_type, {})
+    existing_columns = {eng: rus for eng, rus in mapping.items() if eng in dataframe.columns}
+
+    if existing_columns:
+        dataframe = dataframe.rename(columns=existing_columns)
+
+    # Применяем форматирование значений колонок
+    if value_formatters:
+        for col, func in value_formatters.items():
+            if col in dataframe.columns:
+                dataframe[col] = dataframe[col].apply(func)
+
+    return dataframe
 
     mapping = rename_mappings.get(data_type, {})
 
@@ -239,32 +273,3 @@ def rename_columns_to_russian(dataframe, data_type):
         return dataframe.rename(columns=existing_columns)
 
     return dataframe
-
-
-def apply_task_data_mapping(dataframe):
-    """
-    Применяет маппинг этапов и статусов для данных задач перед экспортом.
-
-    Args:
-        dataframe: DataFrame с задачами
-
-    Returns:
-        DataFrame: DataFrame с переведенными значениями
-    """
-    if dataframe is None or dataframe.empty:
-        return dataframe
-
-    # Создаем копию чтобы не изменять оригинальные данные
-    result_df = dataframe.copy()
-
-    # Маппинг этапов дела
-    if 'caseStage' in result_df.columns:
-        result_df['caseStage'] = result_df['caseStage'].map(
-            lambda x: CASE_STAGE_MAPPING.get(x, x) if pd.notna(x) else "Не указан"
-        )
-
-    # Маппинг статусов мониторинга
-    if 'monitoringStatus' in result_df.columns:
-        result_df['monitoringStatus'] = result_df['monitoringStatus'].apply(format_monitoring_status)
-
-    return result_df

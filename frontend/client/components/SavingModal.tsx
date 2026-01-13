@@ -20,11 +20,7 @@ interface AvailableDataStatus {
     loaded: boolean;
     row_count: number;
   };
-  lawsuit_production: {
-    loaded: boolean;
-    row_count: number;
-  };
-  order_production: {
+  terms_productions: {
     loaded: boolean;
     row_count: number;
   };
@@ -60,16 +56,12 @@ export function SavingModal({ isOpen, onClose }: SavingModalProps) {
       label: 'Отчет документов', 
     },
     { 
-      value: 'lawsuit-production', 
-      label: 'Исковое производство', 
-    },
-    { 
-      value: 'order-production', 
-      label: 'Приказное производство', 
+      value: 'terms-productions', 
+      label: 'Анализ сроков сопровождения', 
     },
     { 
       value: 'documents-analysis', 
-      label: 'Анализ документов', 
+      label: 'Полный анализ документов', 
     },
     { 
       value: 'tasks', 
@@ -88,11 +80,10 @@ export function SavingModal({ isOpen, onClose }: SavingModalProps) {
   const dataTypeDescriptions: Record<SaveDataType, string> = {
     'detailed-report': 'Очищенный детальный отчет по судебной работе',
     'documents-report': 'Очищенный отчет по полученным и переданным документам',
-    'lawsuit-production': 'Результаты анализа искового производства',
-    'order-production': 'Результаты анализа приказного производства',
-    'documents-analysis': 'Результаты анализа документов',
-    'tasks': 'Рассчитанные задачи на основании анализов',
     'rainbow-analysis': 'Результаты цветовой классификации (радуга)',
+    'terms-productions': 'Результаты анализа сроков сопровождения дел по детальному отчету',
+    'documents-analysis': 'Результаты анализа сроков обработки документов',
+    'tasks': 'Рассчитанные задачи на основании анализов сроков сопровождения дел и документов',
     'all-analysis': 'Все виды анализа в одном ZIP-архиве'
   };
 
@@ -190,8 +181,7 @@ export function SavingModal({ isOpen, onClose }: SavingModalProps) {
     const statusMap: Record<SaveDataType, keyof AvailableDataStatus> = {
       'detailed-report': 'detailed_report',
       'documents-report': 'documents_report', 
-      'lawsuit-production': 'lawsuit_production',
-      'order-production': 'order_production',
+      'terms-productions': 'terms_productions',
       'documents-analysis': 'documents_analysis',
       'tasks': 'tasks',
       'rainbow-analysis': 'detailed_report', // rainbow использует detailed_report как основу

@@ -4,7 +4,7 @@
 
 Тестирует все эндпоинты сохранения через TestClient:
 - Детальный отчет и документы
-- Анализ производств (исковое/приказное)
+- Анализ производств (объединенный)
 - Анализ документов и задач
 - Анализ радуги
 """
@@ -12,6 +12,7 @@
 import os
 import sys
 import pandas as pd
+from pathlib import Path
 
 # Добавление пути к проекту для импортов
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../..'))
@@ -107,7 +108,7 @@ def prepare_test_data():
         lawsuit_filtered = detailed_df[
             (detailed_df[COLUMNS["CATEGORY"]] == VALUES["CLAIM_FROM_BANK"]) &
             (detailed_df[COLUMNS["METHOD_OF_PROTECTION"]] == VALUES["CLAIM_PROCEEDINGS"])
-            ].copy()
+        ].copy()
 
         if not lawsuit_filtered.empty:
             lawsuit_result = build_production_table(lawsuit_filtered, 'lawsuit')
@@ -120,7 +121,7 @@ def prepare_test_data():
         order_filtered = detailed_df[
             (detailed_df[COLUMNS["CATEGORY"]] == VALUES["CLAIM_FROM_BANK"]) &
             (detailed_df[COLUMNS["METHOD_OF_PROTECTION"]] == VALUES["ORDER_PRODUCTION"])
-            ].copy()
+        ].copy()
 
         if not order_filtered.empty:
             order_result = build_production_table(order_filtered, 'order')
@@ -185,11 +186,11 @@ def test_all_saving_endpoints():
     endpoints = {
         'detailed_report': {'path': '/api/save/detailed-report', 'critical': True},
         'documents_report': {'path': '/api/save/documents-report', 'critical': True},
-        'lawsuit_production': {'path': '/api/save/lawsuit-production', 'critical': True},
-        'order_production': {'path': '/api/save/order-production', 'critical': True},
+        'terms_productions': {'path': '/api/save/terms-productions', 'critical': True},
         'documents_analysis': {'path': '/api/save/documents-analysis', 'critical': False},
         'tasks': {'path': '/api/save/tasks', 'critical': False},
-        'rainbow_analysis': {'path': '/api/save/rainbow-analysis', 'critical': False}
+        'rainbow_analysis': {'path': '/api/save/rainbow-analysis', 'critical': False},
+        'all_analysis': {'path': '/api/save/all-analysis', 'critical': False}
     }
 
     results = {}
@@ -201,7 +202,7 @@ def test_all_saving_endpoints():
         client = TestClient(app)
 
         for endpoint_name, endpoint_info in endpoints.items():
-            print(f"\n🔍 Тестирую {endpoint_name}...")
+            print(f"\n🔍 Тестируется {endpoint_name}...")
 
             try:
                 response = client.get(endpoint_info['path'])
@@ -209,7 +210,7 @@ def test_all_saving_endpoints():
                 if response.status_code == 200:
                     # Сохраняем файл для проверки
                     filename = generate_filename(endpoint_name)
-                    filepath = TestsConfig.RESULTS_DIR / filename
+                    filepath = Path(TestsConfig.RESULTS_DIR) / filename
 
                     with open(filepath, 'wb') as f:
                         f.write(response.content)
@@ -261,7 +262,6 @@ def validate_saved_file(filepath, endpoint_name):
         dict: Информация о файле
     """
     try:
-        # Преобразуем WindowsPath в строку
         filepath_str = str(filepath)
         file_size = os.path.getsize(filepath_str)
 
@@ -269,6 +269,8 @@ def validate_saved_file(filepath, endpoint_name):
         if filepath_str.endswith('.xlsx'):
             df = pd.read_excel(filepath_str)
             records_count = len(df)
+        elif filepath_str.endswith('.zip'):
+            records_count = 0  # ZIP архивы не проверяются внутри
         else:
             records_count = 0
 
@@ -315,7 +317,7 @@ def analyze_saving_results(endpoints_results):
         else:
             analysis['failed_endpoints'] += 1
 
-    # Проверяем работу критических эндпоинтов
+    # Проверка работы критических эндпоинтов
     critical_endpoints = [name for name, result in endpoints_results.items()
                           if result.get('critical', False)]
     working_critical = all(endpoints_results.get(name, {}).get('success', False)
@@ -328,7 +330,7 @@ def analyze_saving_results(endpoints_results):
 
 def print_test_summary(analysis):
     """
-    Выводит итоговую сводку теста
+    Вывод итоговой сводку теста
     """
     print("\n" + "=" * 60)
     print("📊 ИТОГИ ТЕСТА СОХРАНЕНИЯ")

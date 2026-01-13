@@ -47,8 +47,7 @@ export const API_ENDPOINTS = {
   // ==================== SAVING ENDPOINTS ====================
   SAVE_DETAILED_REPORT: '/api/save/detailed-report',
   SAVE_DOCUMENTS_REPORT: '/api/save/documents-report',
-  SAVE_LAWSUIT_PRODUCTION: '/api/save/lawsuit-production',
-  SAVE_ORDER_PRODUCTION: '/api/save/order-production',
+  SAVE_TERMS_PRODUCTIONS: '/api/save/terms-productions',
   SAVE_DOCUMENTS_ANALYSIS: '/api/save/documents-analysis',
   SAVE_TASKS: '/api/save/tasks',
   SAVE_RAINBOW_ANALYSIS: '/api/save/rainbow-analysis',

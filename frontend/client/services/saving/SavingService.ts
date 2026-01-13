@@ -5,8 +5,7 @@ import { apiClient } from '../api/client';
 export type SaveDataType = 
   | 'detailed-report'
   | 'documents-report' 
-  | 'lawsuit-production'
-  | 'order-production'
+  | 'terms-productions'
   | 'documents-analysis'
   | 'tasks'
   | 'rainbow-analysis'

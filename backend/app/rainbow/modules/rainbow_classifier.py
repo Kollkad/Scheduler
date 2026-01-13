@@ -240,3 +240,24 @@ class RainbowClassifier:
 
         # Правило 9: Все остальные дела - категория Белый
         return "Белый"
+
+    @staticmethod
+    def get_rainbow_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Возвращает DataFrame, отфильтрованный по правилам радуги:
+        - категория = 'CLAIM_FROM_BANK'
+        - case_status не закрыт, не дубликат, не withdrawn
+        """
+        from backend.app.common.config.column_names import COLUMNS, VALUES
+
+        if df is None or df.empty:
+            return pd.DataFrame()  # безопасно
+
+        return df[
+            (df[COLUMNS["CATEGORY"]] == VALUES["CLAIM_FROM_BANK"]) &
+            (~df[COLUMNS["CASE_STATUS"]].isin([
+                VALUES["CLOSED"],
+                VALUES["ERROR_DUBLICATE"],
+                VALUES["WITHDRAWN_BY_THE_INITIATOR"]
+            ]))
+        ]
