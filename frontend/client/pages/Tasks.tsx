@@ -1,6 +1,6 @@
 // frontend/client/pages/Tasks.tsx
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { PageContainer } from "@/components/PageContainer";
 import { SettingsForm } from "@/components/sorter/SettingsForm";
 import { ReusableDataTable } from "@/components/tables/ReusableDataTable";
@@ -24,21 +24,25 @@ type TaskItem = {
 
 export default function Tasks() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
 
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedExecutor, setSelectedExecutor] = useState<string>("");
   const [filteredCount, setFilteredCount] = useState<number>(0);
   const [reportStatus, setReportStatus] = useState<"idle" | "loading" | "ready">("idle");
   const [viewMode, setViewMode] = useState<"table" | "compact">("table");
 
+  const selectedExecutor = filters["responsibleExecutor"] || "";
+
   const handleClearAll = () => {
     setFilters({});
     setTasks([]);
-    setSelectedExecutor("");
     setFilteredCount(0);
     setReportStatus("idle");
+    sessionStorage.removeItem("last_tasks");
+    navigate("/tasks", { replace: true });
   };
 
   const handleTaskClick = (task: TaskItem) => {
@@ -51,14 +55,10 @@ export default function Tasks() {
     .filter((f) => f.id === "responsibleExecutor")
     .map((f) => ({ ...f, options: [] }));
 
-  const formButtons = [
-    { type: "secondary" as const, text: "Очистить", onClick: handleClearAll, onClearAll: handleClearAll },
-    { type: "primary" as const, text: "Найти задачи", onClick: async () => await handleFindTasks() },
-  ];
+  
 
   const handleFiltersChange = (newFilters: Record<string, string>) => {
     setFilters(newFilters);
-    setSelectedExecutor(newFilters["responsibleExecutor"] || "");
   };
 
   const handleFindTasks = async () => {
@@ -69,14 +69,22 @@ export default function Tasks() {
     setReportStatus("loading");
 
     try {
-      const url = `${API_ENDPOINTS.TASKS_LIST}?responsibleExecutor=${encodeURIComponent(executor)}`;
-      const response = await apiClient.get<{ success: boolean; tasks: TaskItem[]; filteredCount?: number }>(url);
+      const url = `${API_ENDPOINTS.TASKS_LIST}?responsibleExecutor=${encodeURIComponent(
+        executor
+      )}`;
+      const response = await apiClient.get<{
+        success: boolean;
+        tasks: TaskItem[];
+        filteredCount?: number;
+      }>(url);
 
       if (response?.success) {
         const mappedTasks = mapBackendDataTasks(response.tasks || []);
         setTasks(mappedTasks);
         setFilteredCount(response.filteredCount || mappedTasks.length);
         setReportStatus("ready");
+        sessionStorage.setItem("last_tasks", JSON.stringify(mappedTasks));
+        navigate(`/tasks?executor=${encodeURIComponent(executor)}`, { replace: true });
       } else {
         setTasks([]);
         setFilteredCount(0);
@@ -91,6 +99,38 @@ export default function Tasks() {
       setIsLoading(false);
     }
   };
+  const formButtons = [
+    {
+      type: "secondary" as const,
+      text: "Очистить",
+      onClick: handleClearAll,
+      onClearAll: handleClearAll,
+    },
+    {
+      type: "primary" as const,
+      text: "Найти задачи",
+      onClick: handleFindTasks,
+    },
+  ];
+
+  useEffect(() => {
+    const executorFromUrl = searchParams.get("executor");
+    if (executorFromUrl) {
+      setFilters({ responsibleExecutor: executorFromUrl });
+
+      const savedTasks = sessionStorage.getItem("last_tasks");
+      if (savedTasks) {
+        try {
+          const parsedTasks = JSON.parse(savedTasks);
+          setTasks(parsedTasks);
+          setFilteredCount(parsedTasks.length);
+          setReportStatus("ready");
+        } catch (e) {
+          console.error("Ошибка восстановления задач:", e);
+        }
+      }
+    }
+  }, [location.search]);
 
   const hasSelectedExecutor = Boolean(filters["responsibleExecutor"]);
 
@@ -106,24 +146,32 @@ export default function Tasks() {
         fields={formFields}
         buttons={formButtons}
         onFiltersChange={handleFiltersChange}
+        initialValues={filters}
       />
 
       <div className="mt-4 flex items-center justify-between">
         <div className="flex items-center gap-2 text-gray-600">
           {tasks.length > 0 && (
-            <>
-              <span>
-                Найдено <span className="font-bold">{filteredCount}</span> задач для <span className="font-bold">{selectedExecutor}</span>
-              </span>
-            </>
+            <span>
+              Найдено <span className="font-bold">{filteredCount}</span> задач для{" "}
+              <span className="font-bold">{selectedExecutor}</span>
+            </span>
           )}
         </div>
 
         <div className="flex gap-2 ml-auto">
-          <Button variant={viewMode === "table" ? "green" : "grayOutline"} size="rounded" onClick={() => setViewMode("table")}>
+          <Button
+            variant={viewMode === "table" ? "green" : "grayOutline"}
+            size="rounded"
+            onClick={() => setViewMode("table")}
+          >
             Таблица
           </Button>
-          <Button variant={viewMode === "compact" ? "green" : "grayOutline"} size="rounded" onClick={() => setViewMode("compact")}>
+          <Button
+            variant={viewMode === "compact" ? "green" : "grayOutline"}
+            size="rounded"
+            onClick={() => setViewMode("compact")}
+          >
             Компактный вид
           </Button>
         </div>
@@ -154,10 +202,11 @@ export default function Tasks() {
             tasks={tasks}
             onTaskClick={handleTaskClick}
             isLoading={isLoading}
-            emptyMessage={hasSelectedExecutor ? "Задачи не найдены" : "Выберите сотрудника"}
+            emptyMessage={
+              hasSelectedExecutor ? "Задачи не найдены" : "Выберите сотрудника"
+            }
           />
         )}
-
 
         {reportStatus === "ready" && tasks.length === 0 && hasSelectedExecutor && (
           <div className="text-gray-500 text-center py-6">Задачи не найдены</div>

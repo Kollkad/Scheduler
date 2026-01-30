@@ -28,6 +28,7 @@ export interface SorterFormProps {
   buttons: SorterButton[];
   additionalFiltersButton?: boolean;
   onFiltersChange?: (filters: Record<string, string>) => void;
+  initialValues?: Record<string, string>;
 }
 
 export interface SmartSelectProps {

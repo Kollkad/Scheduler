@@ -172,7 +172,7 @@ class RainbowClassifier:
         if last_request_date is not None:
             try:
                 request_date = pd.to_datetime(last_request_date).date()
-                if request_date < datetime(2022, 12, 31).date():
+                if request_date.year < 2025:
                     return "Красный"
             except:
                 pass
@@ -230,10 +230,19 @@ class RainbowClassifier:
                 COLUMNS["CURRENT_PERIOD_COLOR"]
             ])
 
+        # Применение фильтрации
+        filtered_df = RainbowClassifier.get_rainbow_dataframe(df)
+        if filtered_df.empty:
+            return pd.DataFrame(columns=[
+                COLUMNS["CASE_CODE"],
+                COLUMNS["CURRENT_PERIOD_COLOR"]
+            ])
+
         today = datetime.now().date()
         rows = []
 
-        for _, row in df.iterrows():
+        # Итерирация по отфильтрованным делам
+        for _, row in filtered_df.iterrows():
             case_code = row.get(COLUMNS["CASE_CODE"])
             color = RainbowClassifier._determine_case_color(row, today)
 
@@ -271,23 +280,26 @@ class RainbowClassifier:
         if df is None or derived is None or derived.empty:
             return pd.DataFrame()
 
+        filtered_df = RainbowClassifier.get_rainbow_dataframe(df)
+        if filtered_df.empty:
+            return pd.DataFrame()
+
         # Создание словаря цветов выполняется для оптимизации поиска цвета по коду дела
         color_dict = {}
         color_column = COLUMNS["CURRENT_PERIOD_COLOR"]
         case_code_column = COLUMNS["CASE_CODE"]
 
         # Цикл перебирает строки derived DataFrame для построения словаря соответствия
-        for _, row in derived.iterrows():
+        for _, row in derived.iterrows():  # ← ИСПРАВЬ: derived, а не filtered_df
             case_code = str(row.get(case_code_column, ""))
             color = row.get(color_column)
-            # Добавление в словарь выполняется только для непустых кодов дел
             if case_code:
                 color_dict[case_code] = color
 
         cases_data = []
 
         # Цикл перебирает строки очищенного DataFrame для формирования кэшированных данных
-        for _, row in df.iterrows():
+        for _, row in filtered_df.iterrows():
             case_code = str(row.get(case_code_column, ""))
             color = color_dict.get(case_code)
 

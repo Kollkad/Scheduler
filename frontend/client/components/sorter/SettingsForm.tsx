@@ -13,6 +13,7 @@ export function SettingsForm({
   buttons, 
   additionalFiltersButton = true,
   onFiltersChange,
+  initialValues = {},
 }: SorterFormProps) {
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const { options, loading, loadOptions } = useFilterOptions();
@@ -29,6 +30,9 @@ export function SettingsForm({
       loadFilters();
     }
   }, [analysisStatus.isComplete]);
+  useEffect(() => {
+    setFormValues(initialValues);
+  }, [initialValues]);
 
 
   // Функция получает опции для конкретного поля
