@@ -274,6 +274,7 @@ export default function Rainbow() {
         fields={rainbowFormFields}
         buttons={rainbowFormButtons}
         onFiltersChange={handleFiltersChange}
+        initialValues={currentFilters}
       />
 
       <div className="mt-6">
