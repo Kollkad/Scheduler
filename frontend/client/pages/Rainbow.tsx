@@ -1,5 +1,5 @@
 // src/pages/Rainbow.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { DefaultChart } from "@/components/DefaultChart";
 import { PageContainer } from "@/components/PageContainer";
@@ -15,6 +15,8 @@ import { rainbowTableConfig } from '@/config/tableConfig';
 import { transformRainbowData } from '@/utils/dataTransform';
 import { useFilterOptions } from '@/hooks/useFilterOptions';
 import { FilterService } from '@/services/filter/FilterService';
+import { apiClient } from '@/services/api/client';
+import { API_ENDPOINTS } from '@/services/api/endpoints';
 
 interface RainbowItem {
   name: string;
@@ -22,16 +24,6 @@ interface RainbowItem {
   value: number;
   color: string;
   full_name?: string;
-}
-
-interface RainbowCase {
-  code?: string;
-  executor?: string;
-  gosb?: string;
-  color?: string;
-  previousColor?: string;
-  protectionMethod?: string;
-  court?: string;
 }
 
 // Конфигурация полей формы с динамической загрузкой опций
@@ -49,9 +41,19 @@ const rainbowFormFields = sorterConfig.rainbow.fields
 
 const tableColumns = rainbowTableConfig.columns;
 
+// Ключ для localStorage кэша
+const RAINBOW_CACHE_KEY = 'rainbow_diagram_cache';
+const CACHE_TTL = 5 * 60 * 1000; // 5 минут
+
+interface CacheData {
+  data: RainbowItem[];
+  total: number;
+  timestamp: number;
+}
+
 export default function Rainbow() {
   const navigate = useNavigate();
-  const { rainbowResult, isAnalyzing } = useAnalysis();
+  const { isAnalyzing } = useAnalysis();
   const [total, setTotal] = useState(0);
   const [rainbowData, setRainbowData] = useState<RainbowItem[]>([]);
   const { loadOptions } = useFilterOptions();
@@ -59,6 +61,102 @@ export default function Rainbow() {
   const [tableData, setTableData] = useState<any[]>([]); 
   const [currentFilters, setCurrentFilters] = useState<Record<string, string>>({});
   const [reportStatus, setReportStatus] = useState<"idle" | "loading" | "ready">("idle");
+  
+  // Флаг для предотвращения множественных одновременных запросов
+  const isFetchingRef = useRef(false);
+
+  // Функция загрузки кэша из localStorage
+  const loadFromCache = (): CacheData | null => {
+    try {
+      const cached = localStorage.getItem(RAINBOW_CACHE_KEY);
+      if (!cached) return null;
+      
+      const parsed: CacheData = JSON.parse(cached);
+      const isExpired = Date.now() - parsed.timestamp > CACHE_TTL;
+      
+      return isExpired ? null : parsed;
+    } catch (error) {
+      console.error('Ошибка чтения кэша:', error);
+      return null;
+    }
+  };
+
+  // Функция сохранения в кэш
+  const saveToCache = (data: RainbowItem[], total: number) => {
+    try {
+      const cacheData: CacheData = {
+        data,
+        total,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(RAINBOW_CACHE_KEY, JSON.stringify(cacheData));
+    } catch (error) {
+      console.error('Ошибка сохранения кэша:', error);
+    }
+  };
+
+  useEffect(() => {
+    // 1. Загружаем данные из кэша (если есть и не устарели)
+    const cached = loadFromCache();
+    if (cached) {
+      setRainbowData(cached.data);
+      setTotal(cached.total);
+    } else {
+      // 2. Или показываем дефолтные данные
+      const defaultData = transformRainbowData([], rainbowChartConfig.items);
+      setRainbowData(defaultData);
+      setTotal(0);
+    }
+
+    // 3. Фоновая загрузка актуальных данных (только если не загружается сейчас)
+    const loadFreshData = async () => {
+      if (isFetchingRef.current) return;
+      isFetchingRef.current = true;
+
+      try {
+        const response = await apiClient.get<{ 
+          success: boolean; 
+          data?: any[]; 
+          total?: number;
+          totalCases?: number;
+        }>(API_ENDPOINTS.RAINBOW_FILL_DIAGRAM);
+        
+        if (response.success) {
+          const transformedData = transformRainbowData(
+            response.data || [], 
+            rainbowChartConfig.items
+          );
+          const totalCases = response.totalCases || response.total || 0;
+          
+          // Сохраняем в кэш
+          saveToCache(transformedData, totalCases);
+          
+          // Обновляем UI (если данные изменились)
+          setRainbowData(transformedData);
+          setTotal(totalCases);
+        }
+      } catch (error) {
+        console.error('Ошибка фоновой загрузки диаграммы:', error);
+      } finally {
+        isFetchingRef.current = false;
+      }
+    };
+
+    // Запускаем фоновую загрузку всегда, но с приоритетом для устаревшего кэша
+    const shouldLoadImmediately = !cached || (Date.now() - cached.timestamp > CACHE_TTL);
+    
+    if (shouldLoadImmediately) {
+      loadFreshData();
+    } else {
+      // Если кэш свежий, загружаем в фоне с небольшой задержкой
+      setTimeout(loadFreshData, 1000);
+    }
+
+    // 4. Загружаем фильтры
+    loadOptions().catch(error => {
+      console.error('Ошибка загрузки фильтров:', error);
+    });
+  }, []);
 
   // Данные по умолчанию для таблицы до формирования отчета
   const defaultTableData = [{
@@ -87,24 +185,16 @@ export default function Rainbow() {
       if (result.success) {
         console.log('Данные получены, записей:', result.data.length);
 
-        // Преобразование данных для таблицы с безопасным извлечением значений
         const fullTableData = result.data.map((caseItem: any) => {
-          const getValue = (field: string, defaultValue = "Не указан") => {
-            const value = caseItem[field];
-            return value !== null && value !== undefined && value !== "" 
-              ? String(value) 
-              : defaultValue;
-          };
-
           return {
-            caseCode: getValue('Код дела', 'Не указан'),
-            responsibleExecutor: getValue('Ответственный исполнитель'),
-            gosb: getValue('ГОСБ'),
-            currentPeriodColor: getValue('Цвет (текущий период)'),
-            courtProtectionMethod: getValue('Способ судебной защиты'), 
-            courtReviewingCase: getValue('Суд, рассматривающий дело'),
-            ...(featureFlags.hasPreviousReport && { 
-              previousPeriodColor: getValue('Цвет (прошедший период)', 'Не указан')
+            caseCode: caseItem.caseCode || 'Не указан',
+            responsibleExecutor: caseItem.responsibleExecutor || 'Не указан',
+            gosb: caseItem.gosb || 'Не указан',
+            currentPeriodColor: caseItem.currentPeriodColor || 'Не указан',
+            courtProtectionMethod: caseItem.courtProtectionMethod || 'Не указан',
+            courtReviewingCase: caseItem.courtReviewingCase || 'Не указан',
+            ...(featureFlags.hasPreviousReport && {
+              previousPeriodColor: caseItem.previousPeriodColor || 'Не указан'
             })
           };
         });
@@ -144,27 +234,8 @@ export default function Rainbow() {
   // Обработчик изменений фильтров в форме
   const handleFiltersChange = (filters: Record<string, string>) => {
     console.log('Фильтры изменены:', filters);
-    setCurrentFilters(filters); 
+    setCurrentFilters(filters);
   };
-
-  // Эффект обновляет данные диаграммы при изменении результатов анализа
-  useEffect(() => {
-    if (rainbowResult && rainbowResult.success) {
-      const transformedData = transformRainbowData(rainbowResult.data, rainbowChartConfig.items);
-      setRainbowData(transformedData);
-      setTotal(rainbowResult.total);
-      
-      loadOptions().then(() => {
-        console.log('Фильтры загружены после анализа радуги');
-      }).catch(error => {
-        console.error('Ошибка загрузки фильтров:', error);
-      });
-    } else {
-      const defaultData = transformRainbowData([], rainbowChartConfig.items);
-      setRainbowData(defaultData);
-      setTotal(0);
-    }
-  }, [rainbowResult]);
 
   // Обработчик клика по строке таблицы для перехода к деталям дела
   const handleRowClick = (row: Record<string, any>) => {

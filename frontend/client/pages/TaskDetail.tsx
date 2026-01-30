@@ -19,6 +19,9 @@ type TaskDetails = {
     isCompleted: boolean;
     sourceType: string;
     createdDate: string;
+    documentType?: string;
+    department?: string;
+    requestCode?: string;
 };
 export default function TaskDetail() {
     const navigate = useNavigate();
@@ -65,9 +68,8 @@ export default function TaskDetail() {
     const handleGoToSource = () => {
         if (!taskData) return;
         
-        if (taskData.sourceType === "documents") {
-            console.log('⚠️ TODO: Нужно document_type и department для документа');
-            navigate(`/case/${taskData.caseCode}`);
+        if (taskData.sourceType === "documents" && taskData.documentType && taskData.department) {
+            navigate(`/document?caseCode=${encodeURIComponent(taskData.caseCode)}&documentType=${encodeURIComponent(taskData.documentType)}&department=${encodeURIComponent(taskData.department)}`);
         } else {
             navigate(`/case/${taskData.caseCode}`);
         }

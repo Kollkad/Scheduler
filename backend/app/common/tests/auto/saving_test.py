@@ -108,7 +108,7 @@ def prepare_test_data():
         lawsuit_filtered = detailed_df[
             (detailed_df[COLUMNS["CATEGORY"]] == VALUES["CLAIM_FROM_BANK"]) &
             (detailed_df[COLUMNS["METHOD_OF_PROTECTION"]] == VALUES["CLAIM_PROCEEDINGS"])
-        ].copy()
+            ].copy()
 
         if not lawsuit_filtered.empty:
             lawsuit_result = build_production_table(lawsuit_filtered, 'lawsuit')
@@ -121,7 +121,7 @@ def prepare_test_data():
         order_filtered = detailed_df[
             (detailed_df[COLUMNS["CATEGORY"]] == VALUES["CLAIM_FROM_BANK"]) &
             (detailed_df[COLUMNS["METHOD_OF_PROTECTION"]] == VALUES["ORDER_PRODUCTION"])
-        ].copy()
+            ].copy()
 
         if not order_filtered.empty:
             order_result = build_production_table(order_filtered, 'order')
@@ -151,6 +151,16 @@ def prepare_test_data():
         else:
             print("⚠️ Нет задач для анализа")
 
+        # Подготовка данных радуги
+        from backend.app.rainbow.modules.rainbow_classifier import RainbowClassifier
+
+        if detailed_df is not None and not detailed_df.empty:
+            derived_df = RainbowClassifier.create_derived_rainbow(detailed_df)
+            data_manager._derived_data["detailed_rainbow"] = derived_df
+            print(f"✅ Данные радуги подготовлены: {len(derived_df)} записей")
+        else:
+            print("⚠️ Нет данных для подготовки радуги")
+
         # Проверяем что хотя бы некоторые данные подготовлены
         prepared_data_types = []
         if data_manager.get_processed_data("lawsuit_staged") is not None:
@@ -161,6 +171,8 @@ def prepare_test_data():
             prepared_data_types.append("документы")
         if data_manager.get_processed_data("tasks") is not None:
             prepared_data_types.append("задачи")
+        if data_manager._derived_data.get("detailed_rainbow") is not None:
+            prepared_data_types.append("данные радуги")
 
         if prepared_data_types:
             print(f"✅ Подготовлены данные: {', '.join(prepared_data_types)}")

@@ -57,7 +57,10 @@ export class AnalysisService {
       // Маршрутизация запросов к соответствующим API endpoint'ам
       switch (type) {
         case 'rainbow':
-          data = await apiClient.get(API_ENDPOINTS.RAINBOW_ANALYZE);
+          // Сначала расчет данных
+          await apiClient.get(API_ENDPOINTS.RAINBOW_ANALYZE);
+          // Затем данные для диаграммы
+          data = await apiClient.get(API_ENDPOINTS.RAINBOW_FILL_DIAGRAM);
           break;
         
         case 'documents':

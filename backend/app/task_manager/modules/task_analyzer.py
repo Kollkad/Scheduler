@@ -1,18 +1,7 @@
-# backend/app/task_manager/modules/task_analyzer.py
-"""
-Модуль анализатора задач для системы управления задачами.
-
-Основные функции:
-- Анализ задач искового производства
-- Анализ задач приказного производства
-- Анализ задач по документам
-- Формирование единого списка задач
-- Генерация уникальных кодов задач
-"""
-
 import pandas as pd
 from typing import List, Dict, Any
 from datetime import datetime
+import math  # Добавлен импорт math
 
 from backend.app.common.config.column_names import COLUMNS, VALUES
 from backend.app.common.config.task_mappings import TASK_MAPPINGS
@@ -30,6 +19,19 @@ class TaskAnalyzer:
         """Инициализация анализатора задач."""
         self.tasks = []
         self._task_counter = 1  # Счетчик для генерации уникальных taskCode
+
+    def _clean_value(self, value):
+        """Очищает NaN и Inf значения для корректной JSON сериализации."""
+        if isinstance(value, float):
+            if math.isnan(value) or math.isinf(value):
+                return None
+        elif pd.isna(value):
+            return None
+        return value
+
+    def _format_task_dict(self, task_dict: Dict[str, Any]) -> Dict[str, Any]:
+        """Применяет очистку ко всем значениям в словаре задачи."""
+        return {k: self._clean_value(v) for k, v in task_dict.items()}
 
     def _generate_task_code(self) -> str:
         """
@@ -134,7 +136,7 @@ class TaskAnalyzer:
                     # Создание задачи при наличии проваленных проверок
                     if failed_checks:
                         task = self._format_lawsuit_task(row, failed_checks, case_stage)
-                        lawsuit_tasks.append(task)
+                        lawsuit_tasks.append(self._format_task_dict(task))
 
             return lawsuit_tasks
 
@@ -170,7 +172,7 @@ class TaskAnalyzer:
                     # Создание задачи при наличии проваленных проверок
                     if failed_checks:
                         task = self._format_order_task(row, failed_checks, case_stage)
-                        order_tasks.append(task)
+                        order_tasks.append(self._format_task_dict(task))
 
             return order_tasks
 
@@ -208,7 +210,7 @@ class TaskAnalyzer:
                 for task_config in stage_tasks:
                     if self._check_document_task_conditions(row, task_config):
                         task = self._format_document_task(row, task_config, original_documents_df)
-                        document_tasks.append(task)
+                        document_tasks.append(self._format_task_dict(task))
 
             return document_tasks
 
@@ -314,6 +316,10 @@ class TaskAnalyzer:
         if pd.isna(case_code) or case_code == "":
             case_code = "unknown"
 
+        document_type = row.get("document", "unknown")
+        department = row.get("department", "unknown")
+        request_code = row.get("requestCode", "")
+
         # Поиск ответственного исполнителя в исходных данных
         responsible_executor = "unknown"
         if case_code != "unknown" and original_documents_df is not None:
@@ -335,6 +341,9 @@ class TaskAnalyzer:
             "reasonText": task_config["reason_text"],
             "monitoringStatus": row.get("monitoringStatus", "unknown"),
             "sourceType": "documents",
+            "documentType": document_type,
+            "department": department,
+            "requestCode": request_code,
             "isCompleted": False,
             "createdDate": datetime.now().strftime("%d.%m.%Y")
         }

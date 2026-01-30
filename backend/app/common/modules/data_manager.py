@@ -1,6 +1,5 @@
+#backend/app/common/modules/data_manager.py
 """
-backend/app/common/modules/data_manager.py
-
 Центральный менеджер данных для управления загруженными и обработанными отчетами.
 
 Обеспечивает:
@@ -15,12 +14,11 @@ from typing import Dict, Optional, Tuple
 from datetime import timedelta, datetime
 import gc
 
-from backend.app.common.config.calendar_config import russian_calendar
 from backend.app.common.modules.data_import import load_excel_data
 from backend.app.common.modules.data_clean_detailed import clean_data as clean_detailed
 from backend.app.common.modules.data_clean_documents import clean_documents_data as clean_documents
 from backend.app.rainbow.modules.rainbow_classifier import RainbowClassifier
-
+from backend.app.common.config.column_names import COLUMNS
 
 class DataManager:
     """
@@ -42,17 +40,19 @@ class DataManager:
             "detailed_report": None,
             "documents_report": None
         }
-        # Данные с добавленными цветовыми метками
-        self._colored_data: Dict[str, Optional[pd.DataFrame]] = {
-            "detailed_report": None,
-            "documents_report": None
-        }
         # Результаты сложной обработки данных
         self._processed_data: Dict[str, Optional[pd.DataFrame]] = {
             "lawsuit_staged": None,  # Результаты build_new_table() для искового производства
             "order_staged": None,  # Результаты для приказного производства
             "documents_processed": None,  # Обработанные документы
             "tasks": None  # Рассчитанные задачи
+        }
+        #Переход cleaned&derived&cached логику
+        self._derived_data: Dict[str, Optional[pd.DataFrame]] = {
+            "detailed_rainbow": None
+        }
+        self._cached_data: Dict[str, Optional[pd.DataFrame]] = {
+            "detailed_colored": None
         }
 
     def load_detailed_report(self, filepath: str) -> pd.DataFrame:
@@ -82,19 +82,14 @@ class DataManager:
         claim_value = VALUES["CLAIM_PROCEEDINGS"]
 
         if method_col in cleaned_df.columns:
-            # Оптимизация: использование replace вместо поэлементной замены
             cleaned_df[method_col] = cleaned_df[method_col].replace(
                 simplified_value, claim_value
             )
 
-        # Добавление столбца с цветовой классификацией
-        colored_df = RainbowClassifier.add_color_column(cleaned_df)
-
         self._raw_data["detailed_report"] = raw_df
         self._cleaned_data["detailed_report"] = cleaned_df
-        self._colored_data["detailed_report"] = colored_df
 
-        return colored_df
+        return cleaned_df
 
     def load_documents_report(self, filepath: str) -> pd.DataFrame:
         """
@@ -131,12 +126,11 @@ class DataManager:
         claim_value = VALUES["CLAIM_PROCEEDINGS"]
 
         if method_col in cleaned_df.columns:
-            # Оптимизация: использование replace вместо поэлементной замены
             cleaned_df[method_col] = cleaned_df[method_col].replace(
                 simplified_value, claim_value
             )
 
-        # Оптимизация: передача текущей даты один раз для всех расчетов
+        # Передача текущей даты один раз для всех расчетов
         today = datetime.now().date()
 
         self._raw_data["documents_report"] = raw_df
@@ -201,7 +195,9 @@ class DataManager:
         if data_type in ["detailed", "all"]:
             self._cleaned_data["detailed_report"] = None
             self._raw_data["detailed_report"] = None
-            self._colored_data["detailed_report"] = None
+            # invalidate derived & cached
+            self._derived_data["detailed_rainbow"] = None
+            self._cached_data["detailed_colored"] = None
 
         if data_type in ["documents", "all"]:
             self._cleaned_data["documents_report"] = None
@@ -235,19 +231,35 @@ class DataManager:
 
     def get_colored_data(self, data_type: str) -> Optional[pd.DataFrame]:
         """
-        Возвращает данные с добавленным столбцом цвета.
+        Возвращает кэшированный DataFrame с цветовой информацией
+        для детального отчёта.
+
+        При отсутствии кэша:
+        - вычисляет derived-данные через RainbowClassifier,
+        - строит цветной кэш на основе cleaned DataFrame,
+        - сохраняет результат во внутренний кэш.
 
         Args:
-            data_type (str): Тип данных - 'detailed' или 'documents'
+            data_type (str): Тип данных, поддерживается только "detailed".
 
         Returns:
-            Optional[pd.DataFrame]: DataFrame с цветовыми метками или None
+            Optional[pd.DataFrame]: Кэшированный DataFrame с цветами
+            или None, если тип данных не поддерживается.
         """
-        if data_type == "detailed":
-            return self._colored_data["detailed_report"]
-        elif data_type == "documents":
-            return self._colored_data["documents_report"]
-        return None
+        if data_type != "detailed":
+            return None
+
+        cached = self._cached_data.get("detailed_colored")
+        if cached is not None:
+            return cached
+
+        # Если кэш отсутствует — пересчитываем derived и строим кэш
+        derived = RainbowClassifier.create_derived_rainbow(self._cleaned_data["detailed_report"])
+        self._cached_data["detailed_colored"] = RainbowClassifier.build_colored_cache(
+            self._cleaned_data["detailed_report"], derived
+        )
+
+        return self._cached_data.get("detailed_colored")
 
     def set_processed_data(self, data_type: str, dataframe: pd.DataFrame):
         """
@@ -294,7 +306,6 @@ class DataManager:
         elif data_type in self._processed_data:
             self._processed_data[data_type] = None
             print(f"🧹 Очищены обработанные данные: {data_type}")
-
 
 # Глобальный экземпляр для использования во всем приложении
 data_manager = DataManager()

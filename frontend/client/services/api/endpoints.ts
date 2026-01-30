@@ -4,6 +4,7 @@ export const API_ENDPOINTS = {
   RAINBOW_ANALYZE: '/api/rainbow/analyze',
   RAINBOW_CASES_BY_COLOR: '/api/rainbow/cases-by-color',
   RAINBOW_QUICK_TEST: '/api/rainbow/quick-test',
+  RAINBOW_FILL_DIAGRAM: '/api/rainbow/fill-diagram',
 
   // ==================== DOCUMENTS ====================
   DOCUMENTS_ANALYZE: '/api/documents/analyze_documents',

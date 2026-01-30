@@ -113,6 +113,16 @@ async def get_tasks_list(
             filtered_tasks = [task for task in filtered_tasks if
                               str(task.get("responsibleExecutor", "")).strip() == responsibleExecutor]
 
+        def clean_json_value(value):
+            import math
+            if isinstance(value, float):
+                if math.isnan(value) or math.isinf(value):
+                    return None
+            return value
+
+        # ДОБАВЬ ЭТУ СТРОКУ - очистка значений перед возвратом
+        filtered_tasks = [{k: clean_json_value(v) for k, v in task.items()} for task in filtered_tasks]
+
         return {
             "success": True,
             "totalTasks": len(all_tasks),

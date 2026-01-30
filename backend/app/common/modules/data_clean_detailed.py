@@ -2,64 +2,91 @@
 """
 Модуль очистки данных детального отчета.
 
-Выполняет предобработку сырых данных Excel:
-- Определение заголовков таблицы
-- Удаление служебных строк и пустых столбцов
-- Обрезка данных по маркеру итогов
+Реализует предобработку сырых данных Excel:
+- Поиск строки с заголовками таблицы
+- Определение и удаление служебной строки нумерации (при наличии)
+- Обрезку данных по маркеру итогов
+- Удаление полностью пустых колонок без названий
 """
 
 import pandas as pd
 
 
-def clean_data(raw_df):
+def clean_data(raw_df: pd.DataFrame) -> pd.DataFrame:
     """
-    Очистка данных детального отчета с использованием векторных операций.
+    Выполняет очистку данных детального отчета.
+
+    Функция определяет строку с заголовками таблицы по маркеру "№ п/п",
+    корректно обрабатывает наличие или отсутствие служебной строки нумерации,
+    а также обрезает данные по строке итогов.
+
+    Пустые колонки сохраняются, если у них присутствует название в заголовке.
 
     Args:
-        raw_df (pd.DataFrame): Сырые данные из Excel файла
+        raw_df (pd.DataFrame): Сырые данные, считанные из Excel файла
 
     Returns:
-        pd.DataFrame: Очищенный DataFrame с корректными заголовками
+        pd.DataFrame: Очищенный DataFrame с установленными заголовками
 
     Raises:
-        ValueError: Если не найдена строка с маркером '№ п/п'
+        ValueError: Если в данных отсутствует строка с маркером "№ п/п"
     """
-    # Векторизованный поиск '№ п/п' по ВСЕМУ DataFrame за одну операцию
+    # Приведение значений к строковому виду для поиска строки заголовков
     str_df = raw_df.astype(str)
     mask = (str_df == "№ п/п").any(axis=1)
 
+    # Проверка наличия строки заголовков
     if not mask.any():
         raise ValueError("Не найдена строка с '№ п/п'")
 
     start_row = mask.idxmax()
-
-    # Установка заголовков с обработкой дубликатов
     headers = raw_df.iloc[start_row].reset_index(drop=True)
-    cleaned = raw_df.iloc[start_row + 2:].copy()  # Пропуск заголовка и служебной строки
-    cleaned.columns = headers
-    cleaned = cleaned.loc[:, ~cleaned.columns.duplicated()]  # Удаление дублирующихся колонок
 
-    # Векторизованный поиск 'Итого' - РАЗДЕЛЬНО по колонкам чтобы избежать ошибки выравнивания
+    # Проверка строки после заголовков на наличие служебной нумерации
+    first_data_row = raw_df.iloc[start_row + 1]
+    first_values = first_data_row.iloc[:3]
+    numeric_count = pd.to_numeric(first_values, errors='coerce').notna().sum()
+
+    # Определение начальной строки данных
+    if numeric_count >= 2:
+        cleaned = raw_df.iloc[start_row + 2:].copy()
+    else:
+        cleaned = raw_df.iloc[start_row + 1:].copy()
+
+    # Установка заголовков и удаление дублирующихся колонок
+    cleaned.columns = headers
+    cleaned = cleaned.loc[:, ~cleaned.columns.duplicated()]
+
+    # Поиск строки итогов
     str_cleaned = cleaned.astype(str)
     total_mask = pd.Series(False, index=cleaned.index)
 
-    # Поиск в каждой колонке отдельно и объединение масок
     for col in str_cleaned.columns:
         col_mask = (
-                (str_cleaned[col] == "Итого:") |
-                (str_cleaned[col] == "Итого") |
-                (str_cleaned[col].str.startswith("Итого", na=False))
+            (str_cleaned[col] == "Итого:") |
+            (str_cleaned[col] == "Итого") |
+            (str_cleaned[col].str.startswith("Итого", na=False))
         )
         total_mask = total_mask | col_mask
 
     if total_mask.any():
         total_idx = total_mask.idxmax()
-        cleaned = cleaned.loc[:total_idx - 1]  # Обрезка ДО строки с "Итого"
+        cleaned = cleaned.loc[:total_idx - 1]
         print(f"Найдена строка 'Итого:' в строке {total_idx}, данные обрезаны")
     else:
         print("Строка 'Итого:' не найдена, работаем со всеми данными")
 
-    # Удаление пустых колонок и сброс индекса
-    cleaned = cleaned.dropna(axis=1, how='all').reset_index(drop=True)
+    # Удаление колонок без названия и без данных
+    valid_columns = [
+        col for col in cleaned.columns
+        if not (
+            (pd.isna(col) or str(col).strip() == "") and
+            cleaned[col].isna().all()
+        )
+    ]
+    cleaned = cleaned[valid_columns]
+
+    # Сброс индекса
+    cleaned = cleaned.reset_index(drop=True)
 
     return cleaned

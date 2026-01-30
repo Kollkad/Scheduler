@@ -14,7 +14,9 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 import pandas as pd
 import tempfile
+import logging
 
+from backend.app.common.config.column_names import COLUMNS
 from backend.app.common.modules.data_manager import data_manager
 from backend.app.saving_results.modules.saving_results_settings import (
     generate_filename,
@@ -276,50 +278,72 @@ async def save_tasks():
 @router.get("/rainbow-analysis")
 async def save_rainbow_analysis():
     """
-    Сохранение результатов цветовой классификации (радуги).
+    Сохранение объединенных данных радуги с профессиональным форматированием.
+
+    Функция реализует объединение очищенных детальных данных с цветовой классификацией
+    и сохранение результата в Excel файл с форматированием. Объединение выполняется
+    по коду дела с использованием внутренних структур данных менеджера.
 
     Returns:
-        FileResponse: Excel файл с цветовой классификацией дел
+        FileResponse: Excel файл с объединенными данными радуги
 
     Raises:
-        HTTPException: 400 если данные не загружены
-        HTTPException: 500 при ошибках сохранения
+        HTTPException: 400 если данные не загружены или отсутствуют
+        HTTPException: 500 при ошибках обработки или сохранения данных
     """
     try:
-        # Получение готовых данных с цветом
-        colored_data = data_manager.get_colored_data("detailed")
-
-        if colored_data is None or colored_data.empty:
+        # Получение очищенных детальных данных выполняется
+        cleaned_df = data_manager._cleaned_data.get("detailed_report")
+        if cleaned_df is None or cleaned_df.empty:
             raise HTTPException(status_code=400, detail="Детальный отчет не загружен")
 
-        from backend.app.rainbow.modules.rainbow_classifier import RainbowClassifier
+        # Получение derived данных цветовой классификации
+        derived_df = data_manager._derived_data.get("detailed_rainbow")
+        if derived_df is None or derived_df.empty:
+            raise HTTPException(status_code=400, detail="Данные цветовой классификации не подготовлены")
 
-        # Применяем единый фильтр радуги
-        rainbow_data = RainbowClassifier.get_rainbow_dataframe(colored_data)
+        # Приведение ключей к строковому типу выполняется для обеспечения корректного объединения
+        cleaned_key = COLUMNS["CASE_CODE"]
+        derived_key = COLUMNS["CASE_CODE"]
 
-        if rainbow_data.empty:
-            raise HTTPException(status_code=400, detail="Нет данных для анализа радуги")
+        cleaned_df[cleaned_key] = cleaned_df[cleaned_key].astype(str).str.strip()
+        derived_df[derived_key] = derived_df[derived_key].astype(str).str.strip()
 
-        print(f"Сохраняем анализ радуги: {len(rainbow_data)} строк")
+        # Объединение данных выполняется по коду дела с использованием левого соединения
+        # Левое соединение сохраняет все записи из детального отчета
+        merged_df = cleaned_df.merge(
+            derived_df[[derived_key, COLUMNS["CURRENT_PERIOD_COLOR"]]],
+            how="left",
+            left_on=cleaned_key,
+            right_on=derived_key,
+            suffixes=("", "_rainbow")
+        )
 
-        import tempfile
-        filepath = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False).name
+        # Создание временного файла выполняется для последующего возврата как FileResponse
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
+            filepath = tmp_file.name
 
-        from backend.app.saving_results.modules.saving_results_settings import save_with_xlsxwriter_formatting
-        save_with_xlsxwriter_formatting(rainbow_data, filepath, 'Цветовая классификация')
+        # Сохранение с форматированием выполняется через специализированную функцию
+        save_with_xlsxwriter_formatting(
+            merged_df,
+            filepath,
+            sheet_name="Цветовая классификация",
+            data_type="detailed"
+        )
 
-        from backend.app.saving_results.modules.saving_results_settings import generate_filename
+        # Генерация имени файла для скачивания выполняется по стандартному шаблону
         download_filename = generate_filename("rainbow_analysis")
 
-        from fastapi.responses import FileResponse
         return FileResponse(
             path=filepath,
             filename=download_filename,
-            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Ошибка сохранения анализа радуги: {e}")
+        print(f"❌ Ошибка сохранения анализа радуги: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка сохранения: {str(e)}")
 
 @router.get("/terms-productions")

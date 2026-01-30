@@ -20,17 +20,6 @@ class FilterSettings:
     Предоставляет функциональность для получения уникальных значений
     из колонок данных и управления метаинформацией о фильтрах.
     """
-
-    def __init__(self):
-        # Маппинг системных имен фильтров на названия колонок в данных
-        self.column_mapping = {
-            "gosb": COLUMNS["GOSB"],
-            "responsibleExecutor": COLUMNS["RESPONSIBLE_EXECUTOR"],
-            "courtReviewingCase": COLUMNS["COURT"],
-            "courtProtectionMethod": COLUMNS["METHOD_OF_PROTECTION"],
-            "currentPeriodColor": "Цвет (текущий период)"
-        }
-
     def get_filter_options(self, column_names: List[str] = None) -> Dict[str, List[Dict[str, str]]]:
         """
         Возвращает уникальные значения для указанных колонок.
@@ -55,10 +44,10 @@ class FilterSettings:
         options = {}
 
         # Определение колонок для обработки
-        columns_to_process = column_names if column_names else self.column_mapping.keys()
+        columns_to_process = column_names if column_names else df.columns.tolist()
 
         for filter_name in columns_to_process:
-            column_name = self.column_mapping.get(filter_name)
+            column_name = filter_name
 
             if not column_name:
                 continue
@@ -127,24 +116,47 @@ class FilterSettings:
         Returns:
             Dict[str, List]: Словарь с пустыми списками для всех системных имен фильтров
         """
-        return {key: [] for key in self.column_mapping.keys()}
+        # Получение списка всех колонок из данных
+        df = data_manager.get_colored_data("detailed")
+        if df is None or df.empty:
+            return {}
+
+        return {column: [] for column in df.columns}
 
     def get_available_filters(self) -> List[Dict[str, str]]:
         """
         Возвращает метаинформацию о доступных фильтрах.
 
-        Provides information about filter names, types, and corresponding
-        database columns for frontend configuration.
-
-        Returns:
-            List[Dict[str, str]]: Список словарей с метаинформацией о фильтрах
+        Frontend использует:
+        - 'column' как системное имя для API-вызовов (должно быть в данных)
+        - 'name' как отображаемое название (берём из COLUMNS)
         """
         return [
-            {"name": "ГОСБ", "type": "dynamic", "column": COLUMNS["GOSB"]},
-            {"name": "Ответственный исполнитель", "type": "dynamic", "column": COLUMNS["RESPONSIBLE_EXECUTOR"]},
-            {"name": "Суд, рассматривающий дело", "type": "dynamic", "column": COLUMNS["COURT"]},
-            {"name": "Способ судебной защиты", "type": "dynamic", "column": COLUMNS["METHOD_OF_PROTECTION"]},
-            {"name": "Цвет (текущий период)", "type": "dynamic", "column": "Цвет (текущий период)"}
+            {
+                "name": COLUMNS["GOSB"],
+                "type": "dynamic",
+                "column": "gosb"
+            },
+            {
+                "name": COLUMNS["RESPONSIBLE_EXECUTOR"],
+                "type": "dynamic",
+                "column": "responsibleExecutor"
+            },
+            {
+                "name": COLUMNS["COURT"],
+                "type": "dynamic",
+                "column": "courtReviewingCase"
+            },
+            {
+                "name": COLUMNS["METHOD_OF_PROTECTION"],
+                "type": "dynamic",
+                "column": "courtProtectionMethod"
+            },
+            {
+                "name": COLUMNS["CURRENT_PERIOD_COLOR"],
+                "type": "dynamic",
+                "column": "currentPeriodColor"
+            }
         ]
 
 

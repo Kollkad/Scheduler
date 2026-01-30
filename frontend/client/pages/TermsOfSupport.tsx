@@ -78,50 +78,53 @@ export function TermsOfSupport() {
   }, []);
 
   // Эффект загружает данные из контекста анализа для всех типов процессов
-  useEffect(() => {
-    const extractDataArray = (res: any) => {
-      if (!res) return [];
-      if (Array.isArray(res)) return res;
-      if (res.data && Array.isArray(res.data)) return res.data;
-      return [];
-    };
+useEffect(() => {
+  // Если данные для диаграмм еще не загружены - выходим
+  if (!termsV2LawsuitChartsResult && !termsV2OrderChartsResult && !documentsChartsResult) {
+    return;
+  }
+  const extractDataArray = (res: any) => {
+    if (!res) return [];
+    if (Array.isArray(res)) return res;
+    if (res.data && Array.isArray(res.data)) return res.data;
+    return [];
+  };
 
-    // Обработка данных для искового производства
+  // Обработка данных для искового производства
+  if (termsV2LawsuitChartsResult) {
     const lawsuitRaw = extractDataArray(termsV2LawsuitChartsResult);
     if (lawsuitRaw.length > 0) {
       setLawsuitData(transformLawsuitV2Data(lawsuitRaw));
-      setLawsuitTotalCases((termsV2LawsuitResult && termsV2LawsuitResult.total) || 0);
-    } else {
-      setLawsuitData(transformLawsuitV2Data([]));
-      setLawsuitTotalCases(0);
+      setLawsuitTotalCases(termsV2LawsuitChartsResult.total || 0);
+      console.log('Set lawsuit total cases:', termsV2LawsuitChartsResult.total);
     }
+  }
 
-    // Обработка данных для приказного производства
+  // Обработка данных для приказного производства
+  if (termsV2OrderChartsResult) {
     const orderRaw = extractDataArray(termsV2OrderChartsResult);
     if (orderRaw.length > 0) {
       setOrderData(transformOrderV2Data(orderRaw));
-      setOrderTotalCases((termsV2OrderResult && termsV2OrderResult.total) || 0);
-    } else {
-      setOrderData(transformOrderV2Data([]));
-      setOrderTotalCases(0);
+      setOrderTotalCases(termsV2OrderChartsResult.total || 0);
+      console.log('Set order total cases:', termsV2OrderChartsResult.total);
     }
+  }
 
-    // Обработка данных для документов
+  // Обработка данных для документов
+  if (documentsChartsResult) {
     const documentsRaw = extractDataArray(documentsChartsResult);
     if (documentsRaw.length > 0) {
       setDocumentsData(transformDocumentsData(documentsRaw));
-      setDocumentsTotalCount((documentsChartsResult && documentsChartsResult.total) || 0);
-    } else {
-      setDocumentsData(transformDocumentsData([]));
-      setDocumentsTotalCount(0);
+      setDocumentsTotalCount(documentsChartsResult.total || 0);
+      console.log('Set documents total count:', documentsChartsResult.total);
     }
-  }, [
-    termsV2LawsuitResult, 
-    termsV2OrderResult, 
-    termsV2LawsuitChartsResult, 
-    termsV2OrderChartsResult,
-    documentsChartsResult 
-  ]);
+  }
+}, [
+  termsV2LawsuitChartsResult, 
+  termsV2OrderChartsResult,
+  documentsChartsResult 
+  // Убрал termsV2LawsuitResult и termsV2OrderResult - они не нужны здесь
+]);
 
   // Обработчик изменения выбранного типа процесса
   const handleProcessChange = (value: string) => {

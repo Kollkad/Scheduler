@@ -47,40 +47,18 @@ class RainbowClassifier:
         counters = [0, 0, 0, 0, 0, 0, 0, 0, 0]
 
         # Фильтрация данных с использованием safe_get_column
-        filtered_indices = []
-        for idx, row in df.iterrows():
-            category = safe_get_column(row, COLUMNS["CATEGORY"])
-            case_status = safe_get_column(row, COLUMNS["CASE_STATUS"])
-
-            if (category == VALUES["CLAIM_FROM_BANK"] and
-                    case_status not in [VALUES["CLOSED"], VALUES["ERROR_DUBLICATE"],
-                                        VALUES["WITHDRAWN_BY_THE_INITIATOR"]]):
-                filtered_indices.append(idx)
-
-        filtered_df = df.loc[filtered_indices]
+        filtered_df = RainbowClassifier.get_rainbow_dataframe(df)
 
         # Использование единой функции определения цвета
+        color_order = ["ИК", "Серый", "Зеленый", "Желтый", "Оранжевый",
+                       "Синий", "Красный", "Лиловый", "Белый"]
+        counters = [0] * len(color_order)
+        color_index = {color: i for i, color in enumerate(color_order)}
+
         for _, row in filtered_df.iterrows():
             color = RainbowClassifier._determine_case_color(row, today)
-
-            if color == "ИК":
-                counters[0] += 1
-            elif color == "Серый":
-                counters[1] += 1
-            elif color == "Зеленый":
-                counters[2] += 1
-            elif color == "Желтый":
-                counters[3] += 1
-            elif color == "Оранжевый":
-                counters[4] += 1
-            elif color == "Синий":
-                counters[5] += 1
-            elif color == "Красный":
-                counters[6] += 1
-            elif color == "Лиловый":
-                counters[7] += 1
-            elif color == "Белый":
-                counters[8] += 1
+            if color in color_index:
+                counters[color_index[color]] += 1
 
         return counters
 
@@ -117,34 +95,6 @@ class RainbowClassifier:
             total += count
         print("-------------------")
         print(f"Всего: {total}\n")
-
-    @staticmethod
-    def add_color_column(df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Добавляет столбец с цветовой категорией в DataFrame.
-
-        Создает копию входного DataFrame и добавляет колонку с цветом
-        для каждого дела на основе классификации.
-
-        Args:
-            df (pd.DataFrame): Исходный DataFrame с данными дел
-
-        Returns:
-            pd.DataFrame: DataFrame с добавленной колонкой 'Цвет (текущий период)'
-        """
-        # Создание копии DataFrame для модификации
-        df_with_color = df.copy()
-        today = datetime.now().date()
-
-        color_column = []
-        # Определение цвета для каждого дела в DataFrame
-        for _, row in df_with_color.iterrows():
-            color = RainbowClassifier._determine_case_color(row, today)
-            color_column.append(color)
-
-        # Добавление колонки с цветами в DataFrame
-        df_with_color[COLUMNS["CURRENT_PERIOD_COLOR"]] = color_column
-        return df_with_color
 
     @staticmethod
     def _determine_case_color(row, today) -> str:
@@ -248,8 +198,6 @@ class RainbowClassifier:
         - категория = 'CLAIM_FROM_BANK'
         - case_status не закрыт, не дубликат, не withdrawn
         """
-        from backend.app.common.config.column_names import COLUMNS, VALUES
-
         if df is None or df.empty:
             return pd.DataFrame()  # безопасно
 
@@ -261,3 +209,99 @@ class RainbowClassifier:
                 VALUES["WITHDRAWN_BY_THE_INITIATOR"]
             ]))
         ]
+
+    @staticmethod
+    def create_derived_rainbow(df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Создаёт derived DataFrame с цветовой категорией для визуализации "радуги".
+        Для каждого дела рассчитывается цвет текущего периода и формируется
+        компактный DataFrame
+
+        Args:
+            df (pd.DataFrame): Очищенный детальный DataFrame
+
+        Returns:
+            pd.DataFrame: Derived DataFrame кодом дела и колонкой
+                          COLUMNS["CURRENT_PERIOD_COLOR"]
+        """
+        if df is None or df.empty:
+            return pd.DataFrame(columns=[
+                COLUMNS["CASE_CODE"],
+                COLUMNS["CURRENT_PERIOD_COLOR"]
+            ])
+
+        today = datetime.now().date()
+        rows = []
+
+        for _, row in df.iterrows():
+            case_code = row.get(COLUMNS["CASE_CODE"])
+            color = RainbowClassifier._determine_case_color(row, today)
+
+            rows.append({
+                COLUMNS["CASE_CODE"]: case_code,
+                COLUMNS["CURRENT_PERIOD_COLOR"]: color
+            })
+
+        return pd.DataFrame(rows)
+
+    @staticmethod
+    def build_colored_cache(df: pd.DataFrame, derived: pd.DataFrame) -> pd.DataFrame:
+        """
+        Создаёт кэшированный DataFrame с цветовой информацией для детального отчета.
+
+        Args:
+            df (pd.DataFrame): Очищенный детальный DataFrame с исходными данными дел
+            derived (pd.DataFrame): Derived DataFrame с цветовой классификацией,
+                                   содержащий колонки CASE_CODE и CURRENT_PERIOD_COLOR
+
+        Returns:
+            pd.DataFrame: DataFrame с колонками:
+                         - caseCode: Код дела
+                         - responsibleExecutor: Ответственный исполнитель
+                         - gosb: ГОСБ
+                         - currentPeriodColor: Цветовая категория текущего периода
+                         - courtProtectionMethod: Метод судебной защиты
+                         - courtReviewingCase: Суд, рассматривающий дело
+                         - caseStatus: Статус дела
+                         - previousPeriodColor: Цветовая категория предыдущего периода
+
+        Raises:
+            ValueError: При передаче некорректных или пустых данных
+        """
+        if df is None or derived is None or derived.empty:
+            return pd.DataFrame()
+
+        # Создание словаря цветов выполняется для оптимизации поиска цвета по коду дела
+        color_dict = {}
+        color_column = COLUMNS["CURRENT_PERIOD_COLOR"]
+        case_code_column = COLUMNS["CASE_CODE"]
+
+        # Цикл перебирает строки derived DataFrame для построения словаря соответствия
+        for _, row in derived.iterrows():
+            case_code = str(row.get(case_code_column, ""))
+            color = row.get(color_column)
+            # Добавление в словарь выполняется только для непустых кодов дел
+            if case_code:
+                color_dict[case_code] = color
+
+        cases_data = []
+
+        # Цикл перебирает строки очищенного DataFrame для формирования кэшированных данных
+        for _, row in df.iterrows():
+            case_code = str(row.get(case_code_column, ""))
+            color = color_dict.get(case_code)
+
+            case_data = {
+                "caseCode": case_code,
+                "responsibleExecutor": row.get(COLUMNS.get("RESPONSIBLE_EXECUTOR")),
+                "gosb": row.get(COLUMNS.get("GOSB")),
+                "currentPeriodColor": color,
+                "courtProtectionMethod": row.get(COLUMNS.get("METHOD_OF_PROTECTION")),
+                "courtReviewingCase": row.get(COLUMNS.get("COURT")),
+                "caseStatus": row.get(COLUMNS.get("CASE_STATUS")),
+                "previousPeriodColor": "Не доступно"
+            }
+
+            cases_data.append(case_data)
+
+        return pd.DataFrame(cases_data)

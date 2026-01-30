@@ -15,6 +15,7 @@ import re
 from fastapi import APIRouter, HTTPException
 from typing import Dict, Any, List
 import pandas as pd
+from backend.app.common.config.column_names import COLUMNS, VALUES
 
 router = APIRouter(prefix="/api/case", tags=["case"])
 
@@ -44,18 +45,18 @@ async def get_case_details(case_code: str):
     try:
         from backend.app.common.modules.data_manager import data_manager
 
-        # Получение данных через data_manager
-        df = data_manager.get_colored_data("detailed")
+        # Получение оригинальных очищенных данных через data_manager
+        df = data_manager.get_detailed_data()
         if df is None or df.empty:
             raise HTTPException(status_code=404, detail="Данные не загружены")
 
         # Список колонок для поиска кода дела
-        case_columns_to_check = ['Код дела', 'Номер дела', 'Судебный номер дела', 'case_code']
+        case_columns_to_check = [COLUMNS["CASE_CODE"], 'Код дела', 'Номер дела', 'Судебный номер дела']
 
         case_data = None
         found_column = None
 
-        # Поиск дела по различным возможным колонкам с обработкой ошибок
+        # Поиск дела по различным возможным колонкам
         for column in case_columns_to_check:
             if column in df.columns:
                 try:
