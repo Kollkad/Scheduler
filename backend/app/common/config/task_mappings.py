@@ -14,6 +14,7 @@
 - reason_text: пояснение причины постановки задачи
 - source: источник данных для проверки
 """
+from backend.app.common.config.column_names import COLUMNS
 
 TASK_MAPPINGS = {
     "lawsuit": {
@@ -43,7 +44,7 @@ TASK_MAPPINGS = {
             {
                 "index": "special",
                 "special_conditions": {
-                    "column": "CHARACTERISTICS_FINAL_COURT_ACT",
+                    "column": COLUMNS["CHARACTERISTICS_FINAL_COURT_ACT"],
                     "value": "Не в пользу Банка"
                 },
                 "failed_check_name": "decision45days",

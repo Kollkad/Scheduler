@@ -6,7 +6,7 @@ import math  # Добавлен импорт math
 from backend.app.common.config.column_names import COLUMNS, VALUES
 from backend.app.common.config.task_mappings import TASK_MAPPINGS
 from backend.app.common.config.check_display_names import CHECK_DISPLAY_NAMES
-
+from backend.app.task_manager.modules.column_collector import ColumnCollector
 class TaskAnalyzer:
     """
     Анализатор для формирования задач на основе данных мониторинга.
@@ -63,41 +63,74 @@ class TaskAnalyzer:
         all_tasks = []
         from backend.app.common.modules.data_manager import data_manager
 
-        print("🔄 Начинаем расчет задач...")
-
         # Сброс счетчика при каждом новом расчете
         self._task_counter = 1
 
-        # Анализ данных искового производства
+        # ШАГ 1: Собрать необходимые колонки из TASK_MAPPINGS
+        from backend.app.task_manager.modules.column_collector import ColumnCollector
+        column_collector = ColumnCollector()
+        detailed_cols, documents_cols = column_collector.collect_from_mappings(TASK_MAPPINGS)
+
+        print(f"📋 Собраны колонки для обогащения: detailed={len(detailed_cols)}, documents={len(documents_cols)}")
+
+        # ШАГ 2: Получить исходные данные
         lawsuit_staged = data_manager.get_processed_data("lawsuit_staged")
-        if lawsuit_staged is not None:
+        order_staged = data_manager.get_processed_data("order_staged")
+        documents_processed = data_manager.get_processed_data("documents_processed")
+
+        detailed_cleaned = data_manager.get_detailed_data()
+        documents_cleaned = data_manager.get_documents_data()
+
+        # ШАГ 3: Обогатить данные (если есть нужные колонки)
+        lawsuit_enriched = None
+        order_enriched = None
+        documents_enriched = None
+
+        # 3.1 Обогащение исковых данных
+        if lawsuit_staged is not None and detailed_cols and detailed_cleaned is not None:
+            lawsuit_enriched = self._enrich_data_with_columns(
+                lawsuit_staged, detailed_cleaned, detailed_cols,
+                source_type="detailed", left_key="caseCode", right_key="Код дела"
+            )
+        else:
+            lawsuit_enriched = lawsuit_staged
+
+        # 3.2 Обогащение приказных данных (те же колонки из detailed)
+        if order_staged is not None and detailed_cols and detailed_cleaned is not None:
+            order_enriched = self._enrich_data_with_columns(
+                order_staged, detailed_cleaned, detailed_cols,
+                source_type="detailed", left_key="caseCode", right_key="Код дела"
+            )
+        else:
+            order_enriched = order_staged
+
+        # 3.3 Обогащение документных данных
+        if documents_processed is not None and documents_cols and documents_cleaned is not None:
+            documents_enriched = self._enrich_data_with_columns(
+                documents_processed, documents_cleaned, documents_cols,
+                source_type="documents", left_key="requestCode", right_key="Код запроса"
+            )
+        else:
+            documents_enriched = documents_processed
+
+        # ШАГ 4: Анализ с обогащенными данными
+        if lawsuit_enriched is not None:
             print("✅ Анализ задач искового производства...")
-            lawsuit_tasks = self._analyze_lawsuit_tasks(lawsuit_staged)
+            lawsuit_tasks = self._analyze_lawsuit_tasks(lawsuit_enriched)
             all_tasks.extend(lawsuit_tasks)
             print(f"✅ Сформировано {len(lawsuit_tasks)} задач искового производства")
-        else:
-            print("⚠️ Нет данных искового производства для анализа задач")
 
-        # Анализ данных приказного производства
-        order_staged = data_manager.get_processed_data("order_staged")
-        if order_staged is not None:
+        if order_enriched is not None:
             print("✅ Анализ задач приказного производства...")
-            order_tasks = self._analyze_order_tasks(order_staged)
+            order_tasks = self._analyze_order_tasks(order_enriched)
             all_tasks.extend(order_tasks)
             print(f"✅ Сформировано {len(order_tasks)} задач приказного производства")
-        else:
-            print("⚠️ Нет данных приказного производства для анализа задач")
 
-        # Анализ данных документов
-        documents_processed = data_manager.get_processed_data("documents_processed")
-        documents_original = data_manager.get_documents_data()
-        if documents_processed is not None:
+        if documents_enriched is not None:
             print("✅ Анализ задач по документам...")
-            document_tasks = self._analyze_document_tasks(documents_processed, documents_original)
+            document_tasks = self._analyze_document_tasks(documents_enriched, documents_cleaned)
             all_tasks.extend(document_tasks)
             print(f"✅ Сформировано {len(document_tasks)} задач по документам")
-        else:
-            print("⚠️ Нет данных документов для анализа задач")
 
         # Сохранение задач обратно в data_manager
         if all_tasks:
@@ -108,7 +141,74 @@ class TaskAnalyzer:
         self.tasks = all_tasks
         return all_tasks
 
-    def _analyze_lawsuit_tasks(self, staged_df: pd.DataFrame) -> List[Dict[str, Any]]:
+    def _enrich_data_with_columns(self, processed_df: pd.DataFrame, cleaned_df: pd.DataFrame,
+                                  columns_to_add: List[str], source_type: str,
+                                  left_key: str, right_key: str) -> pd.DataFrame:
+        """
+        Обогащает processed_df колонками из cleaned_df.
+
+        Args:
+            processed_df: DataFrame с обработанными данными
+            cleaned_df: DataFrame с полными данными
+            columns_to_add: Список колонок для добавления
+            source_type: Тип источника ("detailed" или "documents")
+            left_key: Ключ в processed_df для соединения
+            right_key: Ключ в cleaned_df для соединения
+
+        Returns:
+            Обогащенный DataFrame
+        """
+        if processed_df is None or processed_df.empty:
+            return processed_df
+
+        if cleaned_df is None or cleaned_df.empty:
+            print(f"⚠️ Нет данных для обогащения {source_type}")
+            return processed_df
+
+        if not columns_to_add:
+            return processed_df
+
+        # Проверяем, что нужные колонки существуют в cleaned_df
+        available_columns = []
+        for col in columns_to_add:
+            if col in cleaned_df.columns:
+                available_columns.append(col)
+            else:
+                print(f"⚠️ Колонка '{col}' не найдена в {source_type} данных")
+
+        if not available_columns:
+            print(f"ℹ️ Нет доступных колонок для обогащения {source_type}")
+            return processed_df
+
+        # Проверяем ключи
+        if left_key not in processed_df.columns:
+            print(f"⚠️ Ключ '{left_key}' не найден в processed данных")
+            return processed_df
+
+        if right_key not in cleaned_df.columns:
+            print(f"⚠️ Ключ '{right_key}' не найден в cleaned данных")
+            return processed_df
+
+        # Выбираем только нужные колонки
+        columns_for_merge = [right_key] + available_columns
+
+        try:
+            # Делаем merge
+            enriched_df = processed_df.merge(
+                cleaned_df[columns_for_merge],
+                left_on=left_key,
+                right_on=right_key,
+                how='left'
+            )
+
+            print(f"✅ Обогащены {source_type} данные: {len(available_columns)} колонок")
+            return enriched_df
+
+        except Exception as e:
+            print(f"❌ Ошибка при обогащении {source_type} данных: {e}")
+            return processed_df
+
+    def _analyze_lawsuit_tasks(self, enriched_df: pd.DataFrame) -> List[Dict[str, Any]]:
         """
         Анализ задач для искового производства.
 
@@ -125,7 +225,7 @@ class TaskAnalyzer:
 
         try:
             # Итерация по всем строкам данных искового производства
-            for _, row in staged_df.iterrows():
+            for _, row in enriched_df.iterrows():
                 case_stage = row.get("caseStage")
 
                 # Проверка наличия этапа дела в маппингах задач
@@ -144,7 +244,7 @@ class TaskAnalyzer:
             print(f"❌ Ошибка анализа задач искового производства: {e}")
             return []
 
-    def _analyze_order_tasks(self, staged_df: pd.DataFrame) -> List[Dict[str, Any]]:
+    def _analyze_order_tasks(self, enriched_df: pd.DataFrame) -> List[Dict[str, Any]]:
         """
         Анализ задач для приказного производства.
 
@@ -161,7 +261,7 @@ class TaskAnalyzer:
 
         try:
             # Итерация по всем строкам данных приказного производства
-            for _, row in staged_df.iterrows():
+            for _, row in enriched_df.iterrows():
                 case_stage = row.get("caseStage")
 
                 # Проверка наличия этапа дела в маппингах задач
@@ -180,7 +280,7 @@ class TaskAnalyzer:
             print(f"❌ Ошибка анализа задач приказного производства: {e}")
             return []
 
-    def _analyze_document_tasks(self, processed_documents: pd.DataFrame,
+    def _analyze_document_tasks(self, enriched_documents: pd.DataFrame,
                                 original_documents_df: pd.DataFrame) -> List[Dict[str, Any]]:
         """
         Анализ задач по документам.
@@ -199,11 +299,11 @@ class TaskAnalyzer:
 
         try:
             # Проверка наличия данных для анализа
-            if processed_documents is None or processed_documents.empty:
+            if enriched_documents is None or enriched_documents.empty:  # БЫЛО: processed_documents
                 return []
 
-            # Итерация по всем строкам обработанных документов
-            for _, row in processed_documents.iterrows():
+            # Итерация по всем строкам ОБОГАЩЕННЫХ документов
+            for _, row in enriched_documents.iterrows():  # Используем enriched_documents
                 stage_tasks = TASK_MAPPINGS["documents"]["executionDocument"]
 
                 # Проверка условий для каждой конфигурации задачи
@@ -414,18 +514,91 @@ class TaskAnalyzer:
     def _check_special_conditions(self, row: pd.Series, special_conditions: Dict) -> bool:
         """
         Проверяет специальные условия формирования задачи.
+        Теперь может проверять реальные колонки из enriched данных!
 
-        Args:
-            row (pd.Series): Строка данных
-            special_conditions (Dict): Конфигурация специальных условий
-
-        Returns:
-            bool: True если специальные условия выполнены, иначе False
+        Поддерживает типы условий из TASK_MAPPINGS:
+        1. Проверка значения колонки: {"column": "COLUMN", "value": "VALUE"}
+        2. Проверка статуса и даты: {"status": "STATUS", "has_transfer_date": True/False}
+        3. Проверка типа для документов: {"check_type": "court_order_delivery"}
         """
         try:
-            # Реализация проверки специальных условий
+            # ТИП 1: Проверка значения в колонке
+            # Используется в: TASK_MAPPINGS["lawsuit"]["decisionMade"][0]
+            if "column" in special_conditions and "value" in special_conditions:
+                column_name = special_conditions["column"]
+                expected_value = special_conditions["value"]
+
+                # Проверяем, есть ли колонка в обогащенных данных
+                if column_name not in row:
+                    # Колонка не была обогащена - возможно, ее нет в исходных данных
+                    # Не выводим warning, так как это нормально для задач без special_conditions
+                    return False
+
+                actual_value = row[column_name]
+
+                # Обработка NaN значений
+                if pd.isna(actual_value):
+                    return False
+
+                # Сравнение значений (строковое сравнение)
+                return str(actual_value).strip() == str(expected_value).strip()
+
+            # ТИП 2: Проверка статуса и наличия даты передачи
+            # Используется в: TASK_MAPPINGS["order"]["executionDocumentReceivedO"][1,2]
+            elif "status" in special_conditions and "has_transfer_date" in special_conditions:
+                expected_status = special_conditions["status"]
+                needs_transfer_date = special_conditions["has_transfer_date"]
+
+                # Получаем текущий статус (проверяем разные возможные названия колонок)
+                current_status = None
+                status_columns = ["Статус", "STATUS", "status", "CASE_STATUS"]
+                for col in status_columns:
+                    if col in row:
+                        current_status = row[col]
+                        break
+
+                # Проверка статуса
+                if current_status is None or str(current_status).strip() != expected_status:
+                    return False
+
+                # Проверка даты передачи
+                transfer_date_columns = ["Фактическая дата передачи ИД", "TRANSFER_DATE", "transfer_date"]
+                has_date = False
+
+                for col in transfer_date_columns:
+                    if col in row:
+                        transfer_date = row[col]
+                        if not pd.isna(transfer_date):
+                            has_date = True
+                            break
+
+                # Условие: должна быть дата ИЛИ не должна быть даты
+                return has_date == needs_transfer_date
+
+            # ТИП 3: Проверка типа для документов (например, подтверждение доставки СП)
+            # Используется в: TASK_MAPPINGS["order"]["courtReaction"][1]
+            elif "check_type" in special_conditions:
+                check_type = special_conditions["check_type"]
+
+                if check_type == "court_order_delivery":
+                    # Для проверки доставки судебного приказа
+                    # Проверяем, что дело приказное и нужна проверка доставки
+                    case_type = row.get("METHOD_OF_PROTECTION", "")
+                    is_order_production = "Приказное" in str(case_type)
+
+                    return is_order_production
+
+                # Можно добавить другие типы проверок при необходимости
+                return False
+
+            # Неизвестный тип условий
+            print(f"⚠️ Неизвестный тип special_conditions: {special_conditions}")
             return False
-        except Exception:
+
+        except Exception as e:
+            print(f"❌ Ошибка проверки специальных условий: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     def _check_task_conditions(self, row: pd.Series, task_config: Dict) -> bool:
