@@ -12,24 +12,30 @@ import {
 } from '@/config/chartConfig';
 
 // Функция для преобразования данных радуги (числа -> объекты с метаданными)
-export const transformRainbowData = (values: number[], config: ChartItemConfig[]) => {
+export const transformRainbowData = (
+  values: number[], 
+  config: ChartItemConfig[],
+  colorLabels?: string[]
+) => {
   if (values.length !== config.length) {
     console.warn(`Длина данных с бэкенда (${values.length}) не совпадает с длиной конфига (${config.length}).`);
     const adjustedValues = [...values];
     while (adjustedValues.length < config.length) adjustedValues.push(0);
     adjustedValues.length = config.length;
 
+    // Используем переданные метки цветов или дефолтные из конфига
     return config.map((item, index) => ({
       name: item.name,
-      label: item.label,
+      label: colorLabels?.[index] || item.label || item.name,
       value: adjustedValues[index],
       color: item.color
     }));
   }
 
+  // Если все в порядке, используем переданные метки или дефолтные
   return config.map((item, index) => ({
     name: item.name,
-    label: item.label,
+    label: colorLabels?.[index] || item.label || item.name,
     value: values[index],
     color: item.color
   }));

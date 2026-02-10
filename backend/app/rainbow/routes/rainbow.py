@@ -11,9 +11,9 @@ API для получения статистики и детальной инф�
 - /cases-by-color: Фильтрация дел по цветовым категориям
 - /quick-test: Тестовые данные для разработки
 """
-
-from fastapi import APIRouter, HTTPException, Query
-from typing import Dict, List
+import pandas as pd
+from fastapi import APIRouter, HTTPException, Query, Body
+from typing import Dict, List, Optional, Any
 
 router = APIRouter(prefix="/api/rainbow", tags=["rainbow"])
 
@@ -128,19 +128,34 @@ async def analyze_rainbow():
 
 
 @router.get("/fill-diagram")
-async def fill_diagram():
+@router.post("/fill-diagram")
+async def fill_diagram(
+        filters: Optional[Dict[str, Any]] = Body(None, embed=True)
+):
     """
     Возвращает данные для построения диаграммы распределения дел по цветовым категориям.
 
-    Функция извлекает подготовленные derived данные и вычисляет статистику
-    распределения дел по цветам. Расчет выполняется только на основе данных,
-    предварительно подготовленных эндпоинтом /analyze.
+    Использует get_colored_data для доступа к полным данным с цветовой информацией,
+    что позволяет корректно применять фильтры формы настроек.
+
+    Args:
+        filters (Optional[Dict[str, Any]]): Фильтры для применения к данным в формате:
+            {
+                "field_name1": "value1",
+                "field_name2": "value2",
+                ...
+            }
+            Поддерживаемые поля: caseCode, responsibleExecutor, gosb,
+            courtProtectionMethod, courtReviewingCase, caseStatus
 
     Returns:
         Dict: Данные для визуализации диаграммы в формате: {
             "success": bool,
             "data": List[int],      # Количества дел по цветам в стандартном порядке
-            "totalCases": int,      # Общее количество классифицированных дел
+            "totalCases": int,      # Общее количество (отфильтрованных) дел
+            "filtered": bool,       # Применены ли фильтры
+            "filters": Dict,        # Примененные фильтры (если есть)
+            "colorLabels": List[str], # Метки цветов на русском
             "message": str          # Описательное сообщение о результате
         }
 
@@ -149,56 +164,147 @@ async def fill_diagram():
         HTTPException: 500 при возникновении ошибок расчета статистики
     """
     try:
-        print("\n📊 ЗАПРОС ДАННЫХ ДЛЯ ПОСТРОЕНИЯ ДИАГРАММЫ")
-        print("=" * 40)
+        print("\n📊 ЗАПРОС ДАННЫХ ДЛЯ ПОСТРОЕНИЯ ДИАГРАММЫ (с colored_cache)")
+        print("=" * 50)
 
-        # Проверка наличия подготовленных derived данных выполняется первым делом
-        derived_df = data_manager._derived_data.get("detailed_rainbow")
-        if derived_df is None or derived_df.empty:
-            print("❌ ОШИБКА: derived_rainbow отсутствует или пуст")
+        # Логирование полученных фильтров выполняется для отладки
+        if filters:
+            print(f"🔍 ПОЛУЧЕНЫ ФИЛЬТРЫ ({len(filters)}):")
+            for key, value in filters.items():
+                print(f"   {key}: {value}")
+        else:
+            print("📋 ФИЛЬТРЫ НЕ ПЕРЕДАНЫ - возвращаем общую статистику")
+
+        # Получение данных с цветовой классификацией из кэша
+        working_df = data_manager.get_colored_data("detailed")
+
+        if working_df is None or working_df.empty:
+            print("❌ ОШИБКА: colored_cache отсутствует или пуст")
             raise HTTPException(
                 status_code=400,
                 detail="Данные радуги не подготовлены. Сначала вызовите /api/rainbow/analyze"
             )
 
-        print(f"✅ derived_rainbow загружен для расчета: {len(derived_df)} строк")
+        print(f"✅ Исходные данные из colored_cache: {len(working_df)} строк, {len(working_df.columns)} колонок")
 
-        # Определяем порядок цветов для диаграммы на основе COLOR_MAPPING
-        # Используем русские названия из значений COLOR_MAPPING
+        # Применение фильтров к данным
+        if filters and isinstance(filters, dict):
+            filtered_df = working_df.copy()
+            filters_applied = 0
+
+            # Маппинг названий полей формы на имена колонок DataFrame
+            column_mapping = {
+                "responsibleExecutor": "responsibleExecutor",
+                "gosb": "gosb",
+                "courtReviewingCase": "courtReviewingCase",
+                "courtProtectionMethod": "courtProtectionMethod",
+                "caseStatus": "caseStatus",
+                "currentPeriodColor": "currentPeriodColor",
+                "previousPeriodColor": "previousPeriodColor",
+                "caseCode": "caseCode"
+            }
+
+            # Последовательное применение фильтров к DataFrame
+            for field_name, filter_value in filters.items():
+                column_name = column_mapping.get(field_name, field_name)
+
+                if (filter_value and isinstance(filter_value, str) and
+                        column_name in filtered_df.columns):
+
+                    print(f"  → Применяем фильтр: {column_name} = '{filter_value}'")
+
+                    try:
+                        # Фильтрация выполняется путем сравнения строковых значений
+                        mask = filtered_df[column_name].astype(str).str.strip() == str(filter_value).strip()
+                        filtered_df = filtered_df[mask]
+                        filters_applied += 1
+
+                        print(f"     Осталось строк: {len(filtered_df)}")
+                    except Exception as filter_error:
+                        print(f"  ⚠️ Ошибка применения фильтра {column_name}: {filter_error}")
+                        continue
+
+            if filters_applied > 0:
+                print(f"✅ После фильтрации: {len(filtered_df)} из {len(working_df)} дел")
+                working_df = filtered_df
+                filtered = True
+            else:
+                print("ℹ️ Фильтры переданы, но не применены (неверные поля/значения)")
+                filtered = False
+        else:
+            filtered = False
+            print(f"✅ Без фильтров: {len(working_df)} дел")
+
+        # Определение порядка цветов для диаграммы
         color_order = list(COLOR_MAPPING.values())
-
-        # Создаем обратное маппинг для быстрого поиска цвета
-        reverse_color_mapping = {v: k for k, v in COLOR_MAPPING.items()}
-
-        # Инициализируем массив для данных диаграммы
         chart_data = [0] * len(color_order)
 
-        # Получаем имя колонки с цветом
-        color_column_name = COLUMNS["CURRENT_PERIOD_COLOR"]
+        # Подсчет количества дел по цветовым категориям
+        color_stats = {}
+        unknown_colors = set()
 
-        # Подсчет количества дел по цветам выполняется итерацией по derived данным
-        for _, row in derived_df.iterrows():
-            color_value = row.get(color_column_name)
+        for _, row in working_df.iterrows():
+            color_value = row.get("currentPeriodColor")
 
-            # Обрабатываем возможные варианты значений цвета:
-            # 1. Если цвет уже на русском (из значений COLOR_MAPPING)
-            if color_value in color_order:
-                chart_data[color_order.index(color_value)] += 1
-            # 2. Если цвет в английском коде (из ключей COLOR_MAPPING)
-            elif color_value in COLOR_MAPPING:
-                russian_color = COLOR_MAPPING[color_value]
-                chart_data[color_order.index(russian_color)] += 1
-            # 3. Если значение не распознано, логируем для отладки
-            elif color_value:
-                print(f"⚠️ Неизвестное значение цвета: {color_value}")
+            if pd.isna(color_value):
+                continue
 
-        return {
+            color_str = str(color_value).strip()
+
+            # Определение русского названия цвета выполняется по иерархии правил
+            russian_color = None
+
+            # Правило 1: Цвет уже в русском формате
+            if color_str in color_order:
+                russian_color = color_str
+            # Правило 2: Цвет в английском коде
+            elif color_str in COLOR_MAPPING:
+                russian_color = COLOR_MAPPING[color_str]
+            # Правило 3: Поиск по частичному совпадению
+            else:
+                for eng, rus in COLOR_MAPPING.items():
+                    if color_str.lower() == eng.lower() or color_str.lower() == rus.lower():
+                        russian_color = rus
+                        break
+
+                if not russian_color:
+                    unknown_colors.add(color_str)
+                    continue
+
+            # Увеличение счетчика для найденного цвета
+            if russian_color in color_stats:
+                color_stats[russian_color] += 1
+            else:
+                color_stats[russian_color] = 1
+
+        # Заполнение массива данных диаграммы в стандартном порядке
+        for i, color_name in enumerate(color_order):
+            chart_data[i] = color_stats.get(color_name, 0)
+
+        # Логирование неизвестных цветов выполняется для отладки
+        if unknown_colors:
+            print(f"⚠️ Найдены неизвестные значения цветов: {list(unknown_colors)[:5]}")
+
+        # Формирование ответа с результатами расчета
+        total_cases = len(working_df)
+
+        response_data = {
             "success": True,
             "data": chart_data,
-            "totalCases": len(derived_df),
-            "message": f"Данные для диаграммы успешно рассчитаны ({len(derived_df)} дел)",
-            "colorLabels": color_order  # Добавляем метки цветов для фронтенда
+            "totalCases": total_cases,
+            "filtered": filtered,
+            "colorLabels": color_order,
+            "message": f"Данные для диаграммы успешно рассчитаны ({total_cases} дел)" +
+                       (" с применением фильтров" if filtered else "")
         }
+
+        if filtered and filters:
+            response_data["filters"] = filters
+
+        print(f"📈 РАСЧЕТ ЗАВЕРШЕН: {total_cases} дел, {sum(chart_data)} классифицировано")
+        print("=" * 50)
+
+        return response_data
 
     except HTTPException:
         raise
