@@ -43,10 +43,24 @@ def format_monitoring_status(status_string):
 
     return '; '.join(formatted_parts)
 
+
+def format_source_type(source_type):
+    """Форматирование типа источника для экспорта"""
+    if not source_type or pd.isna(source_type):
+        return "Не указан"
+
+    source_type_mapping = {
+        "detailed": "Детальный отчет",
+        "documents": "Отчет по полученным и переданным документам"
+    }
+
+    return source_type_mapping.get(str(source_type).strip().lower(), str(source_type))
+
 # Форматирование задач
 DEFAULT_VALUE_FORMATTERS = {
     COLUMNS["MONITORING_STATUS"]: format_monitoring_status,
-    COLUMNS["CASE_STAGE"]: lambda x: CASE_STAGE_MAPPING.get(x, x) if pd.notna(x) else "Не указан"
+    COLUMNS["CASE_STAGE"]: lambda x: CASE_STAGE_MAPPING.get(x, x) if pd.notna(x) else "Не указан",
+    COLUMNS["SOURCE_TYPE"]: format_source_type,
 }
 
 def generate_filename(report_type: str) -> str:
@@ -341,7 +355,7 @@ def add_source_columns_to_tasks(tasks_df: pd.DataFrame,
                 result_df.loc[mask_documents, col] = result_df.loc[mask_documents, "transferCode"].map(
                     documents_indexed[col])
 
-    # Порядок колонок
+    # Порядок колонок - исправлен согласно требованиям
     column_order = [
         "taskCode",
         "caseCode",
@@ -361,8 +375,16 @@ def add_source_columns_to_tasks(tasks_df: pd.DataFrame,
         "transferCode",
         "requestCode",
         "isCompleted",
+        "Комментарий",
         "createdDate",
     ]
+
+    # 1. Столбец isCompleted должен быть пустым
+    if "isCompleted" in result_df.columns:
+        result_df["isCompleted"] = pd.NA
+
+    # 2. Новый пустой столбец "Комментарий" после isCompleted
+    result_df["Комментарий"] = pd.NA
 
     existing_columns = [col for col in column_order if col in result_df.columns]
     other_columns = [col for col in result_df.columns if col not in existing_columns]
