@@ -57,6 +57,13 @@ export const API_ENDPOINTS = {
   SAVE_ALL_PROCESSED_DATA_STATUS: '/api/save/all-processed-data',
   SAVE_TASKS_EXECUTOR: '/api/save/tasks-by-executor',
 
+  // ==================== DEPERSONALIZATION ENDPOINTS ====================
+  DEPERSONALIZATION_LOAD_REPORT: '/api/additional_processing/load_report',
+  DEPERSONALIZATION_GET_DEFAULT_RULES: '/api/additional_processing/get_default_rules',
+  DEPERSONALIZATION_ANONYMIZE: '/api/additional_processing/anonymize',
+  DEPERSONALIZATION_DOWNLOAD: '/api/additional_processing/download_anonymized',
+  DEPERSONALIZATION_CLEAR_TEMP_DATA: '/api/additional_processing/clear_temp_data',
+
   // ==================== RESET ====================
   RESET_ANALYSIS: '/reset-analysis',
 

@@ -1,6 +1,6 @@
 // Sidebar.tsx
 import { Link, useLocation } from "react-router-dom";
-import { Rainbow, AlertCircle, FileText, Home, ClipboardList } from "lucide-react";
+import { Rainbow, AlertCircle, FileText, Home, ClipboardList, Shield } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { useEffect } from "react";
 import { featureFlags } from '@/config/featureFlags';
@@ -11,6 +11,7 @@ const navigationItems = [
   { id: "rainbow", label: "Rainbow", icon: Rainbow, path: "/rainbow" },
   { id: "terms", label: "Сроки сопровождения", icon: AlertCircle, path: "/terms" },
   { id: "tasks", label: "Задачи сотрудников", icon: ClipboardList, path: "/tasks" },
+  { id: "depersonalization", label: "Обезличивание", icon: Shield, path: "/depersonalization" },
 ];
 
 export function Sidebar() {

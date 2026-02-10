@@ -1,4 +1,4 @@
-// src/pages/Rainbow.tsx
+// frontend/client/pages/Rainbow.tsx
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { DefaultChart } from "@/components/DefaultChart";

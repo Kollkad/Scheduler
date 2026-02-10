@@ -15,6 +15,7 @@ from backend.app.task_manager.routes.tasks import router as tasks_router
 from backend.app.document_monitoring_v2.routes.document_terms_v2 import router as document_router
 from backend.app.terms_of_support_v2.routes.terms_v2 import router as terms_v2_router
 from backend.app.saving_results.routes.saving import router as saving_router
+from backend.app.additional_processing.routes.anonymization import router as additional_processing_router
 
 logger = logging.getLogger("uvicorn")
 
@@ -46,6 +47,7 @@ app.include_router(tasks_router)
 app.include_router(document_router)
 app.include_router(terms_v2_router)
 app.include_router(saving_router)
+app.include_router(additional_processing_router)
 
 @app.get("/")
 async def root():

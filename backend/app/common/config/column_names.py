@@ -78,7 +78,21 @@ COLUMNS = {
     "TASK_TEXT": "Текст задачи",
     "REASON_TEXT": "Причина постановки задачи",
     "CREATED_DATE": "Дата создания записи",
-    "FAILED_CHECK": "Проваленная проверка"
+    "FAILED_CHECK": "Проваленная проверка",
+
+    # Будут обезличены колонки: (+ RESPONSIBLE_EXECUTOR, + BORROWER)
+    "ADDITIONAL_EXECUTOR": "Соисполнители",
+    "DEFENDANTS": "Ответчики",
+    "REGISTRATION_ADDRESS": "Адрес регистрации",
+    "CONTRACT_AGREEMENT_NUMBER": "Номер договора/контракта",
+    "REQUEST_INITIATOR": "Инициатор запроса",
+    "REQUEST_SUBJECT": "Тема запроса",
+    "EXECUTOR_FILED_CLAIMS": "Сотрудник, подавший иск / заявление",
+
+    "DOCUMENT_NUMBER": "Номер документа",
+    "INITIATOR_OF_TRANSFER": "Инициатор передачи",
+    "EXECUTOR": "Сотрудник",
+    "COMMENT_ON_THE_REASON_FOR_REFUSAL": "Комментарий по причине отказа"
 }
 
 # Словарь стандартизированных значений для фильтрации и классификации

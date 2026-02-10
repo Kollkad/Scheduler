@@ -19,6 +19,7 @@ import DynamicCaseDetail from '@/pages/DynamicCaseDetail';
 import DocumentDetail from '@/pages/DocumentDetail';
 import { AnalysisProvider } from "@/contexts/AnalysisContext";
 import TaskDetail from './pages/TaskDetail';
+import Depersonalization from "./pages/Depersonalization";
 
 const queryClient = new QueryClient();
 
@@ -38,11 +39,11 @@ const App = () => {
                 <Route path="/search" element={<Search />} />
                 <Route path="/tasks" element={<Tasks />} />
                 <Route path="/terms" element={<TermsOfSupport />} />
+                <Route path="/depersonalization" element={<Depersonalization />} />
                 <Route path="/case/:caseCode" element={<DynamicCaseDetail />} />
                 <Route path="/document" element={<DocumentDetail />} />
                 <Route path="/filtered-cases" element={<FilteredCases />} />
                 <Route path="/task/:taskCode" element={<TaskDetail />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Layout>
