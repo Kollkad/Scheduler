@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { apiClient } from "@/services/api/client";
 import { CompactTaskList } from "@/components/CompactTaskList";
+import { savingService, SaveDataType } from "@/services/saving/SavingService";
 
 type TaskItem = {
   taskCode: string;
@@ -99,6 +100,37 @@ export default function Tasks() {
       setIsLoading(false);
     }
   };
+
+  const handleSaveTasks = async () => {
+    if (!selectedExecutor || tasks.length === 0) return;
+
+    try {
+      setIsLoading(true);
+      
+      const blob = await apiClient.downloadFile(
+        API_ENDPOINTS.SAVE_TASKS_EXECUTOR,
+        { responsibleExecutor: selectedExecutor }
+      );
+      
+      // Генерация имя на фронте
+      const fileName = `Задачи_${selectedExecutor}_${new Date().toLocaleDateString('ru-RU')}.xlsx`;
+      
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+    } catch (error) {
+      console.error('Ошибка сохранения:', error);
+      alert(error instanceof Error ? error.message : 'Не удалось сохранить');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const formButtons = [
     {
       type: "secondary" as const,
@@ -111,6 +143,11 @@ export default function Tasks() {
       text: "Найти задачи",
       onClick: handleFindTasks,
     },
+    {
+      type: "primary" as const,
+      text: "Сохранить задачи",
+      onClick: handleSaveTasks,
+    }
   ];
 
   useEffect(() => {

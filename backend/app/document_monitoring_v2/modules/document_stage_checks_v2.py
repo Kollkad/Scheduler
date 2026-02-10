@@ -74,6 +74,7 @@ def analyze_documents(documents_df: pd.DataFrame) -> pd.DataFrame:
             )
 
             return pd.DataFrame({
+                "transferCode": result_df.get(COLUMNS["TRANSFER_CODE"], "unknown"),
                 "requestCode": result_df.get("DOCUMENT_REQUEST_CODE", result_df.index.astype(str)),
                 "caseCode": result_df.get("DOCUMENT_CASE_CODE", result_df.get("Код дела", "unknown")),
                 "document": result_df.get("DOCUMENT_TYPE", result_df.get("Документ", "unknown")),
@@ -104,6 +105,7 @@ def analyze_documents(documents_df: pd.DataFrame) -> pd.DataFrame:
 
                 # Формирование результата с сохранением структуры колонок
                 return [{
+                    "transferCode": latest_document.get(COLUMNS["TRANSFER_CODE"], "unknown"),
                     "requestCode": latest_document.get(COLUMNS["DOCUMENT_REQUEST_CODE"], "unknown"),
                     "caseCode": latest_document.get(COLUMNS["DOCUMENT_CASE_CODE"], "unknown"),
                     "document": latest_document.get(COLUMNS["DOCUMENT_TYPE"], "unknown"),

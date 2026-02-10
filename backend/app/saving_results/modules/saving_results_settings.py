@@ -29,7 +29,7 @@ def format_monitoring_status(status_string):
 
     status_mapping = {
         "timely": "в срок",
-        "overdue": "просрочена",
+        "overdue": "просрочено",
         "no_data": "нет данных"
     }
 
@@ -238,7 +238,12 @@ def rename_columns_to_russian(dataframe, data_type, value_formatters=None):
             "isCompleted": COLUMNS["IS_COMPLETED"],
             "taskText": COLUMNS["TASK_TEXT"],
             "reasonText": COLUMNS["REASON_TEXT"],
-            "createdDate": COLUMNS["CREATED_DATE"]
+            "createdDate": COLUMNS["CREATED_DATE"],
+            # Документные колонки:
+            "transferCode": COLUMNS["TRANSFER_CODE"],
+            "documentType": COLUMNS["DOCUMENT_TYPE"],
+            "department": COLUMNS["DEPARTMENT_CATEGORY"],
+            "requestCode": COLUMNS["DOCUMENT_REQUEST_CODE"],
         },
         "documents": {
             "requestCode": COLUMNS["DOCUMENT_REQUEST_CODE"],
@@ -273,3 +278,93 @@ def rename_columns_to_russian(dataframe, data_type, value_formatters=None):
         return dataframe.rename(columns=existing_columns)
 
     return dataframe
+
+
+def add_source_columns_to_tasks(tasks_df: pd.DataFrame,
+                                detailed_cleaned: pd.DataFrame,
+                                documents_cleaned: pd.DataFrame) -> pd.DataFrame:
+    """
+    Добавляет дополнительные колонки из исходных отчетов в DataFrame задач.
+
+    Для задач с sourceType == "detailed" данные берутся из detailed_cleaned по ключу caseCode.
+    Для задач с sourceType == "documents" данные берутся из documents_cleaned по ключу transferCode.
+
+    Args:
+        tasks_df (pd.DataFrame): DataFrame исходных задач.
+        detailed_cleaned (pd.DataFrame): DataFrame детального отчета.
+        documents_cleaned (pd.DataFrame): DataFrame документов.
+
+    Returns:
+        pd.DataFrame: DataFrame задач с добавленными колонками.
+    """
+    import pandas as pd
+
+    # Колонки для добавления
+    columns_to_add = [
+        COLUMNS.get("REQUEST_TYPE"),
+        COLUMNS.get("COURT"),
+        COLUMNS.get("BORROWER"),
+        COLUMNS.get("CASE_NAME")
+    ]
+
+    result_df = tasks_df.copy()
+
+    # Инициализация колонок
+    for col in columns_to_add:
+        if col is not None and col not in result_df.columns:
+            result_df[col] = pd.NA
+
+    # Добавление для детальных задач
+    mask_detailed = result_df["sourceType"] == "detailed"
+    if mask_detailed.any() and detailed_cleaned is not None and COLUMNS.get("CASE_CODE") in detailed_cleaned.columns:
+        detailed_indexed = detailed_cleaned.drop_duplicates(
+            subset=[COLUMNS["CASE_CODE"]],
+            keep="last"
+        ).set_index(COLUMNS["CASE_CODE"])
+
+        for col in columns_to_add:
+            if col in detailed_indexed.columns:
+                result_df.loc[mask_detailed, col] = result_df.loc[mask_detailed, "caseCode"].map(detailed_indexed[col])
+
+    # Добавление для документных задач
+    mask_documents = result_df["sourceType"] == "documents"
+    transfer_col = COLUMNS.get("TRANSFER_CODE")
+
+    if mask_documents.any() and documents_cleaned is not None and transfer_col in documents_cleaned.columns:
+        documents_indexed = documents_cleaned.drop_duplicates(
+            subset=[transfer_col],
+            keep="last"
+        ).set_index(transfer_col)
+
+        for col in columns_to_add:
+            if col in documents_indexed.columns:
+                result_df.loc[mask_documents, col] = result_df.loc[mask_documents, "transferCode"].map(
+                    documents_indexed[col])
+
+    # Порядок колонок
+    column_order = [
+        "taskCode",
+        "caseCode",
+        "responsibleExecutor",
+        COLUMNS["REQUEST_TYPE"],
+        COLUMNS["COURT"],
+        COLUMNS["BORROWER"],
+        COLUMNS["CASE_NAME"],
+        "caseStage",
+        "failedCheck",
+        "taskText",
+        "reasonText",
+        "monitoringStatus",
+        "sourceType",
+        "documentType",
+        "department",
+        "transferCode",
+        "requestCode",
+        "isCompleted",
+        "createdDate",
+    ]
+
+    existing_columns = [col for col in column_order if col in result_df.columns]
+    other_columns = [col for col in result_df.columns if col not in existing_columns]
+
+    return result_df[existing_columns + other_columns]

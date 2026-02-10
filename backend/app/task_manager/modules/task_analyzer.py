@@ -419,6 +419,7 @@ class TaskAnalyzer:
         document_type = row.get("document", "unknown")
         department = row.get("department", "unknown")
         request_code = row.get("requestCode", "")
+        transfer_code = row.get("transferCode", "")
 
         # Поиск ответственного исполнителя в исходных данных
         responsible_executor = "unknown"
@@ -443,6 +444,7 @@ class TaskAnalyzer:
             "sourceType": "documents",
             "documentType": document_type,
             "department": department,
+            "transferCode": transfer_code,
             "requestCode": request_code,
             "isCompleted": False,
             "createdDate": datetime.now().strftime("%d.%m.%Y")

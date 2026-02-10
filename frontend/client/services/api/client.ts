@@ -50,6 +50,28 @@ export class ApiClient {
     
     return await response.json();
   }
+
+  // Метод для файлов
+  async downloadFile(endpoint: string, params?: Record<string, string>): Promise<Blob> {
+    let url = `${API_BASE_URL}${endpoint}`;
+    
+    if (params) {
+      const searchParams = new URLSearchParams(params);
+      url += `?${searchParams.toString()}`;
+    }
+    
+    const response = await fetch(url, {
+      headers: { 'Accept': 'application/octet-stream' },
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Download failed: ${response.status} - ${errorText}`);
+    }
+    
+    return await response.blob();
+  }
 }
 
 export const apiClient = ApiClient.getInstance();

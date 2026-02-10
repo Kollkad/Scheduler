@@ -55,6 +55,7 @@ export const API_ENDPOINTS = {
   SAVE_ALL_ANALYSIS: '/api/save/all-analysis',
   SAVE_AVAILABLE_DATA_STATUS: '/api/save/available-data',
   SAVE_ALL_PROCESSED_DATA_STATUS: '/api/save/all-processed-data',
+  SAVE_TASKS_EXECUTOR: '/api/save/tasks-by-executor',
 
   // ==================== RESET ====================
   RESET_ANALYSIS: '/reset-analysis',

@@ -9,6 +9,8 @@
 - Рассчитанные задачи
 - Комплексные архивы всех данных
 """
+import urllib
+from datetime import datetime
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
@@ -21,7 +23,7 @@ from backend.app.common.modules.data_manager import data_manager
 from backend.app.saving_results.modules.saving_results_settings import (
     generate_filename,
     save_with_xlsxwriter_formatting,
-    rename_columns_to_russian
+    rename_columns_to_russian, add_source_columns_to_tasks
 )
 
 router = APIRouter(prefix="/api/save", tags=["saving"])
@@ -238,30 +240,62 @@ async def save_tasks():
     """
     Сохранение рассчитанных задач по срокам обработки дел.
 
+    Выполняет дополнительное обогащение данных задач информацией из исходных отчетов
+    перед сохранением в Excel файл с профессиональным форматированием.
+
     Returns:
-        FileResponse: Excel файл с задачами
+        FileResponse: Excel файл с задачами, обогащенный дополнительными колонками
 
     Raises:
-        HTTPException: 400 если данные не найдены
-        HTTPException: 500 при ошибках сохранения
+        HTTPException: 400 если данные задач не найдены
+        HTTPException: 500 при ошибках сохранения или обогащения данных
+
+    Note:
+        Обогащение включает добавление колонок из исходных отчетов:
+        - Для детальных задач: REQUEST_TYPE, COURT, BORROWER, CASE_NAME
+        - Для документных задач: REQUEST_TYPE, COURT_NAME, BORROWER, CASE_NAME
+        Отсутствие некоторых колонок в исходных данных не вызывает ошибок
     """
     try:
+        # Получение рассчитанных задач из менеджера данных
         tasks_data = data_manager.get_processed_data("tasks")
 
         if tasks_data is None or tasks_data.empty:
             raise HTTPException(status_code=400, detail="Данные задач не найдены")
 
-        print(f"💾 Сохраняем задачи: {len(tasks_data)} строк, {len(tasks_data.columns)} колонок")
+        print(f"💾 Начинаем сохранение задач: {len(tasks_data)} строк, {len(tasks_data.columns)} колонок")
 
-        # Переименование колонок и форматирование значений
+        # Получение исходных данных для обогащения задач
+        detailed_cleaned = data_manager.get_detailed_data()
+        documents_cleaned = data_manager.get_documents_data()
+
+        # Обновление колонок задач дополнительными колонками из исходных отчетов
+        if detailed_cleaned is not None or documents_cleaned is not None:
+            try:
+                tasks_data = add_source_columns_to_tasks(
+                    tasks_data,
+                    detailed_cleaned,
+                    documents_cleaned
+                )
+                print(f"✅ Задачи успешно обогащены дополнительными колонками")
+            except Exception as enrich_error:
+                # Продолжаем сохранение даже при ошибке обогащения
+                print(f"⚠️ Ошибка обогащения задач: {enrich_error}")
+                print("⚠️ Сохранение продолжается без дополнительных колонок")
+        else:
+            print("ℹ️ Исходные данные отсутствуют, сохранение без обогащения")
+
+        # Переименование колонок и форматирование значений согласно настройкам
         tasks_data = rename_columns_to_russian(tasks_data, data_type="tasks")
 
+        # Создание временного файла для сохранения
         with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
             filepath = tmp_file.name
 
         # Сохранение с форматированием через xlsxwriter
         save_with_xlsxwriter_formatting(tasks_data, filepath, 'Задачи', 'tasks')
 
+        # Генерация имени файла для скачивания
         download_filename = generate_filename("tasks")
 
         return FileResponse(
@@ -270,10 +304,84 @@ async def save_tasks():
             media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"❌ Ошибка сохранения задач: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка сохранения: {str(e)}")
 
+@router.get("/tasks-by-executor")
+async def save_tasks_by_executor(responsibleExecutor: str):
+    """
+    Сохранение рассчитанных задач для конкретного ответственного исполнителя в Excel файл.
+
+    Args:
+        responsibleExecutor (str): Имя ответственного исполнителя для фильтрации задач.
+
+    Returns:
+        FileResponse: Excel файл с задачами исполнителя, обогащенный дополнительными колонками
+
+    Raises:
+        HTTPException: 400 если данные задач отсутствуют
+        HTTPException: 500 при ошибках сохранения или обогащения данных
+    """
+    try:
+        if not responsibleExecutor:
+            raise HTTPException(status_code=400, detail="Не указан ответственный исполнитель")
+
+        # Получение всех рассчитанных задач
+        tasks_data = data_manager.get_processed_data("tasks")
+        if tasks_data is None or tasks_data.empty:
+            raise HTTPException(status_code=400, detail="Данные задач не найдены")
+
+        # Фильтрация по исполнителю
+        tasks_data = tasks_data[tasks_data["responsibleExecutor"] == responsibleExecutor]
+        if tasks_data.empty:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Задачи для исполнителя '{responsibleExecutor}' не найдены"
+            )
+
+        # Получение исходных данных для обогащения
+        detailed_cleaned = data_manager.get_detailed_data()
+        documents_cleaned = data_manager.get_documents_data()
+
+        # Обогащение дополнительными колонками
+        if detailed_cleaned is not None or documents_cleaned is not None:
+            try:
+                tasks_data = add_source_columns_to_tasks(
+                    tasks_data,
+                    detailed_cleaned,
+                    documents_cleaned
+                )
+            except Exception as enrich_error:
+                print(f"⚠️ Ошибка обогащения задач: {enrich_error}")
+                print("⚠️ Продолжаем сохранение без дополнительных колонок")
+
+        # Переименование колонок и форматирование значений
+        tasks_data = rename_columns_to_russian(tasks_data, data_type="tasks")
+
+        # Сохранение во временный файл
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
+            filepath = tmp_file.name
+
+        save_with_xlsxwriter_formatting(tasks_data, filepath, 'Задачи', 'tasks')
+
+        # Генерация имени файла
+        download_filename = generate_filename("tasks")
+
+        return FileResponse(
+            path=filepath,
+            filename=download_filename,
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Ошибка сохранения задач для {responsibleExecutor}: {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка сохранения: {str(e)}")
 
 @router.get("/rainbow-analysis")
 async def save_rainbow_analysis():
