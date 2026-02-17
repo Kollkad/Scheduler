@@ -1,24 +1,24 @@
 // src/pages/TermsOfSupport.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageContainer } from "@/components/PageContainer";
 import { RadioButtonGroup } from "@/components/RadioButtonGroup";
 import { SegmentedChart } from "@/components/SegmentedChart";
 import { TermsOfSupportMeanings } from "@/components/TermsOfSupportMeanings";
-import { ReusableDataTable } from "@/components/tables/ReusableDataTable";
 import { useAnalysis } from "@/contexts/AnalysisContext";
-import { 
-  lawsuitTermsV2Config, 
-  orderTermsV2Config, 
-  documentsChartConfig,
+import {
   lawsuitChecksToLabel, 
-  orderChecksToLabel,
-  documentsChecksToLabel 
+  orderChecksToLabel
 } from '@/config/chartConfig';
-import { termsTableConfig } from '@/config/tableConfig'; 
 import { transformLawsuitV2Data, transformOrderV2Data, transformDocumentsData } from '@/utils/dataTransform';
 import { apiClient } from '@/services/api/client';
 import { API_ENDPOINTS } from '@/services/api/endpoints';
+
+// Константы кэша
+const LAWSUIT_CHARTS_CACHE_KEY = 'terms_lawsuit_charts_cache';
+const ORDER_CHARTS_CACHE_KEY = 'terms_order_charts_cache';
+const DOCUMENTS_CHARTS_CACHE_KEY = 'terms_documents_charts_cache';
+const CACHE_TTL = 5 * 60 * 1000;
 
 // Опции для выбора типа процесса
 const processOptions = [
@@ -46,85 +46,197 @@ interface TransformedTermsGroup {
   total: number;
 }
 
+interface ChartsResponse {
+    success: boolean;
+    data?: any[];
+    totalCases?: number;
+    totalDocuments?: number;
+    message?: string;
+  }
+
 export function TermsOfSupport() {
   const [selectedProcess, setSelectedProcess] = useState('lawsuit');
-  const [lawsuitData, setLawsuitData] = useState<TransformedTermsGroup[]>([]);
-  const [orderData, setOrderData] = useState<TransformedTermsGroup[]>([]);
-  const [documentsData, setDocumentsData] = useState<TransformedTermsGroup[]>([]);
+  const [lawsuitData, setLawsuitData] = useState<TransformedTermsGroup[]>(() => 
+    transformLawsuitV2Data([])
+  );
+  const [orderData, setOrderData] = useState<TransformedTermsGroup[]>(() => 
+    transformOrderV2Data([])
+  );
+  const [documentsData, setDocumentsData] = useState<TransformedTermsGroup[]>(() => 
+    transformDocumentsData([])
+  );
   const [lawsuitTotalCases, setLawsuitTotalCases] = useState(0);
   const [orderTotalCases, setOrderTotalCases] = useState(0);
   const [documentsTotalCount, setDocumentsTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const isMounted = useRef(true);
   
-  const { 
-    termsV2LawsuitResult, 
-    termsV2OrderResult, 
-    termsV2LawsuitChartsResult,
-    termsV2OrderChartsResult,
-    documentsChartsResult,
-    isAnalyzing 
-  } = useAnalysis();
+  const { isAnalyzing, dataUpdateTrigger } = useAnalysis();
+  const previousTriggerRef = useRef(dataUpdateTrigger);
 
-  // Установка начальных данных из конфигурации при монтировании компонента
+  // Отслеживание монтирования компонента
   useEffect(() => {
-    const defaultLawsuitData = transformLawsuitV2Data([]);
-    const defaultOrderData = transformOrderV2Data([]);
-    const defaultDocumentsData = transformDocumentsData([]);
-    
-    setLawsuitData(defaultLawsuitData);
-    setOrderData(defaultOrderData);
-    setDocumentsData(defaultDocumentsData);
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
   }, []);
 
-  // Эффект загружает данные из контекста анализа для всех типов процессов
-useEffect(() => {
-  // Если данные для диаграмм еще не загружены - выходим
-  if (!termsV2LawsuitChartsResult && !termsV2OrderChartsResult && !documentsChartsResult) {
-    return;
-  }
-  const extractDataArray = (res: any) => {
-    if (!res) return [];
-    if (Array.isArray(res)) return res;
-    if (res.data && Array.isArray(res.data)) return res.data;
-    return [];
+
+  // Функция загрузки данных искового производства
+  const loadLawsuitChartData = async (force = false) => {
+    try {
+      const cached = localStorage.getItem(LAWSUIT_CHARTS_CACHE_KEY);
+      if (!force && cached) {
+        const parsed = JSON.parse(cached);
+        const isExpired = Date.now() - parsed.timestamp > CACHE_TTL;
+        if (!isExpired && isMounted.current) {
+          setLawsuitData(transformLawsuitV2Data(parsed.data));
+          setLawsuitTotalCases(parsed.total || 0);
+          return;
+        }
+      }
+
+      if (isMounted.current) setIsLoading(true);
+      const response = await apiClient.get<ChartsResponse>(API_ENDPOINTS.TERMS_V2_LAWSUIT_CHARTS);
+      
+      if (response.success && isMounted.current) {
+        const chartData = response.data || [];
+        const total = response.totalCases || 0;
+        
+        localStorage.setItem(LAWSUIT_CHARTS_CACHE_KEY, JSON.stringify({
+          data: chartData,
+          total: total,
+          timestamp: Date.now()
+        }));
+        
+        setLawsuitData(transformLawsuitV2Data(chartData));
+        setLawsuitTotalCases(total);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки данных искового:', error);
+    } finally {
+      if (isMounted.current) setIsLoading(false);
+    }
   };
 
-  // Обработка данных для искового производства
-  if (termsV2LawsuitChartsResult) {
-    const lawsuitRaw = extractDataArray(termsV2LawsuitChartsResult);
-    if (lawsuitRaw.length > 0) {
-      setLawsuitData(transformLawsuitV2Data(lawsuitRaw));
-      setLawsuitTotalCases(termsV2LawsuitChartsResult.total || 0);
-      console.log('Set lawsuit total cases:', termsV2LawsuitChartsResult.total);
-    }
-  }
+  // Функция загрузки данных приказного производства
+  const loadOrderChartData = async (force = false) => {
+    try {
+      const cached = localStorage.getItem(ORDER_CHARTS_CACHE_KEY);
+      if (!force && cached) {
+        const parsed = JSON.parse(cached);
+        const isExpired = Date.now() - parsed.timestamp > CACHE_TTL;
+        if (!isExpired && isMounted.current) {
+          setOrderData(transformOrderV2Data(parsed.data));
+          setOrderTotalCases(parsed.total || 0);
+          return;
+        }
+      }
 
-  // Обработка данных для приказного производства
-  if (termsV2OrderChartsResult) {
-    const orderRaw = extractDataArray(termsV2OrderChartsResult);
-    if (orderRaw.length > 0) {
-      setOrderData(transformOrderV2Data(orderRaw));
-      setOrderTotalCases(termsV2OrderChartsResult.total || 0);
-      console.log('Set order total cases:', termsV2OrderChartsResult.total);
+      if (isMounted.current) setIsLoading(true);
+      const response = await apiClient.get<ChartsResponse>(API_ENDPOINTS.TERMS_V2_ORDER_CHARTS);
+      
+      if (response.success && isMounted.current) {
+        const chartData = response.data || [];
+        const total = response.totalCases || 0;
+        
+        localStorage.setItem(ORDER_CHARTS_CACHE_KEY, JSON.stringify({
+          data: chartData,
+          total: total,
+          timestamp: Date.now()
+        }));
+        
+        setOrderData(transformOrderV2Data(chartData));
+        setOrderTotalCases(total);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки данных приказного:', error);
+    } finally {
+      if (isMounted.current) setIsLoading(false);
     }
-  }
+  };
 
-  // Обработка данных для документов
-  if (documentsChartsResult) {
-    const documentsRaw = extractDataArray(documentsChartsResult);
-    if (documentsRaw.length > 0) {
-      setDocumentsData(transformDocumentsData(documentsRaw));
-      setDocumentsTotalCount(documentsChartsResult.total || 0);
-      console.log('Set documents total count:', documentsChartsResult.total);
+  // Функция загрузки данных документов
+  const loadDocumentsChartData = async (force = false) => {
+    try {
+      const cached = localStorage.getItem(DOCUMENTS_CHARTS_CACHE_KEY);
+      if (!force && cached) {
+        const parsed = JSON.parse(cached);
+        const isExpired = Date.now() - parsed.timestamp > CACHE_TTL;
+        if (!isExpired && isMounted.current) {
+          setDocumentsData(transformDocumentsData(parsed.data));
+          setDocumentsTotalCount(parsed.total || 0);
+          return;
+        }
+      }
+
+      if (isMounted.current) setIsLoading(true);
+      const response = await apiClient.get<ChartsResponse>(API_ENDPOINTS.DOCUMENTS_CHARTS);
+      
+      if (response.success && isMounted.current) {
+        const chartData = response.data || [];
+        const total = response.totalDocuments || 0;
+        
+        localStorage.setItem(DOCUMENTS_CHARTS_CACHE_KEY, JSON.stringify({
+          data: chartData,
+          total: total,
+          timestamp: Date.now()
+        }));
+        
+        setDocumentsData(transformDocumentsData(chartData));
+        setDocumentsTotalCount(total);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки данных документов:', error);
+    } finally {
+      if (isMounted.current) setIsLoading(false);
     }
-  }
-}, [
-  termsV2LawsuitChartsResult, 
-  termsV2OrderChartsResult,
-  documentsChartsResult 
-  // Убрал termsV2LawsuitResult и termsV2OrderResult - они не нужны здесь
-]);
+  };
+
+  // Инициализация данных при монтировании
+  useEffect(() => {
+    // Загрузка из кэша
+    const cachedLawsuit = localStorage.getItem(LAWSUIT_CHARTS_CACHE_KEY);
+    if (cachedLawsuit && isMounted.current) {
+      const parsed = JSON.parse(cachedLawsuit);
+      const isExpired = Date.now() - parsed.timestamp > CACHE_TTL;
+      if (!isExpired) {
+        setLawsuitData(transformLawsuitV2Data(parsed.data));
+        setLawsuitTotalCases(parsed.total || 0);
+      }
+    }
+
+    const cachedOrder = localStorage.getItem(ORDER_CHARTS_CACHE_KEY);
+    if (cachedOrder && isMounted.current) {
+      const parsed = JSON.parse(cachedOrder);
+      const isExpired = Date.now() - parsed.timestamp > CACHE_TTL;
+      if (!isExpired) {
+        setOrderData(transformOrderV2Data(parsed.data));
+        setOrderTotalCases(parsed.total || 0);
+      }
+    }
+
+    const cachedDocs = localStorage.getItem(DOCUMENTS_CHARTS_CACHE_KEY);
+    if (cachedDocs && isMounted.current) {
+      const parsed = JSON.parse(cachedDocs);
+      const isExpired = Date.now() - parsed.timestamp > CACHE_TTL;
+      if (!isExpired) {
+        setDocumentsData(transformDocumentsData(parsed.data));
+        setDocumentsTotalCount(parsed.total || 0);
+      }
+    }
+
+    // Фоновая загрузка свежих данных
+    setTimeout(() => {
+      if (isMounted.current) {
+        Promise.allSettled([
+          loadLawsuitChartData(),
+          loadOrderChartData(),
+          loadDocumentsChartData()
+        ]);
+      }
+    }, 100);
+  }, []);
 
   // Обработчик изменения выбранного типа процесса
   const handleProcessChange = (value: string) => {
@@ -134,7 +246,6 @@ useEffect(() => {
   // Обработчик клика по сегменту диаграммы для фильтрации дел
   const handleSegmentClick = async (stage: string, status: string, count: number) => {
     if (count > 0) {
-      // Поиск технического имени этапа для соответствующего процесса
       let technicalStage = '';
       const stageMapping = selectedProcess === 'lawsuit' ? lawsuitChecksToLabel : orderChecksToLabel;
       
@@ -145,9 +256,7 @@ useEffect(() => {
         }
       }
 
-      const technicalStatus = status;
-
-      navigate(`/filtered-cases?source=terms&process=${selectedProcess}&stage=${encodeURIComponent(technicalStage)}&status=${encodeURIComponent(technicalStatus)}&count=${count}`);
+      navigate(`/filtered-cases?source=terms&process=${selectedProcess}&stage=${encodeURIComponent(technicalStage)}&status=${encodeURIComponent(status)}&count=${count}`);
     }
   };
 
@@ -157,6 +266,26 @@ useEffect(() => {
       navigate(`/filtered-cases?source=documents&documentType=${encodeURIComponent(documentType)}&status=${encodeURIComponent(status)}&count=${count}`);
     }
   };
+
+  // Эффект для обновления после завершения анализа
+  useEffect(() => {
+    if (dataUpdateTrigger === previousTriggerRef.current) return;
+    previousTriggerRef.current = dataUpdateTrigger;
+
+    const refreshAfterAnalysis = async () => {
+      if (isAnalyzing) return;
+      console.log('Обновление данных сроков после анализа');
+      
+      // Загружаем все три графика принудительно (force=true)
+      await Promise.allSettled([
+        loadLawsuitChartData(true),
+        loadOrderChartData(true),
+        loadDocumentsChartData(true)
+      ]);
+    };
+
+    refreshAfterAnalysis();
+  }, [dataUpdateTrigger, isAnalyzing]);
 
   const currentData = selectedProcess === 'lawsuit' ? lawsuitData : orderData;
   const currentTotalCases = selectedProcess === 'lawsuit' ? lawsuitTotalCases : orderTotalCases;

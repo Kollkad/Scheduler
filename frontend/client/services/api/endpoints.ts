@@ -1,5 +1,8 @@
 // services/api/endpoints.ts
 export const API_ENDPOINTS = {
+  // ==================== SEARCH ====================
+  SEARCH_CASES: '/api/search/cases',
+  
   // ==================== RAINBOW ====================
   RAINBOW_ANALYZE: '/api/rainbow/analyze',
   RAINBOW_CASES_BY_COLOR: '/api/rainbow/cases-by-color',

@@ -63,24 +63,17 @@ async def analyze_rainbow():
         HTTPException: 404 если детальный отчет не загружен в систему
         HTTPException: 500 при возникновении ошибок обработки данных
     """
-    # Проверка наличия загруженного отчета выполняется первым делом
+    # Проверка наличия загруженного отчета
     if not current_files["current_detailed_report"]:
         raise HTTPException(status_code=404, detail="Текущий детальный отчет не загружен")
 
     try:
-        print("\n🌈 ЗАПУСК ПОЛНОЙ ПОДГОТОВКИ ДАННЫХ РАДУГИ")
-        print("=" * 45)
-
-        # Этап 1: Загрузка и очистка данных выполняется через менеджер данных
+       # Этап 1: Загрузка и очистка данных выполняется через менеджер данных
         detailed_df = data_manager.load_detailed_report(
             current_files["current_detailed_report"]
         )
-        print(f"✅ cleaned_data загружен: {len(detailed_df)} строк")
-
         # Этап 2: Создание derived данных цветовой классификации
         derived_df = RainbowClassifier.create_derived_rainbow(detailed_df)
-
-        # Валидация derived данных выполняется для обеспечения целостности
         if derived_df is None or derived_df.empty:
             print("❌ ОШИБКА: derived_rainbow не создан или пуст")
             raise HTTPException(
@@ -90,12 +83,9 @@ async def analyze_rainbow():
 
         # Сохранение derived данных в менеджер обеспечивает их доступность
         data_manager._derived_data["detailed_rainbow"] = derived_df
-        print(f"✅ derived_rainbow создан и сохранен: {len(derived_df)} строк")
 
         # Этап 3: Создание cached данных для быстрой фильтрации по цветам
         cached_df = RainbowClassifier.build_colored_cache(detailed_df, derived_df)
-
-        # Валидация cached данных гарантирует корректность работы фильтрации
         if cached_df is None or cached_df.empty:
             print("❌ ОШИБКА: colored_cache не создан или пуст")
             raise HTTPException(
@@ -103,12 +93,8 @@ async def analyze_rainbow():
                 detail="Не удалось создать кэшированные данные для фильтрации"
             )
 
-        # Сохранение cached данных в менеджер обеспечивает работу эндпоинтов фильтрации
+        # Сохранение cached данных в менеджер
         data_manager._cached_data["detailed_colored"] = cached_df
-        print(f"✅ colored_cache создан и сохранен: {len(cached_df)} строк")
-
-        # Завершающее сообщение фиксирует успешное выполнение всех этапов
-        print("✅ ВСЕ ДАННЫЕ РАДУГИ ПОДГОТОВЛЕНЫ И СОХРАНЕНЫ")
 
         return {
             "success": True,
@@ -118,7 +104,6 @@ async def analyze_rainbow():
         }
 
     except HTTPException:
-        # Передача HTTPException без изменений обеспечивает корректную работу FastAPI
         raise
     except Exception as e:
         print(f"❌ ОШИБКА ПОДГОТОВКИ ДАННЫХ РАДУГИ: {str(e)}")
@@ -164,17 +149,6 @@ async def fill_diagram(
         HTTPException: 500 при возникновении ошибок расчета статистики
     """
     try:
-        print("\n📊 ЗАПРОС ДАННЫХ ДЛЯ ПОСТРОЕНИЯ ДИАГРАММЫ (с colored_cache)")
-        print("=" * 50)
-
-        # Логирование полученных фильтров выполняется для отладки
-        if filters:
-            print(f"🔍 ПОЛУЧЕНЫ ФИЛЬТРЫ ({len(filters)}):")
-            for key, value in filters.items():
-                print(f"   {key}: {value}")
-        else:
-            print("📋 ФИЛЬТРЫ НЕ ПЕРЕДАНЫ - возвращаем общую статистику")
-
         # Получение данных с цветовой классификацией из кэша
         working_df = data_manager.get_colored_data("detailed")
 
@@ -185,55 +159,31 @@ async def fill_diagram(
                 detail="Данные радуги не подготовлены. Сначала вызовите /api/rainbow/analyze"
             )
 
-        print(f"✅ Исходные данные из colored_cache: {len(working_df)} строк, {len(working_df.columns)} колонок")
-
         # Применение фильтров к данным
         if filters and isinstance(filters, dict):
             filtered_df = working_df.copy()
             filters_applied = 0
 
-            # Маппинг названий полей формы на имена колонок DataFrame
-            column_mapping = {
-                "responsibleExecutor": "responsibleExecutor",
-                "gosb": "gosb",
-                "courtReviewingCase": "courtReviewingCase",
-                "courtProtectionMethod": "courtProtectionMethod",
-                "caseStatus": "caseStatus",
-                "currentPeriodColor": "currentPeriodColor",
-                "previousPeriodColor": "previousPeriodColor",
-                "caseCode": "caseCode"
-            }
-
             # Последовательное применение фильтров к DataFrame
             for field_name, filter_value in filters.items():
-                column_name = column_mapping.get(field_name, field_name)
-
                 if (filter_value and isinstance(filter_value, str) and
-                        column_name in filtered_df.columns):
-
-                    print(f"  → Применяем фильтр: {column_name} = '{filter_value}'")
-
+                        field_name in filtered_df.columns):
                     try:
                         # Фильтрация выполняется путем сравнения строковых значений
-                        mask = filtered_df[column_name].astype(str).str.strip() == str(filter_value).strip()
+                        mask = filtered_df[field_name].astype(str).str.strip() == str(filter_value).strip()
                         filtered_df = filtered_df[mask]
                         filters_applied += 1
-
-                        print(f"     Осталось строк: {len(filtered_df)}")
                     except Exception as filter_error:
-                        print(f"  ⚠️ Ошибка применения фильтра {column_name}: {filter_error}")
+                        print(f"  ⚠️ Ошибка применения фильтра {field_name}: {filter_error}")
                         continue
 
             if filters_applied > 0:
-                print(f"✅ После фильтрации: {len(filtered_df)} из {len(working_df)} дел")
                 working_df = filtered_df
                 filtered = True
             else:
-                print("ℹ️ Фильтры переданы, но не применены (неверные поля/значения)")
                 filtered = False
         else:
             filtered = False
-            print(f"✅ Без фильтров: {len(working_df)} дел")
 
         # Определение порядка цветов для диаграммы
         color_order = list(COLOR_MAPPING.values())
@@ -260,7 +210,7 @@ async def fill_diagram(
             # Правило 2: Цвет в английском коде
             elif color_str in COLOR_MAPPING:
                 russian_color = COLOR_MAPPING[color_str]
-            # Правило 3: Поиск по частичному совпадению
+            # Правило 3: Поиск по полному совпадению без учёта регистра
             else:
                 for eng, rus in COLOR_MAPPING.items():
                     if color_str.lower() == eng.lower() or color_str.lower() == rus.lower():
@@ -277,11 +227,11 @@ async def fill_diagram(
             else:
                 color_stats[russian_color] = 1
 
-        # Заполнение массива данных диаграммы в стандартном порядке
+        # Заполнение массива данных диаграммы
         for i, color_name in enumerate(color_order):
             chart_data[i] = color_stats.get(color_name, 0)
 
-        # Логирование неизвестных цветов выполняется для отладки
+        # Логирование неизвестных цветов
         if unknown_colors:
             print(f"⚠️ Найдены неизвестные значения цветов: {list(unknown_colors)[:5]}")
 
@@ -300,9 +250,6 @@ async def fill_diagram(
 
         if filtered and filters:
             response_data["filters"] = filters
-
-        print(f"📈 РАСЧЕТ ЗАВЕРШЕН: {total_cases} дел, {sum(chart_data)} классифицировано")
-        print("=" * 50)
 
         return response_data
 

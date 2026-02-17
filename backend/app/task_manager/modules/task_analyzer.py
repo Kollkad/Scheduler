@@ -1,7 +1,7 @@
 import pandas as pd
 from typing import List, Dict, Any
 from datetime import datetime
-import math  # Добавлен импорт math
+import math
 
 from backend.app.common.config.column_names import COLUMNS, VALUES
 from backend.app.common.config.task_mappings import TASK_MAPPINGS
@@ -71,8 +71,6 @@ class TaskAnalyzer:
         column_collector = ColumnCollector()
         detailed_cols, documents_cols = column_collector.collect_from_mappings(TASK_MAPPINGS)
 
-        print(f"📋 Собраны колонки для обогащения: detailed={len(detailed_cols)}, documents={len(documents_cols)}")
-
         # ШАГ 2: Получить исходные данные
         lawsuit_staged = data_manager.get_processed_data("lawsuit_staged")
         order_staged = data_manager.get_processed_data("order_staged")
@@ -115,19 +113,16 @@ class TaskAnalyzer:
 
         # ШАГ 4: Анализ с обогащенными данными
         if lawsuit_enriched is not None:
-            print("✅ Анализ задач искового производства...")
             lawsuit_tasks = self._analyze_lawsuit_tasks(lawsuit_enriched)
             all_tasks.extend(lawsuit_tasks)
             print(f"✅ Сформировано {len(lawsuit_tasks)} задач искового производства")
 
         if order_enriched is not None:
-            print("✅ Анализ задач приказного производства...")
             order_tasks = self._analyze_order_tasks(order_enriched)
             all_tasks.extend(order_tasks)
             print(f"✅ Сформировано {len(order_tasks)} задач приказного производства")
 
         if documents_enriched is not None:
-            print("✅ Анализ задач по документам...")
             document_tasks = self._analyze_document_tasks(documents_enriched, documents_cleaned)
             all_tasks.extend(document_tasks)
             print(f"✅ Сформировано {len(document_tasks)} задач по документам")
@@ -136,8 +131,6 @@ class TaskAnalyzer:
         if all_tasks:
             tasks_df = pd.DataFrame(all_tasks)
             data_manager.set_processed_data("tasks", tasks_df)
-
-        print(f"✅ Всего сформировано {len(all_tasks)} задач")
         self.tasks = all_tasks
         return all_tasks
 
@@ -200,8 +193,6 @@ class TaskAnalyzer:
                 right_on=right_key,
                 how='left'
             )
-
-            print(f"✅ Обогащены {source_type} данные: {len(available_columns)} колонок")
             return enriched_df
 
         except Exception as e:

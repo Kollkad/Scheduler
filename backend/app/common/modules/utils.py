@@ -12,7 +12,7 @@
 
 import gc
 import math
-from typing import Any
+from typing import Any, List
 import pandas as pd
 from backend.app.common.config.column_names import COLUMNS, VALUES
 
@@ -224,3 +224,32 @@ def filter_production_cases(df: pd.DataFrame, production_type: str) -> pd.DataFr
 
     else:
         raise ValueError(f"Неизвестный тип производства: {production_type}")
+
+def extract_unique_values(df: pd.DataFrame, column_key: str) -> List[str]:
+    """
+    Безопасно извлекает уникальные строковые значения из указанной колонки DataFrame.
+
+    Args:
+        df: DataFrame с данными
+        column_key: Ключ для поиска названия колонки в конфиге (например, 'CASE_CODE')
+
+    Returns:
+        List[str]: Список уникальных строковых значений, очищенных от пустых/неопределённых.
+    """
+    from backend.app.common.config.column_names import COLUMNS
+
+    # Есть ли ключ и колонка
+    if column_key not in COLUMNS:
+        return []
+    col_name = COLUMNS[column_key]
+    if col_name not in df.columns:
+        return []
+
+    unique_values = set()
+    for value in df[col_name].dropna().unique():
+        # Используется extract_value для безопасного преобразования в строку
+        str_val = extract_value(value)
+        # не должно быть значение по умолчанию "Не указано" (если extract_value его вернула)
+        if str_val != "Не указано":
+            unique_values.add(str_val)
+    return list(unique_values)

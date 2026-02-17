@@ -108,10 +108,7 @@ async def apply_filters(filters: Dict[str, Any] = Body(...)):
         filtered_df = df.copy()
         for field_name, filter_value in filters.items():
             if filter_value and field_name in filtered_df.columns:
-                print(f"🔍 Фильтруем {field_name} по значению: {filter_value}")
                 filtered_df = filtered_df[filtered_df[field_name] == filter_value]
-
-        print(f"✅ После фильтрации осталось {len(filtered_df)} записей")
 
         # Очистка DataFrame от дубликатов колонок
         if filtered_df.columns.duplicated().any():

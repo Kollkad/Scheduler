@@ -16,6 +16,7 @@ from backend.app.document_monitoring_v2.routes.document_terms_v2 import router a
 from backend.app.terms_of_support_v2.routes.terms_v2 import router as terms_v2_router
 from backend.app.saving_results.routes.saving import router as saving_router
 from backend.app.additional_processing.routes.anonymization import router as additional_processing_router
+from backend.app.common.routes.search import router as search_router
 
 logger = logging.getLogger("uvicorn")
 
@@ -48,6 +49,7 @@ app.include_router(document_router)
 app.include_router(terms_v2_router)
 app.include_router(saving_router)
 app.include_router(additional_processing_router)
+app.include_router(search_router)
 
 @app.get("/")
 async def root():

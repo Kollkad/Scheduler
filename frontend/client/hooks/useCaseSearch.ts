@@ -1,91 +1,77 @@
 // src/hooks/useCaseSearch.ts
-import { useState, useMemo } from 'react';
-import { useAnalysis } from '@/contexts/AnalysisContext';
+import { useState, useEffect, useRef } from 'react';
+import { apiClient } from '@/services/api/client';
+import { API_ENDPOINTS } from '@/services/api/endpoints';
+
+interface SearchResponse {
+  success: boolean;
+  results: Array<{ caseCode: string; source: string }>;
+  total: number;
+}
+
+// Кэш запросов в памяти
+const searchCache = new Map<string, string[]>();
 
 export function useCaseSearch() {
   const [searchTerm, setSearchTerm] = useState('');
-  const { 
-    rainbowResult, 
-    documentsResult, 
-    termsV2LawsuitResult,
-    termsV2OrderResult 
-  } = useAnalysis();
+  const [searchResults, setSearchResults] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout>();
 
-  // Хук собирает все коды дел из различных источников анализа данных
-  const allCaseCodes = useMemo(() => {
-    const codes = new Set<string>();
-    
-    // Функция извлекает коды дел из данных различных форматов
-    const extractCaseCodes = (data: any): string[] => {
-      if (!data) return [];
-      
-      // Обработка данных в формате массива
-      if (Array.isArray(data)) {
-        return data
-          .map((item: any) => item.case_code || item.caseCode || '')
-          .filter(Boolean);
+  useEffect(() => {
+    // Очистка предыдущего таймера
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    // Пустой поиск
+    if (!searchTerm.trim()) {
+      setSearchResults([]);
+      setIsLoading(false);
+      return;
+    }
+
+    // Проверка кэша
+    const cached = searchCache.get(searchTerm);
+    if (cached) {
+      setSearchResults(cached);
+      setIsLoading(false);
+      return;
+    }
+
+    // Debounced запрос
+    setIsLoading(true);
+    timeoutRef.current = setTimeout(async () => {
+      try {
+        const response = await apiClient.get<SearchResponse>(
+          `${API_ENDPOINTS.SEARCH_CASES}?q=${encodeURIComponent(searchTerm)}&limit=20`
+        );
+        
+        if (response.success) {
+          const codes = response.results.map(r => r.caseCode);
+          searchCache.set(searchTerm, codes);
+          setSearchResults(codes);
+        }
+      } catch (error) {
+        console.error('Ошибка поиска:', error);
+        setSearchResults([]);
+      } finally {
+        setIsLoading(false);
       }
-      
-      // Обработка данных с полем cases
-      if (data.cases && Array.isArray(data.cases)) {
-        return data.cases
-          .map((item: any) => item.case_code || item.caseCode || '')
-          .filter(Boolean);
+    }, 400);
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
       }
-      
-      // Обработка данных с полем data
-      if (data.data && Array.isArray(data.data)) {
-        return data.data
-          .map((item: any) => item.case_code || item.caseCode || '')
-          .filter(Boolean);
-      }
-      
-      // Логирование для отладки неизвестных форматов данных
-      console.log('Unknown data format:', data);
-      return [];
     };
-
-    // Извлечение кодов из анализа Rainbow
-    if (rainbowResult?.success) {
-      const rainbowCodes = extractCaseCodes(rainbowResult.data);
-      rainbowCodes.forEach(code => codes.add(code));
-    }
-    
-    // Извлечение кодов из анализа документов
-    if (documentsResult?.success) {
-      const documentsCodes = extractCaseCodes(documentsResult.data);
-      documentsCodes.forEach(code => codes.add(code));
-    }
-    
-    // Извлечение кодов из анализа искового производства
-    if (termsV2LawsuitResult?.success) {
-      const lawsuitCodes = extractCaseCodes(termsV2LawsuitResult.data);
-      lawsuitCodes.forEach(code => codes.add(code));
-    }
-    
-    // Извлечение кодов из анализа приказного производства
-    if (termsV2OrderResult?.success) {
-      const orderCodes = extractCaseCodes(termsV2OrderResult.data);
-      orderCodes.forEach(code => codes.add(code));
-    }
-    
-    console.log('Available case codes:', Array.from(codes));
-    return Array.from(codes).sort();
-  }, [rainbowResult, documentsResult, termsV2LawsuitResult, termsV2OrderResult]);
-
-  // Поиск кодов дел с частичным совпадением по введенному термину
-  const searchResults = useMemo(() => {
-    if (!searchTerm.trim()) return [];
-    
-    return allCaseCodes.filter(code =>
-      code.toLowerCase().includes(searchTerm.toLowerCase())
-    ).slice(0, 20); // Ограничение количества результатов для производительности
-  }, [searchTerm, allCaseCodes]);
+  }, [searchTerm]);
 
   return {
     searchTerm,
     setSearchTerm,
     searchResults,
-    hasResults: searchResults.length > 0
+    hasResults: searchResults.length > 0,
+    isLoading
   };
 }
