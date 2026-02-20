@@ -1,4 +1,4 @@
-// services/api/endpoints.ts
+// client\services\api\endpoints.ts
 export const API_ENDPOINTS = {
   // ==================== SEARCH ====================
   SEARCH_CASES: '/api/search/cases',
@@ -34,9 +34,9 @@ export const API_ENDPOINTS = {
   TASK_DETAILS: '/api/tasks',
 
   // ==================== FILE OPERATIONS ====================
-  UPLOAD_FILE: '/upload-file',
-  FILES_STATUS: '/files-status',
-  REMOVE_FILE: '/remove-file',
+  UPLOAD_FILE: '/api/upload-file',
+  FILES_STATUS: '/api/files-status',
+  REMOVE_FILE: '/api/remove-file',
 
   // ==================== TABLE SORTER & FILTERS ====================
   UNIQUE_VALUES: '/api/table-sorter/unique-values',
@@ -68,7 +68,7 @@ export const API_ENDPOINTS = {
   DEPERSONALIZATION_CLEAR_TEMP_DATA: '/api/additional_processing/clear_temp_data',
 
   // ==================== RESET ====================
-  RESET_ANALYSIS: '/reset-analysis',
+  RESET_ANALYSIS: '/api/reset-analysis',
 
   // ==================== УСТАРЕВШИЕ (НЕ ИСПОЛЬЗОВАТЬ) ====================
   // TERMS_LAWSUIT_ANALYZE: '/api/terms/lawsuit/analyze_l', // УСТАРЕЛО - использовать TERMS_V2_LAWSUIT_ANALYZE

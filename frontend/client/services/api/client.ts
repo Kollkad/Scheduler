@@ -1,5 +1,11 @@
-// services/api/client.ts
-const API_BASE_URL = 'http://localhost:8000';
+// client\services\api\client.ts
+import { 
+  FilesStatusResponse, 
+  StatusResponse, 
+  UploadResponse,
+  RemoveResponse 
+} from './types';
+import { API_ENDPOINTS } from './endpoints';
 
 export class ApiClient {
   private static instance: ApiClient;
@@ -13,7 +19,7 @@ export class ApiClient {
 
   // Метод выполняет GET запрос к указанному endpoint с опциональными параметрами
   async get<T>(endpoint: string, options?: { params?: Record<string, string> }): Promise<T> {
-    let url = `${API_BASE_URL}${endpoint}`;
+    let url = endpoint;
     // Добавление параметров запроса к URL если они предоставлены
     if (options?.params) {
       const params = new URLSearchParams();
@@ -36,7 +42,7 @@ export class ApiClient {
 
   // Метод выполняет POST запрос к указанному endpoint с опциональным телом запроса
   async post<T>(endpoint: string, body?: any): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -51,9 +57,24 @@ export class ApiClient {
     return await response.json();
   }
 
-  // Метод для файлов
+  // Метод для загрузки файлов (FormData)
+  async uploadFile(endpoint: string, formData: FormData): Promise<UploadResponse> {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Ошибка загрузки: ${response.statusText}`);
+    }
+    
+    return await response.json();
+  }
+
+  // Метод для файлов (скачивание)
   async downloadFile(endpoint: string, params?: Record<string, string>): Promise<Blob> {
-    let url = `${API_BASE_URL}${endpoint}`;
+    let url = endpoint;
     
     if (params) {
       const searchParams = new URLSearchParams(params);
@@ -71,6 +92,33 @@ export class ApiClient {
     }
     
     return await response.blob();
+  }
+
+  // Удаление
+  async delete<T>(endpoint: string): Promise<T> {
+    const response = await fetch(endpoint, {
+      method: 'DELETE',
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
+  }
+
+  // ==================== СПЕЦИАЛИЗИРОВАННЫЕ МЕТОДЫ ====================
+
+  async getFilesStatus(): Promise<FilesStatusResponse> {
+    return this.get<FilesStatusResponse>(API_ENDPOINTS.FILES_STATUS);
+  }
+
+  async getAllProcessedDataStatus(): Promise<StatusResponse> {
+    return this.get<StatusResponse>(API_ENDPOINTS.SAVE_ALL_PROCESSED_DATA_STATUS);
+  }
+
+  async removeFile(fileType: string): Promise<RemoveResponse> {
+    return this.delete<RemoveResponse>(`${API_ENDPOINTS.REMOVE_FILE}?file_type=${fileType}`);
   }
 }
 

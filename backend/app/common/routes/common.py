@@ -15,11 +15,9 @@ import shutil
 import os
 import pandas as pd
 from typing import Dict, Optional
-from backend.app.table_sorter.routes.filters import router as filters_router
 from ..modules.data_manager import data_manager
 
-router = APIRouter(tags=["common"])
-router.include_router(filters_router)
+router = APIRouter(prefix="/api", tags=["common"])
 
 # Глобальное состояние для хранения путей к загруженным файлам
 current_files: Dict[str, Optional[str]] = {

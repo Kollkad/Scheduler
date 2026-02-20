@@ -13,9 +13,9 @@ import pandas as pd
 from fastapi import APIRouter, HTTPException, Body, Query
 from backend.app.table_sorter.modules.filter_manager import filter_settings
 
-router = APIRouter(tags=["filters"])
+router = APIRouter(prefix="/api", tags=["filters"])
 
-@router.get("/api/filter-options")
+@router.get("/filter-options")
 async def get_filter_options(columns: List[str] = Query(None)):
     """
     Возвращает уникальные значения для указанных колонок.
@@ -46,7 +46,7 @@ async def get_filter_options(columns: List[str] = Query(None)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/api/filters/metadata")
+@router.get("/filters/metadata")
 async def get_filters_metadata():
     """
     Возвращает метаинформацию о доступных фильтрах.
@@ -79,7 +79,7 @@ async def get_filters_metadata():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/api/filter/apply")
+@router.post("/filter/apply")
 async def apply_filters(filters: Dict[str, Any] = Body(...)):
     """
     Применяет фильтры к данным и возвращает отфильтрованные результаты.

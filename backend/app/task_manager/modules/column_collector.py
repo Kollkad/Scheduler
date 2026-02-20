@@ -1,3 +1,4 @@
+# backend/app/task_manager/modules/column_collector.py
 """
 Модуль для сбора необходимых колонок из конфигурации задач.
 
@@ -6,7 +7,7 @@ ColumnCollector анализирует TASK_MAPPINGS и определяет,
 """
 
 from typing import Set, Tuple, List
-from backend.app.common.config.task_mappings import TASK_MAPPINGS
+from backend.app.task_manager.config.task_mappings import TASK_MAPPINGS
 class ColumnCollector:
     """
     Сборщик необходимых колонок из конфигурации задач.

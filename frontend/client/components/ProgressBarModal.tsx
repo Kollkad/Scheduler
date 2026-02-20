@@ -1,4 +1,4 @@
-// ProgressBarModal.tsx
+// client\components\ProgressBarModal.tsx
 import { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { useAnalysis } from "@/contexts/AnalysisContext";
@@ -114,11 +114,6 @@ export function ProgressBarModal({ isOpen, onClose }: ProgressBarModalProps) {
             </p>
           </div>
         )}
-
-        {/* Информация о подключении */}
-        <div className="mt-4 text-xs text-gray-500 text-center">
-          Подключение к: http://localhost:8000
-        </div>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
-// services/saving/SavingService.ts
+//client\services\saving\SavingService.ts
 import { apiClient } from '../api/client';
+import { StatusResponse } from '../api/types';
 
 // Типы данных, доступные для сохранения в системе
 export type SaveDataType = 
@@ -23,13 +24,7 @@ export class SavingService {
 
   // Метод сохраняет данные указанного типа и возвращает blob с результатом
   async saveData(type: SaveDataType): Promise<Blob> {
-    const response = await fetch(`http://localhost:8000/api/save/${type}`);
-    
-    if (!response.ok) {
-      throw new Error(`Ошибка сохранения: ${response.statusText}`);
-    }
-    
-    return await response.blob();
+    return await apiClient.downloadFile(`/api/save/${type}`);
   }
 
   // Метод получает статус доступных данных для сохранения
@@ -38,8 +33,8 @@ export class SavingService {
   }
 
   // Метод получает статус всех обработанных данных в системе
-  async getAllProcessedDataStatus() {
-    return await apiClient.get('/api/save/all-processed-data');
+  async getAllProcessedDataStatus(): Promise<StatusResponse> {
+    return await apiClient.get<StatusResponse>('/api/save/all-processed-data');
   }
 }
 

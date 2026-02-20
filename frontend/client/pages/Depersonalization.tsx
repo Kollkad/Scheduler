@@ -1,7 +1,10 @@
+//client/pages/Depersonalization.tsx
 import { useState, useRef } from "react";
 import { PageContainer } from "@/components/PageContainer";
 import { Button } from "@/components/ui/button";
 import { X, Loader2 } from "lucide-react";
+import { apiClient } from "@/services/api/client";
+import { API_ENDPOINTS } from "@/services/api/endpoints";
 
 type ReportType = "detailed_report" | "documents_report";
 
@@ -73,13 +76,10 @@ export default function Depersonalization() {
       formData.append('file', selectedFile);
       formData.append('report_type', reportType);
       
-      const response = await fetch(
-        `http://localhost:8000/api/additional_processing/load_report`,
-        {
-          method: 'POST',
-          body: formData,
-        }
-      );
+      const response = await fetch(API_ENDPOINTS.DEPERSONALIZATION_LOAD_REPORT, {
+        method: 'POST',
+        body: formData,
+      });
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -173,13 +173,10 @@ export default function Depersonalization() {
       formData.append('config_json', JSON.stringify(activeRules));
       formData.append('use_default_rules', 'true');
       
-      const response = await fetch(
-        `http://localhost:8000/api/additional_processing/anonymize`,
-        {
-          method: 'POST',
-          body: formData,
-        }
-      );
+      const response = await fetch(API_ENDPOINTS.DEPERSONALIZATION_ANONYMIZE, {
+        method: 'POST',
+        body: formData,
+      });
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -189,25 +186,20 @@ export default function Depersonalization() {
       const result = await response.json();
       
       if (result.success) {
-        const downloadResponse = await fetch(
-          `http://localhost:8000/api/additional_processing/download_anonymized?report_type=${reportType}`
+        const blob = await apiClient.downloadFile(
+          `${API_ENDPOINTS.DEPERSONALIZATION_DOWNLOAD}?report_type=${reportType}`
         );
         
-        if (downloadResponse.ok) {
-          const blob = await downloadResponse.blob();
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `${selectedFile?.name.replace('.xlsx', '')}_anonymized.xlsx`;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          window.URL.revokeObjectURL(url);
-          
-          alert(`Обезличивание завершено! Применено правил: ${result.total_rules_applied}`);
-        } else {
-          throw new Error("Ошибка скачивания файла");
-        }
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${selectedFile?.name.replace('.xlsx', '')}_anonymized.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        
+        alert(`Обезличивание завершено! Применено правил: ${result.total_rules_applied}`);
       }
       
     } catch (error) {

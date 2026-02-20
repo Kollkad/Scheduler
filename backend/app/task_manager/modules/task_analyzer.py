@@ -3,10 +3,11 @@ from typing import List, Dict, Any
 from datetime import datetime
 import math
 
-from backend.app.common.config.column_names import COLUMNS, VALUES
-from backend.app.common.config.task_mappings import TASK_MAPPINGS
+from backend.app.common.config.column_names import COLUMNS
+from backend.app.task_manager.config.task_mappings import TASK_MAPPINGS
 from backend.app.common.config.check_display_names import CHECK_DISPLAY_NAMES
-from backend.app.task_manager.modules.column_collector import ColumnCollector
+
+
 class TaskAnalyzer:
     """
     Анализатор для формирования задач на основе данных мониторинга.
@@ -420,8 +421,6 @@ class TaskAnalyzer:
                 responsible_executor = matching_rows[COLUMNS["RESPONSIBLE_EXECUTOR"]].iloc[0]
                 if pd.isna(responsible_executor) or responsible_executor == "":
                     responsible_executor = "unknown"
-
-        reason_text = task_config.get("reason_text", "Причина не указана")
 
         return {
             "taskCode": self._generate_task_code(),

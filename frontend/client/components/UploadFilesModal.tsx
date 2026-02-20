@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { useAnalysis } from "@/contexts/AnalysisContext";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { featureFlags } from '@/config/featureFlags';
+import { apiClient } from "@/services/api/client";
+import { FilesStatusResponse } from "@/services/api/types";
 
 type ModalKey = "currentReport" | "documentsReport" | "previousReport";
 
@@ -108,18 +110,7 @@ export function UploadFilesModal({
       const formData = new FormData();
       formData.append('file', file);
 
-      const uploadUrl = `http://localhost:8000${API_ENDPOINTS.UPLOAD_FILE}?file_type=${backendFileType}`;
-      const response = await fetch(uploadUrl, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Ошибка загрузки: ${response.statusText}`);
-      }
-
-      await response.json();
+      await apiClient.uploadFile(`${API_ENDPOINTS.UPLOAD_FILE}?file_type=${backendFileType}`, formData);
       setLocalFiles(prev => ({
         ...prev,
         [fileType]: { ...prev[fileType], loading: false, error: null }
@@ -145,19 +136,14 @@ export function UploadFilesModal({
   };
 
   // Функция проверяет статус файлов на сервере
-  const checkFilesStatus = async () => {
-    try {
-      const response = await fetch('http://localhost:8000/files-status');
-      if (!response.ok) {
-        throw new Error(`Ошибка проверки статуса: ${response.statusText}`);
-      }
-      const status = await response.json();
-      return status;
-    } catch (error) {
-      console.error('Ошибка проверки статуса файлов:', error);
-      throw error;
-    }
-  };
+  const checkFilesStatus = async (): Promise<FilesStatusResponse> => {
+  try {
+    return await apiClient.getFilesStatus();
+  } catch (error) {
+    console.error('Ошибка проверки статуса файлов:', error);
+    throw error;
+  }
+};
 
   // Функция запускает расчет после проверки файлов
   const handleCalculate = async () => {
@@ -184,10 +170,8 @@ export function UploadFilesModal({
   const handleRemove = async (fileType: ModalKey) => {
     try {
       const backendKey = fileTypeToBackendKey[fileType];
-      const url = `http://localhost:8000/remove-file?file_type=${backendKey}`;
-      const resp = await fetch(url, { method: 'DELETE' });
-      if (!resp.ok) throw new Error('Ошибка удаления файла');
-
+      await apiClient.delete(`${API_ENDPOINTS.REMOVE_FILE}?file_type=${backendKey}`);
+      
       setLocalFiles(prev => ({ ...prev, [fileType]: { name: '', loading: false, error: null } }));
       await refreshFilesStatus();
     } catch (err) {
@@ -445,11 +429,6 @@ export function UploadFilesModal({
             </Button>
           </div>
         )}
-
-        {/* Информация о подключении */}
-        <div className="mt-4 text-xs text-gray-500 text-center">
-          Подключение к: http://localhost:8000
-        </div>
       </div>
     </div>
   );

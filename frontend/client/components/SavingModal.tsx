@@ -1,43 +1,15 @@
-// SavingModal.tsx
+// client\components\SavingModal.tsx
 import { useState, useEffect, useRef } from "react";
 import { X, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { savingService, SaveDataType } from "@/services/saving/SavingService";
 import { SmartSelect } from "@/components/sorter/SmartSelect";
 import { SelectOption } from "@/components/sorter/SorterTypes";
+import { AvailableDataStatus, StatusResponse } from "@/services/api/types";
 
 interface SavingModalProps {
   isOpen: boolean;
   onClose: () => void;
-}
-
-interface AvailableDataStatus {
-  detailed_report: {
-    loaded: boolean;
-    row_count: number;
-  };
-  documents_report: {
-    loaded: boolean;
-    row_count: number;
-  };
-  terms_productions: {
-    loaded: boolean;
-    row_count: number;
-  };
-  documents_analysis: {
-    loaded: boolean;
-    row_count: number;
-  };
-  tasks: {
-    loaded: boolean;
-    row_count: number;
-  };
-}
-
-interface StatusResponse {
-  success: boolean;
-  status: AvailableDataStatus;
-  message: string;
 }
 
 export function SavingModal({ isOpen, onClose }: SavingModalProps) {
@@ -307,11 +279,6 @@ export function SavingModal({ isOpen, onClose }: SavingModalProps) {
             </p>
           </div>
         )}
-
-        {/* Информация о подключении */}
-        <div className="mt-4 text-xs text-gray-500 text-center">
-          Подключение к: http://localhost:8000
-        </div>
       </div>
     </div>
   );
