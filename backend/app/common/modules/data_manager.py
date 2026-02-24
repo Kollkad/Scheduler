@@ -19,6 +19,7 @@ from backend.app.common.modules.data_clean_detailed import clean_data as clean_d
 from backend.app.common.modules.data_clean_documents import clean_documents_data as clean_documents
 from backend.app.rainbow.modules.rainbow_classifier import RainbowClassifier
 from backend.app.common.config.column_names import COLUMNS
+from backend.app.common.modules.gosb_normalization import normalize_detailed_report
 
 class DataManager:
     """
@@ -85,11 +86,12 @@ class DataManager:
             cleaned_df[method_col] = cleaned_df[method_col].replace(
                 simplified_value, claim_value
             )
+        normalized_df = normalize_detailed_report(cleaned_df)
 
         self._raw_data["detailed_report"] = raw_df
-        self._cleaned_data["detailed_report"] = cleaned_df
+        self._cleaned_data["detailed_report"] = normalized_df
 
-        return cleaned_df
+        return normalized_df
 
     def load_documents_report(self, filepath: str) -> pd.DataFrame:
         """

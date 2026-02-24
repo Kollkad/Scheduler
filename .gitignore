@@ -53,3 +53,10 @@ dist-ssr/
 
 # Результаты автотестов
 /backend/app/data/auto_test/
+
+# Reports от нормализации
+/backend/app/data/reports/*
+!/backend/app/data/reports/.gitkeep
+
+# Releases
+/project_scripts/releases/

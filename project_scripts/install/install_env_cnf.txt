@@ -1,0 +1,11 @@
+# Настройки для SBEROSC
+SBEROSC_TOKEN=токен
+SBEROSC_URL=sberosc.ca.sbrf.ru
+GITHUB_ORG=Kollkad
+GITHUB_PROJECT=Scheduler
+GITHUB_TAG=v0.1.0
+GITHUB_FILE=Scheduler.zip
+
+# Python
+PYTHON_PATH=
+INSTALL_DIR=C:\SchedulerTest
