@@ -7,6 +7,7 @@ import { TabsContainer } from "@/components/TabsContainer";
 import { FieldGroup } from "@/components/FieldGroup";
 import { CaseService, CaseDetails } from "@/services/case/caseService";
 import { Button } from "@/components/ui/button";
+import { CaseLifecycleTimeline } from "@/components/ui/CaseLifecycleTimeline";
 
 export function DynamicCaseDetail() {
   const navigate = useNavigate();
@@ -110,6 +111,13 @@ export function DynamicCaseDetail() {
           </p>
         )}
       </div>
+
+      {/* Таймлайн жизненного цикла дела */}
+      {caseData.caseStage && (
+        <div className="mb-8">
+          <CaseLifecycleTimeline caseStage={caseData.caseStage} />
+        </div>
+      )}
 
       {/* Динамические вкладки для отображения сгруппированных данных дела */}
       {tabs.length > 0 ? (

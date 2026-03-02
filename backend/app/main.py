@@ -22,6 +22,7 @@ from backend.app.saving_results.routes.saving import router as saving_router
 from backend.app.additional_processing.routes.anonymization import router as additional_processing_router
 from backend.app.common.routes.search import router as search_router
 from backend.app.table_sorter.routes.filters import router as filters_router
+from backend.app.administration_settings.routes.admin import router as admin_router
 
 logger = logging.getLogger("uvicorn")
 
@@ -53,12 +54,17 @@ app.include_router(terms_v2_router)
 app.include_router(saving_router)
 app.include_router(additional_processing_router)
 app.include_router(search_router)
+app.include_router(admin_router)
 
 # При наличии - используются статичные файлы фронта
 frontend_path = Path(__file__).parent.parent.parent / "frontend" / "dist" / "spa"
 if frontend_path.exists():
     # Файлы из assets
     app.mount("/assets", StaticFiles(directory=str(frontend_path / "assets")), name="assets")
+    # Отдача конкретных файлов из корня
+    @app.get("/logo-icon.png")
+    async def get_logo():
+        return FileResponse(frontend_path / "logo-icon.png")
     # Для всех остальных путей index.html
     @app.get("/{full_path:path}")
     async def serve_frontend(full_path: str):

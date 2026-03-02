@@ -16,6 +16,7 @@ export interface CaseDetails {
   fieldGroups: Record<string, CaseField[]>;
   totalFields: number;
   foundInColumn?: string;
+  caseStage?: string;
 }
 
 export interface DocumentDetails {

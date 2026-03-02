@@ -16,6 +16,7 @@ from fastapi import APIRouter, HTTPException
 from typing import Dict, Any, List
 import pandas as pd
 from backend.app.common.config.column_names import COLUMNS, VALUES
+from backend.app.common.modules.data_manager import data_manager
 
 router = APIRouter(prefix="/api/case", tags=["case"])
 
@@ -36,6 +37,7 @@ async def get_case_details(case_code: str):
             "fieldGroups": dict,
             "totalFields": int,
             "foundInColumn": str
+            "caseStage":str
         }
 
     Raises:
@@ -43,15 +45,13 @@ async def get_case_details(case_code: str):
         HTTPException: 500 при внутренней ошибке сервера
     """
     try:
-        from backend.app.common.modules.data_manager import data_manager
-
-        # Получение оригинальных очищенных данных через data_manager
+        # 1. Получаем данные дела из cleaned_data
         df = data_manager.get_detailed_data()
         if df is None or df.empty:
             raise HTTPException(status_code=404, detail="Данные не загружены")
 
         # Список колонок для поиска кода дела
-        case_columns_to_check = [COLUMNS["CASE_CODE"], 'Код дела', 'Номер дела', 'Судебный номер дела']
+        case_columns_to_check = [COLUMNS["CASE_CODE"], 'Код дела']
 
         case_data = None
         found_column = None
@@ -60,7 +60,6 @@ async def get_case_details(case_code: str):
         for column in case_columns_to_check:
             if column in df.columns:
                 try:
-                    # Безопасное сравнение с защитой от NA/NaN
                     mask = df[column].apply(lambda x: safe_compare(x, case_code))
                     case_row = df[mask]
 
@@ -75,12 +74,37 @@ async def get_case_details(case_code: str):
         if not case_data:
             raise HTTPException(status_code=404, detail=f"Дело {case_code} не найдено")
 
-        # Безопасное преобразование данных в корректные типы
+        # Безопасное преобразование данных
         safe_case_data = {}
         for key, value in case_data.items():
             safe_case_data[key] = safe_convert_value(value)
 
-        # Группировка полей по категориям для структурированного отображения
+        # 2. Определяется тип производства и берется caseStage
+        caseStage = None
+
+        method_of_protection = safe_case_data.get(COLUMNS["METHOD_OF_PROTECTION"])
+
+        if method_of_protection:
+            # Исковое производство
+            if method_of_protection == "Исковое производство":
+                lawsuit_df = data_manager.get_processed_data("lawsuit_staged")
+                if lawsuit_df is not None and not lawsuit_df.empty:
+                    mask = lawsuit_df["caseCode"] == case_code
+                    if mask.any():
+                        caseStage = lawsuit_df.loc[mask, "caseStage"].iloc[0]
+
+            # Приказное производство
+            elif method_of_protection == "Приказное производство":
+                order_df = data_manager.get_processed_data("order_staged")
+                if order_df is not None and not order_df.empty:
+                    mask = order_df["caseCode"] == case_code
+                    if mask.any():
+                        caseStage = order_df.loc[mask, "caseStage"].iloc[0]
+
+        # Добавляется monitoringStatus в данные дела
+        safe_case_data["caseStage"] = caseStage
+
+        # 3. Группировка полей по категориям
         field_groups = group_fields_by_category(safe_case_data)
 
         return {
@@ -89,7 +113,8 @@ async def get_case_details(case_code: str):
             "data": safe_case_data,
             "fieldGroups": field_groups,
             "totalFields": len(safe_case_data),
-            "foundInColumn": found_column
+            "foundInColumn": found_column,
+            "caseStage": caseStage
         }
 
     except HTTPException:

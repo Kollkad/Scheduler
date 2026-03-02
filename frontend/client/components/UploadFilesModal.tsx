@@ -137,13 +137,13 @@ export function UploadFilesModal({
 
   // Функция проверяет статус файлов на сервере
   const checkFilesStatus = async (): Promise<FilesStatusResponse> => {
-  try {
-    return await apiClient.getFilesStatus();
-  } catch (error) {
-    console.error('Ошибка проверки статуса файлов:', error);
-    throw error;
-  }
-};
+    try {
+      return await apiClient.getFilesStatus();
+    } catch (error) {
+      console.error('Ошибка проверки статуса файлов:', error);
+      throw error;
+    }
+  };
 
   // Функция запускает расчет после проверки файлов
   const handleCalculate = async () => {

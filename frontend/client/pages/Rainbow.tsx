@@ -71,8 +71,7 @@ const generateCacheKey = (filters?: Record<string, string>): string => {
 
 export default function Rainbow() {
   const navigate = useNavigate();
-  const { isAnalyzing, dataUpdateTrigger } = useAnalysis();
-  const previousTriggerRef = useRef(dataUpdateTrigger);
+  const { isAnalyzing, rainbowTrigger } = useAnalysis();
   const [total, setTotal] = useState(0);
   const [rainbowData, setRainbowData] = useState<RainbowItem[]>([]);
   const { loadOptions } = useFilterOptions();
@@ -147,8 +146,7 @@ export default function Rainbow() {
           response.data, 
           rainbowChartConfig.items,
           response.colorLabels
-        );
-        
+        );        
         const totalCases = response.totalCases || 0;
         
         // Сохраняем в кэш
@@ -285,11 +283,8 @@ export default function Rainbow() {
 
   // Эффект для обновления после завершения анализа
   useEffect(() => {
-    if (dataUpdateTrigger === previousTriggerRef.current) return;
-    previousTriggerRef.current = dataUpdateTrigger;
-
     const refreshAfterAnalysis = async () => {
-      if (isAnalyzing) return;
+      if (isAnalyzing) return; // если анализ идет - не делаем запрос
       console.log('Обновление данных диаграммы Rainbow после анализа');
       const result = await loadDiagramData(currentFilters);
       if (result) {
@@ -300,7 +295,7 @@ export default function Rainbow() {
     };
 
     refreshAfterAnalysis();
-  }, [dataUpdateTrigger, isAnalyzing, currentFilters]);
+  }, [rainbowTrigger, isAnalyzing]);
 
   // Функция сброса фильтров и возврата к общей статистике
   const handleResetFilters = async () => {

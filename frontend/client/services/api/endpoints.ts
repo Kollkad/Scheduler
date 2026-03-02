@@ -1,5 +1,7 @@
 // client\services\api\endpoints.ts
 export const API_ENDPOINTS = {
+  // ==================== ACCESS ====================
+  ADMIN_STATUS: '/api/admin-status',
   // ==================== SEARCH ====================
   SEARCH_CASES: '/api/search/cases',
   

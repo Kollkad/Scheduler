@@ -36,8 +36,10 @@ interface AnalysisContextType {
   cancelAnalysis: () => void;
 
   //Обновление UI почле анализа
-  dataUpdateTrigger: number;
-  triggerDataUpdate: () => void;
+  rainbowTrigger: number;
+  termsTrigger: number;
+  triggerRainbowUpdate: () => void;
+  triggerTermsUpdate: () => void;
 }
 
 const AnalysisContext = createContext<AnalysisContextType | undefined>(undefined);
@@ -73,9 +75,15 @@ export const AnalysisProvider: React.FC<AnalysisProviderProps> = ({ children }) 
   const [unsubscribeProgress, setUnsubscribeProgress] = useState<(() => void) | null>(null);
 
   //Обновления
-  const [dataUpdateTrigger, setDataUpdateTrigger] = useState<number>(0);
-  const triggerDataUpdate = useCallback(() => {
-    setDataUpdateTrigger(prev => prev + 1);
+  const [rainbowTrigger, setRainbowTrigger] = useState<number>(0);
+  const [termsTrigger, setTermsTrigger] = useState<number>(0);
+
+  const triggerRainbowUpdate = useCallback(() => {
+    setRainbowTrigger(prev => prev + 1);
+  }, []);
+
+  const triggerTermsUpdate = useCallback(() => {
+    setTermsTrigger(prev => prev + 1);
   }, []);
 
   // Функция обновляет статус загруженных файлов
@@ -109,12 +117,37 @@ export const AnalysisProvider: React.FC<AnalysisProviderProps> = ({ children }) 
     });
   }, []);
 
+  // Функция очистки кэша графиков
+  const clearChartsCache = () => {
+    try {
+      const cacheKeys = [
+        'rainbow_diagram_cache',
+        'terms_lawsuit_charts_cache',
+        'terms_order_charts_cache',
+        'terms_documents_charts_cache'
+      ];
+      
+      cacheKeys.forEach(key => {
+        for (let i = 0; i < localStorage.length; i++) {
+          const storageKey = localStorage.key(i);
+          if (storageKey?.startsWith(key)) {
+            localStorage.removeItem(storageKey);
+          }
+        }
+      });
+      console.log('Кэш графиков очищен');
+    } catch (error) {
+      console.error('Ошибка очистки кэша:', error);
+    }
+  };
+
   // Основная функция запускает полный последовательный анализ всех модулей
   const runAnalysis = useCallback(async (): Promise<AnalysisStatus> => {
     try {
       setIsAnalyzing(true);
 
-      // Сброс предыдущих данных анализа на сервере
+      // Сброс предыдущих данных анализа на клиенте и сервере
+      clearChartsCache();
       try {
         console.log('Сбрасываем предыдущие данные анализа...');
         await apiClient.post(API_ENDPOINTS.RESET_ANALYSIS);
@@ -148,18 +181,30 @@ export const AnalysisProvider: React.FC<AnalysisProviderProps> = ({ children }) 
       for (const { type, name, weight } of analysisSequence) {
         setProgress({ currentTask: name, progress: currentProgress, totalTasks: analysisSequence.length });
         
-        // Выполняем анализ, но не сохраняем результат
+        // Выполняем анализ
         const result = await analysisService.runSingleAnalysis(type);
 
         // Обновление статуса выполнения
         if (result.success) {
           updateAnalysisStatus(type, true);
           console.log(`${name} - успешно завершен`);
+          if (type === 'rainbow') {
+            triggerRainbowUpdate();
+            console.log('✅ Триггер Rainbow обновлен');
+          }
+          if (type === 'terms-v2-lawsuit-charts' || type === 'terms-v2-order-charts') {
+            triggerTermsUpdate();
+            console.log('✅ Триггер Terms обновлен');
+          }
+          if (type === 'documents-charts') {
+            triggerTermsUpdate();
+            console.log('✅ Триггер Documents обновлен');
+          }
+          
         } else {
           updateAnalysisStatus(type, false, result.error);
           console.warn(`${name} - завершен с ошибкой: ${result.message}`);
         }
-
         currentProgress = weight;
       }
 
@@ -172,24 +217,6 @@ export const AnalysisProvider: React.FC<AnalysisProviderProps> = ({ children }) 
 
       setProgress({ currentTask: 'Анализ завершен', progress: 100, totalTasks: analysisSequence.length });
       setAnalysisStatus(finalStatus);
-
-      //графики сразу
-      try {
-        Promise.allSettled([
-          apiClient.get(API_ENDPOINTS.TERMS_V2_LAWSUIT_CHARTS),
-          apiClient.get(API_ENDPOINTS.TERMS_V2_ORDER_CHARTS),
-          apiClient.get(API_ENDPOINTS.DOCUMENTS_CHARTS),
-          apiClient.get(API_ENDPOINTS.RAINBOW_FILL_DIAGRAM)
-        ]).then(() => {
-          console.log('Графики предзагружены после анализа');
-        }).catch(err => {
-          console.warn('Ошибка предзагрузки графиков:', err);
-        });
-      } catch (e) {
-        // ошибки предзагрузки
-      }
-      setDataUpdateTrigger(prev => prev + 1);
-      
       // Обновление статуса файлов после завершения анализа
       await refreshFilesStatus();
 
@@ -253,8 +280,10 @@ export const AnalysisProvider: React.FC<AnalysisProviderProps> = ({ children }) 
     refreshFilesStatus,
     runAnalysis,
     cancelAnalysis,
-    dataUpdateTrigger,
-    triggerDataUpdate,
+    rainbowTrigger,
+    termsTrigger,
+    triggerRainbowUpdate,
+    triggerTermsUpdate,
   };
 
   return <AnalysisContext.Provider value={value}>{children}</AnalysisContext.Provider>;

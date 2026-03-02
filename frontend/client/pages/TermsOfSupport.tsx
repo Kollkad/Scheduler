@@ -72,8 +72,7 @@ export function TermsOfSupport() {
   const navigate = useNavigate();
   const isMounted = useRef(true);
   
-  const { isAnalyzing, dataUpdateTrigger } = useAnalysis();
-  const previousTriggerRef = useRef(dataUpdateTrigger);
+  const { isAnalyzing, termsTrigger } = useAnalysis();
 
   // Отслеживание монтирования компонента
   useEffect(() => {
@@ -269,14 +268,11 @@ export function TermsOfSupport() {
 
   // Эффект для обновления после завершения анализа
   useEffect(() => {
-    if (dataUpdateTrigger === previousTriggerRef.current) return;
-    previousTriggerRef.current = dataUpdateTrigger;
-
     const refreshAfterAnalysis = async () => {
       if (isAnalyzing) return;
       console.log('Обновление данных сроков после анализа');
       
-      // Загружаем все три графика принудительно (force=true)
+      // force=true - игнорируем кэш
       await Promise.allSettled([
         loadLawsuitChartData(true),
         loadOrderChartData(true),
@@ -285,7 +281,7 @@ export function TermsOfSupport() {
     };
 
     refreshAfterAnalysis();
-  }, [dataUpdateTrigger, isAnalyzing]);
+  }, [termsTrigger, isAnalyzing]);
 
   const currentData = selectedProcess === 'lawsuit' ? lawsuitData : orderData;
   const currentTotalCases = selectedProcess === 'lawsuit' ? lawsuitTotalCases : orderTotalCases;

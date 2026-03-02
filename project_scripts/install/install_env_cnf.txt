@@ -8,4 +8,4 @@ GITHUB_FILE=Scheduler.zip
 
 # Python
 PYTHON_PATH=
-INSTALL_DIR=C:\SchedulerTest
+INSTALL_DIR=C:\Temp\Install\SchedulerApp

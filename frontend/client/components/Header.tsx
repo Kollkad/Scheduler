@@ -9,8 +9,10 @@ import { useCaseSearch } from "@/hooks/useCaseSearch";
 import { useNavigate } from "react-router-dom";
 import { useAnalysis } from "@/contexts/AnalysisContext"; 
 import { ProgressBarModal } from "./ProgressBarModal";
+import { useAdmin } from '@/hooks/useAdmin';
 
 export function Header() {
+  const { isAdmin, loading: adminLoading } = useAdmin();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isSavingModalOpen, setIsSavingModalOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -112,13 +114,15 @@ export function Header() {
         </div>
 
         <div className="flex items-center space-x-3 ml-6">
-          <Button
-            variant="green"
-            size="rounded"
-            onClick={handleUploadClick}
-          >
-            Загрузить файлы
-          </Button>
+          {!adminLoading && isAdmin && (
+            <Button
+              variant="green"
+              size="rounded"
+              onClick={handleUploadClick}
+            >
+              Загрузить файлы
+            </Button>
+          )}
                     
           <Button
             variant="grayOutline"
