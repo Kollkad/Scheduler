@@ -261,12 +261,13 @@ async def fill_diagram(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Ошибка расчета данных диаграммы: {str(e)}")
 
+
 @router.get("/cases-by-color")
 async def get_cases_by_color(
-    color: str = Query(
-        ...,
-        description="Цвет категории (ИК, Серый, Зеленый, Желтый, Оранжевый, Красный, Лиловый, Синий, Белый)"
-    )
+        color: str = Query(
+            ...,
+            description="Цвет категории (ИК, Серый, Зеленый, Желтый, Оранжевый, Красный, Лиловый, Синий, Белый)"
+        )
 ):
     """
     Возвращает таблицу дел по указанной цветовой категории.
@@ -283,12 +284,12 @@ async def get_cases_by_color(
         HTTPException: 500 при ошибках обработки данных
     """
     try:
-        # Получаем готовый кэш через публичный метод DataManager
+        # Получение готового кэша через публичный метод DataManager
         detailed_colored_df = data_manager.get_colored_data("detailed")
         if detailed_colored_df is None or detailed_colored_df.empty:
             raise HTTPException(status_code=404, detail="Текущий детальный отчет не загружен")
 
-        # Преобразуем входной цвет в русское название
+        # Преобразование входного цвета в русское название
         russian_color = COLOR_MAPPING.get(color, color)
         valid_russian_colors = list(COLOR_MAPPING.values())
         if russian_color not in valid_russian_colors:
@@ -297,11 +298,22 @@ async def get_cases_by_color(
                 detail=f"Неверный цвет. Допустимые значения: {', '.join(valid_russian_colors)}"
             )
 
-        # Фильтруем DataFrame по цвету
+        # Фильтрация DataFrame по цвету
         filtered_df = detailed_colored_df[detailed_colored_df["currentPeriodColor"] == russian_color]
 
-        # Преобразуем в список словарей для API
-        cases_data = filtered_df.to_dict(orient="records")
+        # Обработка NaN значений перед преобразованием в JSON
+        # Создание копии предотвращает изменение оригинальных данных
+        cleaned_df = filtered_df.copy()
+
+        # Обработка каждого столбца в зависимости от типа данных
+        for col in cleaned_df.columns:
+            if cleaned_df[col].dtype == 'object':  # Строковые колонки
+                cleaned_df[col] = cleaned_df[col].fillna("Не задано")
+            elif pd.api.types.is_numeric_dtype(cleaned_df[col]):  # Числовые колонки
+                cleaned_df[col] = cleaned_df[col].fillna(0)
+
+        # Преобразование в список словарей для API-ответа
+        cases_data = cleaned_df.to_dict(orient="records")
 
         return {
             "success": True,
