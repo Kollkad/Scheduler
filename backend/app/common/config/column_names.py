@@ -31,6 +31,7 @@ COLUMNS = {
     "COURT": "Суд, рассматривающий дело",
     "CHARACTERISTICS_FINAL_COURT_ACT": "Характеристика финального судебного акта",
     "CURRENT_PERIOD_COLOR": "Цвет (текущий период)",
+    "TAGS": "Теги",
     # Для нормализации
     "GOSB_CATEGORY":"Категория ГОСБ",
 

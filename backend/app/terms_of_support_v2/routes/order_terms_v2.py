@@ -1,6 +1,6 @@
 # backend/app/terms_of_support_v2/routes/order_terms_v2.py
 """
-Модуль маршрутов FastAPI для анализа сроков приказного производства (версия 2).
+Модуль маршрутов для анализа сроков приказного производства.
 
 Содержит эндпоинты для:
 - Анализа дел приказного производства с определением этапов и статусов мониторинга
@@ -14,21 +14,13 @@
 """
 
 from fastapi import APIRouter, HTTPException, Query
-from datetime import datetime, date
 import pandas as pd
 
 from backend.app.common.modules.data_manager import data_manager
 from backend.app.common.routes.common import current_files
-from backend.app.common.config.column_names import COLUMNS, VALUES
+
 from backend.app.terms_of_support_v2.modules.terms_analyzer_v2 import prepare_case_data, build_production_table
-from backend.app.terms_of_support_v2.modules.order_stage_v2 import assign_order_stages
-from backend.app.terms_of_support_v2.modules.order_stage_checks_v2 import (
-    check_exceptions_stage,
-    check_closed_stage,
-    check_execution_document_received_stage,
-    check_court_reaction_stage,
-    check_first_status_changed_stage,
-)
+
 from backend.app.common.config.terms_checks_config import ORDER_CHECKS_MAPPING
 from backend.app.common.modules.utils import filter_production_cases
 
@@ -37,7 +29,7 @@ router = APIRouter()
 
 class OrderChartAnalyzer:
     """
-    Анализатор для преобразования данных приказного производства v2
+    Анализатор для преобразования данных приказного производства
     в формат совместимый с диаграммами предыдущей версии.
 
     Преобразует комбинированные статусы мониторинга в отдельные статистики по каждой проверке
@@ -56,7 +48,7 @@ class OrderChartAnalyzer:
 
     def analyze_for_charts(self) -> list:
         """
-        Анализ данных для построения диаграмм в формате предыдущей версии.
+        Анализ данных для построения диаграмм.
 
         Обрабатывает все этапы дел приказного производства, включая исключения.
         Собирает статистику по статусам timely/overdue/no_data для обычных этапов
@@ -139,7 +131,7 @@ async def analyze_order_charts():
     """
     Эндпоинт для получения данных приказного производства в формате для диаграмм.
 
-    Загружает детальный отчет, фильтрует дела приказного производства, создает таблицу v2
+    Загружает детальный отчет, фильтрует дела приказного производства, создает таблицу
     и преобразует данные в формат совместимый с диаграммами предыдущей версии.
 
     Returns:
@@ -187,17 +179,16 @@ async def analyze_order_charts():
 @router.get("/analyze_order")
 async def analyze_order_terms():
     """
-    Эндпоинт для анализа приказного производства (версия 2).
-
+    Эндпоинт для анализа приказного производства
     Выполняет полный анализ дел приказного производства с определением этапов
-    и статусов мониторинга. Возвращает данные в формате v2.
+    и статусов мониторинга
 
     Returns:
         Dict: Результат анализа в формате v2:
               {
                   "success": bool,
                   "total_cases": int,
-                  "data": List[Dict],  # Данные дел с этапами и статусами
+                  "data": List[Dict],
                   "message": str
               }
 
@@ -282,7 +273,7 @@ async def get_filtered_order_cases(stage: str = Query(...), status: str = Query(
     if base_stage is None:
         raise HTTPException(status_code=400, detail=f"Неизвестная проверка: {stage}")
 
-    # Векторная фильтрация данных по этапу и статусу
+    # Фильтрация данных по этапу и статусу
     mask = (
             (staged_df["caseStage"] == base_stage) &
             (staged_df["monitoringStatus"].str.split(";").str[check_index] == status)

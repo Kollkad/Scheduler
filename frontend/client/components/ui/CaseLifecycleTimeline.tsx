@@ -2,8 +2,8 @@ import React from 'react';
 
 const STAGES = [
   { key: 'firstStatusChanged', label: 'Подготовка документов' },
+    { key: 'courtReaction', label: 'Ожидание реакции суда' },
   { key: 'underConsideration', label: 'На рассмотрении' },
-  { key: 'courtReaction', label: 'Ожидание реакции суда' },
   { key: 'decisionMade', label: 'Решение вынесено' },
   { key: 'executionDocumentReceived', label: 'ИД получен' },
   { key: 'closed', label: 'Закрыто' }

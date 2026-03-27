@@ -277,7 +277,6 @@ async def save_tasks():
                     detailed_cleaned,
                     documents_cleaned
                 )
-                print(f"✅ Задачи успешно обогащены дополнительными колонками")
             except Exception as enrich_error:
                 # Продолжаем сохранение даже при ошибке обогащения
                 print(f"⚠️ Ошибка обогащения задач: {enrich_error}")

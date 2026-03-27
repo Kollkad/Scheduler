@@ -52,14 +52,13 @@ class ColumnCollector:
                     # Проверяем специальные условия
                     if "special_conditions" in task:
                         special_conditions = task["special_conditions"]
-
-                        # Если есть поле "column" - это имя колонки
                         if "column" in special_conditions:
-                            column_name = special_conditions["column"]
-                            target_set.add(column_name)
+                            target_set.add(special_conditions["column"])
+                        if "columns" in special_conditions:
+                            for col in special_conditions["columns"]:
+                                target_set.add(col)
 
                         # Дополнительно: если есть check_type для документов
-                        # (можно расширить при необходимости)
                         if task_type == "documents" and "check_type" in special_conditions:
                             # Здесь можно добавить логику для разных типов проверок документов
                             pass

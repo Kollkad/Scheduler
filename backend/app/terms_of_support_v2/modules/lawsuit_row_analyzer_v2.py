@@ -1,6 +1,6 @@
 # backend/app/terms_of_support_v2/modules/lawsuit_row_analyzer_v2.py
 """
-Модуль анализа строк дел для искового производства (версия 2).
+Модуль анализа строк дел для искового производства
 
 Предоставляет функции для оценки соблюдения сроков на различных этапах
 искового производства. Каждая функция анализирует конкретный этап дела
@@ -329,7 +329,7 @@ def evaluate_prev_to_next_hearing_row(row, calendar) -> tuple:
     Returns:
         tuple: Кортеж (status, is_completed) где:
             - status: 'timely', 'overdue' или 'no_data'
-            - is_completed: True если обе даты заседаний заполнены
+            - is_completed: True если обе даты заседаний заполнены и корректны, False в остальных случаях
     """
     try:
         # Безопасное получение дат заседаний
@@ -348,8 +348,10 @@ def evaluate_prev_to_next_hearing_row(row, calendar) -> tuple:
             next_hearing_date = pd.to_datetime(next_hearing_value).date()
             today = date.today()
 
-            deadline_date = calendar.add_working_days(next_hearing_date, 2)
-            return "overdue" if today > deadline_date else "timely", is_completed
+            if next_hearing_date <= today:
+                return "timely", is_completed
+            else:
+                return "overdue", is_completed
 
         # Случай 3 и 4: Наличие даты предыдущего заседания
         if prev_hearing_value != "no_data":
@@ -358,23 +360,22 @@ def evaluate_prev_to_next_hearing_row(row, calendar) -> tuple:
 
             # Случай 3: Отсутствие даты следующего заседания
             if next_hearing_value == "no_data":
-                deadline_date = calendar.add_working_days(prev_hearing_date, 2)
-                return "overdue" if today > deadline_date else "timely", is_completed
+                return "overdue", is_completed
 
             next_hearing_date = pd.to_datetime(next_hearing_value).date()
 
+            # Случай 4: Обе даты присутствуют
             # Проверка корректности дат (следующее заседание не может быть раньше предыдущего)
             if next_hearing_date < prev_hearing_date:
-                deadline_date = calendar.add_working_days(prev_hearing_date, 2)
-                return "overdue" if today > deadline_date else "timely", is_completed
+                return "overdue", False
 
-            # Случай 4: Обе даты присутствуют и корректны
+            # Расчет рабочих дней между заседаниями
             working_days_between = calendar.get_working_days_between(prev_hearing_date, next_hearing_date)
 
             if working_days_between <= 2:
-                return "timely", is_completed  # Интервал между заседаниями соблюден
+                return "timely", is_completed
             else:
-                return "overdue", is_completed  # Интервал между заседаниями превышен
+                return "overdue", is_completed
 
         return "no_data", is_completed
 

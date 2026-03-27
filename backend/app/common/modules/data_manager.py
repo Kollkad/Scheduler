@@ -277,7 +277,6 @@ class DataManager:
         """
         if data_type in self._processed_data:
             self._processed_data[data_type] = dataframe
-            print(f"✅ Обработанные данные сохранены: {data_type}")
         else:
             raise ValueError(f"Неверный тип данных: {data_type}")
 

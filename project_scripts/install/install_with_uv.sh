@@ -50,14 +50,11 @@ unzip -q Scheduler.zip
 rm Scheduler.zip
 
 # Имя распакованной папки (обычно Scheduler или Scheduler-main)
-EXTRACTED=$(find . -maxdepth 1 -type d ! -name '.' | head -1 | sed 's|^\./||')
-
 CODE_DIR="$INSTALL_DIR/Scheduler"
 rm -rf "$CODE_DIR"
 mkdir -p "$CODE_DIR"
-
 echo "Копирование файлов в $CODE_DIR"
-cp -r "$EXTRACTED"/* "$CODE_DIR"/
+cp -r . "$CODE_DIR"
 
 cd "$SCRIPT_DIR"
 rm -rf "$TEMP_DIR"

@@ -16,6 +16,7 @@ from typing import Optional, Tuple, Dict, List
 from pathlib import Path
 
 from backend.app.common.config.column_names import COLUMNS
+from backend.app.administration_settings.modules.assistant_functions import get_working_directory
 
 
 class GOSBNormalizer:
@@ -33,11 +34,12 @@ class GOSBNormalizer:
                                         Если не указан, используется путь по умолчанию.
         """
         if config_path is None:
-            # Формирование пути к файлу конфигурации относительно расположения модуля
-            self.config_path = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-                "common/config/normalization_conf.xlsx"
-            )
+            # Формирование пути к файлу конфигурации на основе режима работы
+            working_dir = get_working_directory()
+            if working_dir:
+                self.config_path = os.path.join(working_dir, "settings", "normalization_conf.xlsx")
+            else:
+                self.config_path = None
         else:
             self.config_path = config_path
 
@@ -60,7 +62,7 @@ class GOSBNormalizer:
         }
 
         # Проверка существования файла конфигурации
-        if not os.path.exists(self.config_path):
+        if not self.config_path or not os.path.exists(self.config_path):
             self._warnings.append(f"Файл конфигурации не найден: {self.config_path}")
             return config_data
 
@@ -175,24 +177,15 @@ class GOSBNormalizer:
 
         try:
             # Формирование пути к директории для отчетов
-            # Базовый путь по умолчанию - папка data/reports
-            reports_dir = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-                "data/reports"
-            )
+            working_dir = get_working_directory()
+            if working_dir:
+                reports_dir = os.path.join(working_dir, "reports")
+            else:
+                reports_dir = os.path.join(
+                    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                    "data/reports"
+                )
 
-            # Попытка получить путь из SOURCE_ADDRESS
-            source_env = os.getenv('SOURCE_ADDRESS')
-            if source_env:
-                # Определяется конкретный путь в зависимости от значения SOURCE_ADDRESS
-                if source_env == 'NETWORK_FOLDER_ADDRESS':
-                    base_path = os.getenv('NETWORK_FOLDER_ADDRESS')
-                else:
-                    base_path = os.getenv('DESKTOP_ADDRESS')
-
-                # Если конкретный путь найден - используем его вместо старого
-                if base_path:
-                    reports_dir = os.path.join(base_path, "reports")
             Path(reports_dir).mkdir(parents=True, exist_ok=True)
 
             # Генерация имени файла с текущей датой и временем

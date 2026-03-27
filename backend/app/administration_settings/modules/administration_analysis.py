@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Optional, Set, Tuple
 import logging
 
+from backend.app.administration_settings.modules.assistant_functions import get_working_directory
+
 logger = logging.getLogger(__name__)
 
 
@@ -51,28 +53,17 @@ class AdminAccessManager:
         # Финальное резервное значение - имя хоста
         return socket.gethostname().lower()
 
-    def get_settings_path(self, source_address: str) -> Path:
+    def get_settings_path(self, working_dir: str) -> Path:
         """
-        Формирует путь к папке с настройками на основе базового адреса.
-
-        Функция обрабатывает два типа адресов:
-        - UNC пути для сетевых папок (начинаются с //)
-        - Локальные пути (C:/Users/...)
+        Формирует путь к папке с настройками на основе рабочей директории.
 
         Args:
-            source_address: Базовый адрес из .env
+            working_dir: Базовая рабочая директория из get_working_directory()
 
         Returns:
             Path: Путь к папке settings
         """
-        base_path = Path(source_address)
-
-        # Проверка на UNC путь (сетевая папка Windows)
-        if str(source_address).startswith('//'):
-            # Преобразование //server/share в \\server\share
-            return Path(f"\\\\{source_address[2:]}") / "settings"
-
-        # Локальный путь (рабочий стол или другая локальная директория)
+        base_path = Path(working_dir)
         return base_path / "settings"
 
     def read_access_rights_file(self, settings_path: Path) -> Set[str]:
@@ -145,28 +136,32 @@ class AdminAccessManager:
         self._cache_timestamp = 0
         logger.debug("Кэш прав доступа очищен")
 
-    def check_admin_status(self, source_address: str) -> bool:
+    def check_admin_status(self) -> bool:
         """
         Проверяет, является ли текущий пользователь администратором.
 
         Функция реализует кэширование результатов с временем жизни CACHE_TTL.
-        При первом вызове или истечении TTL выполняется чтение файла из сетевой папки.
+        При первом вызове или истечении TTL выполняется чтение файла из рабочей директории.
         Последующие вызовы в пределах TTL используют кэшированные данные.
 
         Алгоритм работы:
-        1. Получение имени текущего системного пользователя
-        2. Проверка актуальности кэша
-        3. Если кэш неактуален - чтение файла access_rights.txt
-        4. Обновление кэша
-        5. Проверка наличия пользователя в списке администраторов
-
-        Args:
-            source_address: Базовый адрес из .env
+        1. Получение рабочей директории через get_working_directory()
+        2. Получение имени текущего системного пользователя
+        3. Проверка актуальности кэша
+        4. Если кэш неактуален - чтение файла access_rights.txt
+        5. Обновление кэша
+        6. Проверка наличия пользователя в списке администраторов
 
         Returns:
             bool: True если пользователь в списке администраторов, иначе False
         """
         try:
+            # Получение рабочей директории
+            working_dir = get_working_directory()
+            if not working_dir:
+                logger.error("Не удалось определить рабочую директорию")
+                return False
+
             # Получение имени текущего пользователя
             current_user = self.get_current_user()
 
@@ -178,7 +173,7 @@ class AdminAccessManager:
             logger.info("Кэш устарел или отсутствует, выполняется чтение файла")
 
             # Получение пути к папке настроек
-            settings_path = self.get_settings_path(source_address)
+            settings_path = self.get_settings_path(working_dir)
             logger.info(f"Путь к настройкам: {settings_path}")
 
             # Чтение файла с правами доступа

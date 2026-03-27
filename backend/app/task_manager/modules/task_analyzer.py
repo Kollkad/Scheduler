@@ -1,12 +1,14 @@
+# backend/app/task_manager/modules/task_analyzer.py
+
 import pandas as pd
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from datetime import datetime
 import math
 
 from backend.app.common.config.column_names import COLUMNS
 from backend.app.task_manager.config.task_mappings import TASK_MAPPINGS
 from backend.app.common.config.check_display_names import CHECK_DISPLAY_NAMES
-
+from backend.app.task_manager.modules.task_text_overrides import TASK_TEXT_OVERRIDES
 
 class TaskAnalyzer:
     """
@@ -489,7 +491,8 @@ class TaskAnalyzer:
 
             # Проверка специальных условий или стандартных условий
             if "special_conditions" in task_config:
-                if self._check_special_conditions(row, task_config["special_conditions"]):
+                index = task_config.get("index")
+                if self._check_special_conditions(row, task_config["special_conditions"], index):
                     is_failed = True
             elif "conditions" in task_config:
                 if self._check_task_conditions(row, task_config):
@@ -497,13 +500,21 @@ class TaskAnalyzer:
 
             # Добавление проваленной проверки в результат
             if is_failed:
-                failed_checks.append({
-                    "task_config": task_config
-                })
+                task_copy = task_config.copy()
+                failed_check_name = task_config.get("failed_check_name")
 
+                if failed_check_name in TASK_TEXT_OVERRIDES:
+                    override_func = TASK_TEXT_OVERRIDES[failed_check_name]
+                    task_text, reason_text = override_func(row, task_config)
+                    task_copy["task_text"] = task_text
+                    task_copy["reason_text"] = reason_text
+
+                failed_checks.append({
+                    "task_config": task_copy
+                })
         return failed_checks
 
-    def _check_special_conditions(self, row: pd.Series, special_conditions: Dict) -> bool:
+    def _check_special_conditions(self, row: pd.Series, special_conditions: Dict, index: int = None) -> bool:
         """
         Проверяет специальные условия формирования задачи.
         Теперь может проверять реальные колонки из enriched данных!
@@ -520,10 +531,10 @@ class TaskAnalyzer:
                 column_name = special_conditions["column"]
                 expected_value = special_conditions["value"]
 
-                # Проверяем, есть ли колонка в обогащенных данных
+                # Проверка, есть ли колонка в обогащенных данных
                 if column_name not in row:
                     # Колонка не была обогащена - возможно, ее нет в исходных данных
-                    # Не выводим warning, так как это нормально для задач без special_conditions
+                    # Нет warning, так как это нормально для задач без special_conditions
                     return False
 
                 actual_value = row[column_name]
@@ -532,7 +543,7 @@ class TaskAnalyzer:
                 if pd.isna(actual_value):
                     return False
 
-                # Сравнение значений (строковое сравнение)
+                # Сравнение значений
                 return str(actual_value).strip() == str(expected_value).strip()
 
             # ТИП 2: Проверка статуса и наличия даты передачи
@@ -541,9 +552,9 @@ class TaskAnalyzer:
                 expected_status = special_conditions["status"]
                 needs_transfer_date = special_conditions["has_transfer_date"]
 
-                # Получаем текущий статус (проверяем разные возможные названия колонок)
+                # Получается текущий статус
                 current_status = None
-                status_columns = ["Статус", "STATUS", "status", "CASE_STATUS"]
+                status_columns = ["status", "CASE_STATUS"]
                 for col in status_columns:
                     if col in row:
                         current_status = row[col]
@@ -574,13 +585,17 @@ class TaskAnalyzer:
 
                 if check_type == "court_order_delivery":
                     # Для проверки доставки судебного приказа
-                    # Проверяем, что дело приказное и нужна проверка доставки
+                    # Проверяется, что дело приказное и нужна проверка доставки
                     case_type = row.get("METHOD_OF_PROTECTION", "")
                     is_order_production = "Приказное" in str(case_type)
 
                     return is_order_production
 
-                # Можно добавить другие типы проверок при необходимости
+                elif check_type == "validate_hearing_dates":
+                    if index is None:
+                        return False
+                    return self._is_check_failed_by_index(row, index)
+
                 return False
 
             # Неизвестный тип условий
@@ -605,29 +620,30 @@ class TaskAnalyzer:
             bool: True если условия выполнены, иначе False
         """
         try:
-            monitoring_status = row.get("monitoringStatus", "")
-            completion_status = row.get("completionStatus", "")
-
-            # Разделение статусов на составные части
-            monitoring_parts = monitoring_status.split(";")
-            completion_parts = completion_status.split(";")
-
-            index = task_config["index"]
-            conditions = task_config["conditions"]
-
-            # Проверка условий по индексу
-            if (index < len(completion_parts) and
-                    index < len(monitoring_parts)):
-                completion_ok = (completion_parts[index].lower() == conditions[0])
-                monitoring_ok = (monitoring_parts[index].lower() == conditions[1])
-
-                return completion_ok and monitoring_ok
-
-            return False
-
+            index = task_config.get("index")
+            if index is None:
+                return False
+            return self._is_check_failed_by_index(row, index)
         except Exception:
             return False
 
+    def _is_check_failed_by_index(self, row: pd.Series, index: int) -> bool:
+        """
+        Проверяет, провалена ли проверка с указанным индексом.
 
-# Синглтон для удобного использования
+        Args:
+            row (pd.Series): Строка данных с колонками monitoringStatus и completionStatus
+            index (int): Индекс проверки в комбинированных строках статусов
+
+        Returns:
+            bool: True если completionStatus[index] == "false" и monitoringStatus[index] == "overdue",
+                  иначе False. Также возвращает False при недостаточном количестве частей в строках.
+        """
+        monitoring = str(row.get("monitoringStatus", "")).split(";")
+        completion = str(row.get("completionStatus", "")).split(";")
+
+        if index < len(monitoring) and index < len(completion):
+            return completion[index].lower() == "false" and monitoring[index].lower() == "overdue"
+        return False
+
 task_analyzer = TaskAnalyzer()

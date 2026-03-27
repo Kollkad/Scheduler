@@ -1,12 +1,12 @@
 # backend/app/terms_of_support_v2/modules/lawsuit_stage_v2.py
 """
-Модуль определения этапов для искового производства (версия 2).
+Модуль определения этапов для искового производства
 
 Содержит функции для определения этапов сопровождения дел искового производства
 и сохранения результатов анализа в файл Excel.
 
 Основные функции:
-- assign_lawsuit_stages: Векторизованное определение этапов дел
+- assign_lawsuit_stages: Определение этапов дел
 - save_stage_table_to_excel: Сохранение результатов в Excel-файл
 """
 
@@ -18,7 +18,7 @@ from backend.app.common.config.column_names import COLUMNS, VALUES
 
 def assign_lawsuit_stages(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Векторизованное определение этапов сопровождения для дел искового производства.
+    Определение этапов сопровождения для дел искового производства.
 
     Использует маски Pandas для быстрого определения этапа каждого дела на основе
     статуса дела и наличия ключевых дат. Этапы определяются в строгом порядке приоритета
@@ -55,16 +55,12 @@ def assign_lawsuit_stages(df: pd.DataFrame) -> pd.DataFrame:
         result_df.loc[exception_mask, "caseStage"] = "exceptions"
 
     # 2. Определение закрытых дел
-    case_closing_col = COLUMNS["CASE_CLOSING_DATE"]
     closed_statuses = [VALUES["CONDITIONALLY_CLOSED"], VALUES["CLOSED"]]
 
     closed_mask = pd.Series(False, index=df.index)
 
     if case_status_col in df.columns:
         closed_mask |= df[case_status_col].isin(closed_statuses)
-
-    if case_closing_col in df.columns:
-        closed_mask |= df[case_closing_col].notna()
 
     if case_status_col in df.columns:
         result_df.loc[closed_mask & ~exception_mask, "caseStage"] = "closed"
@@ -75,14 +71,6 @@ def assign_lawsuit_stages(df: pd.DataFrame) -> pd.DataFrame:
     court_status_col = COLUMNS["CASE_STATUS"]
     if court_status_col in df.columns:
         execution_mask |= (df[court_status_col] == VALUES["COURT_ACT_IN_FORCE"])
-
-    transfer_col = COLUMNS["ACTUAL_TRANSFER_DATE"]
-    if transfer_col in df.columns:
-        execution_mask |= df[transfer_col].notna()
-
-    receipt_col = COLUMNS["ACTUAL_RECEIPT_DATE"]
-    if receipt_col in df.columns:
-        execution_mask |= df[receipt_col].notna()
 
     if case_status_col in df.columns:
         result_df.loc[execution_mask & ~exception_mask & ~closed_mask, "caseStage"] = "executionDocumentReceived"

@@ -1,6 +1,6 @@
 # backend/app/document_monitoring_v2/modules/document_row_analyzer_v2.py
 """
-Модуль анализа строк документов для системы мониторинга сроков обработки (версия 2).
+Модуль анализа строк документов для системы мониторинга сроков обработки
 
 Предоставляет функции для оценки своевременности обработки документов
 и фильтрации данных с учетом бизнес-логики мониторинга.
@@ -95,7 +95,7 @@ def get_latest_document_in_group(group: pd.DataFrame) -> pd.Series:
         if group.empty:
             return pd.Series()
 
-        # Поиск по дате передачи с использованием векторized подхода
+        # Поиск по дате передачи
         if COLUMNS["DOCUMENT_TRANSFER_DATE"] in group.columns:
             transfer_not_na_mask = group[COLUMNS["DOCUMENT_TRANSFER_DATE"]].notna()
             if transfer_not_na_mask.any():
