@@ -94,19 +94,18 @@ export function DynamicCaseDetail() {
           Вернуться назад
         </Button>
         
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-text-secondary">
           Всего полей: {caseData.totalFields}
         </div>
       </div>
 
       {/* Заголовок с основной информацией о деле */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-text-primary">
           Дело: {caseData.caseCode}
         </h1>
-        {/* Условное отображение информации о колонке поиска */}
         {caseData.foundInColumn && (
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-text-secondary mt-1">
             Найдено в колонке: {caseData.foundInColumn}
           </p>
         )}
@@ -123,7 +122,7 @@ export function DynamicCaseDetail() {
       {tabs.length > 0 ? (
         <TabsContainer tabs={tabs} defaultTab={tabs[0]?.id || 'general'} />
       ) : (
-        <div className="text-center text-gray-500 py-8">
+        <div className="text-center text-text-secondary py-8">
           Нет данных для отображения
         </div>
       )}

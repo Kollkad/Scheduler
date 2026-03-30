@@ -361,14 +361,14 @@ export default function Rainbow() {
   return (
     <PageContainer>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Rainbow</h1>
+        <h1 className="text-2xl font-bold text-text-primary mb-2">Rainbow</h1>
         <div className="flex items-center gap-4">
-          <p className="text-gray-600">
+          <p className="text-text-secondary">
             Всего дел: {typeof total === 'number' ? total.toLocaleString() : '0'}
             {diagramFiltered && ' (отфильтровано)'}
           </p>
         </div>
-        {isAnalyzing && <p className="text-blue-500">Идет анализ...</p>}
+        {isAnalyzing && <p className="text-blue">Идет анализ...</p>}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -394,26 +394,26 @@ export default function Rainbow() {
 
       <div className="mt-6">
         {reportStatus === "idle" && (
-          <div className="text-gray-500 text-center py-6">
+          <div className="text-text-secondary text-center py-6">
             После формирования отчёта здесь появится таблица
           </div>
         )}
 
         {reportStatus === "loading" && (
-          <div className="text-gray-500 text-center py-6">
+          <div className="text-text-secondary text-center py-6">
             Отчет формируется...
           </div>
         )}
 
         {reportStatus === "ready" && (
           <>
-            <div className="mb-4 p-3 bg-gray-50 rounded-md">
-              <p className="text-sm text-gray-600">
+            <div className="mb-4 p-3 bg-bg-disabled rounded-md">
+              <p className="text-sm text-text-secondary">
                 {diagramFiltered 
                   ? `Диаграмма отображает распределение по цветам для отфильтрованных дел (${total} шт.)`
                   : `Диаграмма отображает общее распределение по цветам (${total} шт.)`}
               </p>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-text-secondary mt-1">
                 В таблице: {tableData.length} записей
               </p>
             </div>

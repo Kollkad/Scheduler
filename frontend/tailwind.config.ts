@@ -21,6 +21,7 @@ export default {
         border: {
           DEFAULT: "hsl(var(--border-default))",
           green: "hsl(var(--border-green))",
+          dark: "hsl(var(--text-primary))",
         },
         
         /* Зеленый */

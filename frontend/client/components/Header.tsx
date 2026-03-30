@@ -1,5 +1,5 @@
 // Header.tsx
-import { Search, X } from "lucide-react";
+import { Search, X, CircleUserRound } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useState, useRef, useEffect } from "react"; 
@@ -131,7 +131,12 @@ export function Header() {
           >
             Выгрузить данные
           </Button>
-          <div className="w-9 h-9 bg-gray-200 rounded-full flex items-center justify-center ml-3"></div>
+          <button
+            onClick={() => navigate('/profile')}
+            className="p-0 transition-colors hover:opacity-70"
+          >
+            <CircleUserRound className="w-9 h-9 text-text-secondary" strokeWidth={1.5} />
+          </button>
         </div>
       </div>
 

@@ -289,8 +289,8 @@ export function TermsOfSupport() {
   return (
     <PageContainer>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Сроки сопровождения</h1>
-        <p className="text-gray-600">Всего дел: {currentTotalCases.toLocaleString()}</p>
+        <h1 className="text-2xl font-bold text-text-primary mb-2">Сроки сопровождения</h1>
+        <p className="text-text-secondary">Всего дел: {currentTotalCases.toLocaleString()}</p>
         {isAnalyzing && <p className="text-blue-500">Идет анализ...</p>}
         {isLoading && <p className="text-blue-500">Загрузка данных...</p>}
       </div>
@@ -328,10 +328,10 @@ export function TermsOfSupport() {
       </div>
 
       {/* Раздел мониторинга документов */}
-      <div className="mt-12 pt-8 border-t border-gray-200">
+      <div className="mt-12 pt-8 border-t border-border">
         <div className="mb-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Мониторинг документов</h2>
-          <p className="text-gray-600">Всего документов: {documentsTotalCount.toLocaleString()}</p>
+          <h2 className="text-xl font-bold text-text-primary mb-2">Мониторинг документов</h2>
+          <p className="text-text-secondary">Всего документов: {documentsTotalCount.toLocaleString()}</p>
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

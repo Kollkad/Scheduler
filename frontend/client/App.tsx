@@ -18,6 +18,7 @@ import DocumentDetail from '@/pages/DocumentDetail';
 import { AnalysisProvider } from "@/contexts/AnalysisContext";
 import TaskDetail from './pages/TaskDetail';
 import Depersonalization from "./pages/Depersonalization";
+import UserProfileDetail from './pages/UserProfileDetail';
 import { AuthProvider } from '@/contexts/AuthContext';
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => {
                   <Route path="/document" element={<DocumentDetail />} />
                   <Route path="/filtered-cases" element={<FilteredCases />} />
                   <Route path="/task/:taskCode" element={<TaskDetail />} />
+                  <Route path="/profile" element={<UserProfileDetail />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Layout>
