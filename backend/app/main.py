@@ -22,7 +22,7 @@ from backend.app.saving_results.routes.saving import router as saving_router
 from backend.app.additional_processing.routes.anonymization import router as additional_processing_router
 from backend.app.common.routes.search import router as search_router
 from backend.app.table_sorter.routes.filters import router as filters_router
-from backend.app.administration_settings.routes.admin import router as admin_router
+from backend.app.administration_settings.routes.authorization import router as authorization_router
 
 logger = logging.getLogger("uvicorn")
 
@@ -54,7 +54,7 @@ app.include_router(terms_v2_router)
 app.include_router(saving_router)
 app.include_router(additional_processing_router)
 app.include_router(search_router)
-app.include_router(admin_router)
+app.include_router(authorization_router)
 
 # При наличии - используются статичные файлы фронта
 frontend_path = Path(__file__).parent.parent.parent / "frontend" / "dist" / "spa"

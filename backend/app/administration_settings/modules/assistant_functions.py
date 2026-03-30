@@ -39,8 +39,8 @@ def get_working_directory() -> Optional[str]:
     # Определение пути
     current_file = Path(__file__).resolve()
     project_root = current_file.parent.parent.parent.parent
-    env_path = project_root / 'backend' / '.env'
-
+    env_path = project_root / '.env'
+    
     # Загрузка переменных окружения из файла .env
     load_dotenv(dotenv_path=env_path, override=True)
     # Получение режима работы из переменных окружения
@@ -75,4 +75,22 @@ def get_working_directory() -> Optional[str]:
     return str(path_object.resolve())
 
 
+def get_work_mode() -> str:
+    """
+    Возвращает режим работы приложения.
+
+    Returns:
+        str: 'DEV' или 'DEPLOY'
+    """
+    from dotenv import load_dotenv
+    from pathlib import Path
+
+    current_file = Path(__file__).resolve()
+    project_root = current_file.parent.parent.parent.parent
+    env_path = project_root / 'backend' / '.env'
+
+    load_dotenv(dotenv_path=env_path, override=True)
+
+    work_mode = os.getenv('WORK_MODE', 'DEPLOY')
+    return work_mode if work_mode in ['DEV', 'DEPLOY'] else 'DEPLOY'
 

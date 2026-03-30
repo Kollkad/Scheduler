@@ -95,7 +95,13 @@ COLUMNS = {
     "DOCUMENT_NUMBER": "Номер документа",
     "INITIATOR_OF_TRANSFER": "Инициатор передачи",
     "EXECUTOR": "Сотрудник",
-    "COMMENT_ON_THE_REASON_FOR_REFUSAL": "Комментарий по причине отказа"
+    "COMMENT_ON_THE_REASON_FOR_REFUSAL": "Комментарий по причине отказа",
+
+    # Колонки авторизации
+    "USER_EMAIL": "Почта",
+    "USER_FIO": "ФИО",
+    "USER_ROLE": "Роль",
+    "USER_LOGIN":"Логин"
 }
 
 # Словарь стандартизированных значений для фильтрации и классификации

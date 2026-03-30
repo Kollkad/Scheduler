@@ -1,7 +1,11 @@
 // client\services\api\endpoints.ts
 export const API_ENDPOINTS = {
   // ==================== ACCESS ====================
-  ADMIN_STATUS: '/api/admin-status',
+  AUTH_STATUS: '/api/auth/status',
+  AUTH_LOGIN: '/api/auth/login',
+  AUTH_LOGOUT: '/api/auth/logout',
+  USER_INFO: '/api/auth/user-info',
+  
   // ==================== SEARCH ====================
   SEARCH_CASES: '/api/search/cases',
   
