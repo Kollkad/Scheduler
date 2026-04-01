@@ -92,7 +92,7 @@ def evaluate_execution_document_received_row(row, documents_df: pd.DataFrame) ->
             return "no_data", False
 
         # Получение обработанных данных документов через data_manager
-        from backend.app.common.modules.data_manager import data_manager
+        from backend.app.data_management.modules.data_manager import data_manager
         current_processed_documents = data_manager.get_processed_data("documents_processed")
 
         if current_processed_documents is None or current_processed_documents.empty:

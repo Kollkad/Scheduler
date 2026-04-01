@@ -5,13 +5,14 @@ import { cn } from "@/utils/cn";
 import { useEffect } from "react";
 import { featureFlags } from '@/config/featureFlags';
 import { useAnalysis } from "@/contexts/AnalysisContext";
+import { formatDate } from "@/utils/dateFormat";
 
 const navigationItems = [
   { id: "overview", label: "Обзор системы", icon: Home, path: "/overview" },
   { id: "rainbow", label: "Rainbow", icon: Rainbow, path: "/rainbow" },
   { id: "terms", label: "Сроки сопровождения", icon: AlertCircle, path: "/terms" },
   { id: "tasks", label: "Задачи сотрудников", icon: ClipboardList, path: "/tasks" },
-  { id: "depersonalization", label: "Обезличивание", icon: Shield, path: "/depersonalization" },
+  { id: "anonymization", label: "Обезличивание", icon: Shield, path: "/anonymization" },
 ];
 
 export function Sidebar() {
@@ -22,20 +23,22 @@ export function Sidebar() {
     refreshFilesStatus();
   }, [refreshFilesStatus]);
 
-  const filesList = [
-    {
-      type: 'Текущий отчет',
-      entry: uploadedFiles?.current_detailed_report
-    },
-    {
-      type: 'Отчет по документам',
-      entry: uploadedFiles?.documents_report
-    },
-    ...(featureFlags.enableComparison ? [{
-      type: 'Предыдущий отчет',
-      entry: uploadedFiles?.previous_detailed_report
-    }] : [])
-  ];
+  const getFileDate = (fileType: string): string => {
+    const file = uploadedFiles?.files?.[fileType];
+    if (!file?.loaded || !file.file?.uploaded_at) return '—';
+    return formatDate(file.file.uploaded_at);
+  };
+
+  const isFileLoaded = (fileType: string): boolean => {
+    return uploadedFiles?.files?.[fileType]?.loaded === true;
+  };
+
+  const loadedCount = [
+    'current_detailed_report',
+    'documents_report'
+  ].filter(type => isFileLoaded(type)).length;
+
+  const isReady = loadedCount === 2;
 
   return (
     <div className="w-80 h-screen fixed left-0 top-0 p-4">
@@ -73,37 +76,32 @@ export function Sidebar() {
 
         {/* Загруженные файлы */}
         <div className="border-t p-4" style={{ borderColor: 'rgba(21, 143, 44, 0.3)' }}>
-          <div className="flex items-center mb-2">
+          <div className="flex items-center mb-3">
             <FileText className="h-4 w-4 mr-2 text-green" />
             <span className="text-sm font-medium text-text-inactive">Загруженные файлы:</span>
           </div>
 
-          <div className="space-y-2">
-            {filesList.map((f, idx) => {
-              const filename = f.entry?.filepath ? String(f.entry.filepath).split('/').pop() : 'Не загружен';
-              const loaded = !!f.entry?.loaded;
-              return (
-                <div key={idx} className={cn("text-xs p-2 rounded-lg", loaded ? "bg-green-100" : "bg-gray-100")}>
-                  <div className="font-medium text-text-inactive">{f.type}:</div>
-                  <div className={cn("truncate", loaded ? "text-green-700" : "text-gray-500")} title={filename}>
-                    {loaded ? <span className="flex items-center"><span className="w-2 h-2 bg-green-500 rounded-full mr-1" />{filename}</span> : <span className="text-gray-400">{filename}</span>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Статус готовности */}
-          <div className="mt-3 p-2 rounded-lg bg-bg-status">
-            <div className="text-xs font-medium">
-              Статус: {(uploadedFiles && ((uploadedFiles.current_detailed_report?.loaded ? 1 : 0) + (uploadedFiles.documents_report?.loaded ? 1 : 0)) >= 2) ?
-                <span className="text-green">Готов к расчету</span> :
-                <span className="text-orange-500">Ожидание файлов</span>
-              }
-            </div>
-            <div className="text-xs text-text-secondary">
-              Загружено: { (uploadedFiles ? ((uploadedFiles.current_detailed_report?.loaded ? 1 : 0) + (uploadedFiles.documents_report?.loaded ? 1 : 0)) : 0) } из 2 обязательных
-              {featureFlags.enableComparison && featureFlags.hasPreviousReport && " + предыдущий отчет"}
+          <div className={cn(
+            "p-3 rounded-lg",
+            isReady ? "bg-green-100" : "bg-gray-100"
+          )}>
+            <div className="text-sm space-y-1">
+              <div>
+                <span className="text-text-inactive">Детальный отчет:</span>{' '}
+                <span className={isFileLoaded('current_detailed_report') ? "text-green-700" : "text-gray-500"}>
+                  {isFileLoaded('current_detailed_report') 
+                    ? formatDate(uploadedFiles?.files?.current_detailed_report?.file?.uploaded_at)
+                    : 'не загружен'}
+                </span>
+              </div>
+              <div>
+                <span className="text-text-inactive">Отчет по документам:</span>{' '}
+                <span className={isFileLoaded('documents_report') ? "text-green-700" : "text-gray-500"}>
+                  {isFileLoaded('documents_report')
+                    ? formatDate(uploadedFiles?.files?.documents_report?.file?.uploaded_at)
+                    : 'не загружен'}
+                </span>
+              </div>
             </div>
           </div>
         </div>

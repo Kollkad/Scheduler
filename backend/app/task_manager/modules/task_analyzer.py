@@ -64,7 +64,7 @@ class TaskAnalyzer:
             Exception: Возникает при ошибках доступа к данным или анализа
         """
         all_tasks = []
-        from backend.app.common.modules.data_manager import data_manager
+        from backend.app.data_management.modules.data_manager import data_manager
 
         # Сброс счетчика при каждом новом расчете
         self._task_counter = 1

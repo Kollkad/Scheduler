@@ -1,4 +1,4 @@
-//client/pages/Depersonalization.tsx
+// client/pages/Anonymization.tsx
 import { useState, useRef } from "react";
 import { PageContainer } from "@/components/PageContainer";
 import { Button } from "@/components/ui/button";
@@ -6,21 +6,7 @@ import { X, Loader2 } from "lucide-react";
 import { apiClient } from "@/services/api/client";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 
-type ReportType = "detailed_report" | "documents_report";
-
-interface AnonymizationRule {
-  column: string;
-  type: 'numbered' | 'fixed';
-  replacement: string;
-}
-
-interface ColumnInfo {
-  name: string;
-  type: string;
-  unique_count: number;
-  total_count: number;
-  sample: string[];
-}
+type NormalizationType = "detailed_report" | "documents_report" | "none";
 
 interface CustomRuleInput {
   column: string;
@@ -28,23 +14,80 @@ interface CustomRuleInput {
   replacement: string;
 }
 
-export default function Depersonalization() {
+// ==================== ТИПЫ ДЛЯ ОБЕЗЛИЧИВАНИЯ ====================
+
+export interface AnonymizationRule {
+  column: string;
+  type: 'numbered' | 'fixed';
+  replacement: string;
+}
+
+export interface ColumnInfo {
+  name: string;
+  type: string;
+  unique_count: number;
+  total_count: number;
+  sample: string[];
+}
+
+export interface NormalizeResponse {
+  success: boolean;
+  message: string;
+  filename: string;
+  rows: number;
+  columns: number;
+  columns_info: ColumnInfo[];
+  applicable_rules: AnonymizationRule[];
+  applicable_rules_count: number;
+  total_rules_in_config: number;
+}
+
+export interface AnonymizeResponse {
+  success: boolean;
+  message: string;
+  result_file_type: string;
+  rows: number;
+  columns: number;
+  total_rules_applied: number;
+  anonymization_results: Array<{
+    column: string;
+    type: string;
+    original_unique: number;
+    anonymized_unique: number;
+    replacement: string;
+  }>;
+}
+
+export interface DefaultRulesResponse {
+  success: boolean;
+  rules: AnonymizationRule[];
+  total_rules: number;
+  note: string;
+}
+
+export default function Anonymization() {
+  // Состояние выбранного файла
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [reportType, setReportType] = useState<ReportType>("detailed_report");
+  // Тип нормализации: детальный отчет, отчет документов или без нормализации
+  const [normalizationType, setNormalizationType] = useState<NormalizationType>("none");
+  // Состояния процесса загрузки и нормализации
   const [uploadLoading, setUploadLoading] = useState(false);
+  const [normalizeLoading, setNormalizeLoading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [fileUploaded, setFileUploaded] = useState(false);
+  const [sourceFileType, setSourceFileType] = useState<string | null>(null);
   
+  // Данные о колонках и правилах, полученные после нормализации
   const [columnsInfo, setColumnsInfo] = useState<ColumnInfo[]>([]);
   const [defaultRules, setDefaultRules] = useState<AnonymizationRule[]>([]);
   const [enabledRules, setEnabledRules] = useState<AnonymizationRule[]>([]);
   
+  // Пользовательские правила (добавляются вручную)
   const [customRules, setCustomRules] = useState<CustomRuleInput[]>([
     { column: "", type: 'numbered', replacement: "" }
   ]);
   
-  // Состояние для загрузки обезличивания
   const [anonymizeLoading, setAnonymizeLoading] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -62,51 +105,75 @@ export default function Depersonalization() {
       setColumnsInfo([]);
       setDefaultRules([]);
       setEnabledRules([]);
+      setSourceFileType(null);
     }
   };
   
-  const handleUploadReport = async () => {
+  // 1. Загрузка файла через общее хранилище с типом anonymization_source
+  const handleUploadFile = async () => {
     if (!selectedFile) return;
     
     setUploadLoading(true);
     setUploadError(null);
     
     try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('report_type', reportType);
+      const response = await apiClient.uploadFileByType('anonymization_source', selectedFile);
+      setSourceFileType('anonymization_source');
+      setFileUploaded(true);
       
-      const response = await fetch(API_ENDPOINTS.DEPERSONALIZATION_LOAD_REPORT, {
-        method: 'POST',
-        body: formData,
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Ошибка загрузки: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        setColumnsInfo(data.columns_info || []);
-        setDefaultRules(data.applicable_rules || []);
-        setEnabledRules(data.applicable_rules || []);
-        setUploadSuccess(true);
-        setFileUploaded(true);
-      } else {
-        throw new Error(data.message || "Ошибка загрузки");
-      }
+      // После успешной загрузки выполняется нормализация
+      setNormalizeLoading(true);
+      await handleNormalize('anonymization_source');
       
     } catch (error) {
-      console.error('Ошибка загрузки отчета:', error);
+      console.error('Ошибка загрузки файла:', error);
       setUploadError(error instanceof Error ? error.message : 'Неизвестная ошибка');
     } finally {
       setUploadLoading(false);
+      setNormalizeLoading(false);
     }
   };
   
-  const handleRemoveFile = () => {
+  // 2. Нормализация загруженного файла в зависимости от выбранного типа
+  const handleNormalize = async (fileType: string) => {
+    try {
+      const response = await apiClient.post<NormalizeResponse>(
+        API_ENDPOINTS.ANONYMIZATION_NORMALIZE,
+        null,
+        {
+          params: {
+            file_type: fileType,
+            normalization_type: normalizationType
+          }
+        }
+      );
+      
+      if (response.success) {
+        setColumnsInfo(response.columns_info || []);
+        setDefaultRules(response.applicable_rules || []);
+        setEnabledRules(response.applicable_rules || []);
+        setUploadSuccess(true);
+      } else {
+        throw new Error(response.message || "Ошибка нормализации");
+      }
+      
+    } catch (error) {
+      console.error('Ошибка нормализации:', error);
+      setUploadError(error instanceof Error ? error.message : 'Ошибка нормализации');
+      throw error;
+    }
+  };
+  
+  // Удаление файла из хранилища и сброс локального состояния
+  const handleRemoveFile = async () => {
+    if (sourceFileType) {
+      try {
+        await apiClient.removeFile(sourceFileType);
+      } catch (error) {
+        console.error('Ошибка удаления файла:', error);
+      }
+    }
+    
     setSelectedFile(null);
     setFileUploaded(false);
     setUploadSuccess(false);
@@ -114,6 +181,7 @@ export default function Depersonalization() {
     setDefaultRules([]);
     setEnabledRules([]);
     setUploadError(null);
+    setSourceFileType(null);
   };
   
   const handleToggleRule = (rule: AnonymizationRule, checked: boolean) => {
@@ -146,10 +214,17 @@ export default function Depersonalization() {
     setCustomRules(prev => prev.filter((_, i) => i !== index));
   };
   
+  // 3. Применение обезличивания к нормализованным данным
   const handleAnonymize = async () => {
+    if (!sourceFileType) {
+      alert("Сначала загрузите файл");
+      return;
+    }
+    
     try {
       setAnonymizeLoading(true);
       
+      // Формирование активных правил: выбранные из стандартных + пользовательские
       const activeRules = [...enabledRules];
       
       customRules.forEach(rule => {
@@ -168,27 +243,24 @@ export default function Depersonalization() {
         return;
       }
       
-      const formData = new FormData();
-      formData.append('report_type', reportType);
-      formData.append('config_json', JSON.stringify(activeRules));
-      formData.append('use_default_rules', 'true');
+      const response = await apiClient.post<AnonymizeResponse>(
+        API_ENDPOINTS.ANONYMIZATION_ANONYMIZE,
+        {
+          config_json: JSON.stringify(activeRules),
+          use_default_rules: true
+        },
+        {
+          params: {
+            file_type: sourceFileType
+          }
+        }
+      );
       
-      const response = await fetch(API_ENDPOINTS.DEPERSONALIZATION_ANONYMIZE, {
-        method: 'POST',
-        body: formData,
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Ошибка обезличивания: ${response.statusText}`);
-      }
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        const blob = await apiClient.downloadFile(
-          `${API_ENDPOINTS.DEPERSONALIZATION_DOWNLOAD}?report_type=${reportType}`
-        );
+      if (response.success) {
+        // Скачивание обезличенного файла
+        const blob = await apiClient.downloadFile(API_ENDPOINTS.ANONYMIZATION_DOWNLOAD, {
+          file_type: 'anonymization_result'
+        });
         
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -199,7 +271,7 @@ export default function Depersonalization() {
         a.remove();
         window.URL.revokeObjectURL(url);
         
-        alert(`Обезличивание завершено! Применено правил: ${result.total_rules_applied}`);
+        alert(`Обезличивание завершено! Применено правил: ${response.total_rules_applied}`);
       }
       
     } catch (error) {
@@ -210,19 +282,31 @@ export default function Depersonalization() {
     }
   };
   
+  // Загрузка правил по умолчанию из конфигурации (вызывается при монтировании)
+  const loadDefaultRules = async () => {
+    try {
+      const response = await apiClient.get<DefaultRulesResponse>(API_ENDPOINTS.ANONYMIZATION_GET_DEFAULT_RULES);
+      if (response.success) {
+        setDefaultRules(response.rules);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки правил:', error);
+    }
+  };
+  
   return (
     <PageContainer>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Обезличивание отчетов</h1>
         <p className="text-gray-600">
-          Загрузите отчет для удаления персональных данных
+          Загрузите файл для удаления персональных данных
         </p>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* ЛЕВАЯ КОЛОНКА - ЗАГРУЗКА ФАЙЛА */}
+        {/* Левая колонка: загрузка файла и выбор типа нормализации */}
         <div>
-          {/* Выбор типа отчета */}
+          {/* Выбор типа нормализации влияет на предобработку файла */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Тип отчета
@@ -231,10 +315,10 @@ export default function Depersonalization() {
               <label className="flex items-center">
                 <input
                   type="radio"
-                  name="reportType"
+                  name="normalizationType"
                   value="detailed_report"
-                  checked={reportType === "detailed_report"}
-                  onChange={(e) => setReportType(e.target.value as ReportType)}
+                  checked={normalizationType === "detailed_report"}
+                  onChange={(e) => setNormalizationType(e.target.value as NormalizationType)}
                   className="mr-2"
                 />
                 Детальный отчет
@@ -242,18 +326,29 @@ export default function Depersonalization() {
               <label className="flex items-center">
                 <input
                   type="radio"
-                  name="reportType"
+                  name="normalizationType"
                   value="documents_report"
-                  checked={reportType === "documents_report"}
-                  onChange={(e) => setReportType(e.target.value as ReportType)}
+                  checked={normalizationType === "documents_report"}
+                  onChange={(e) => setNormalizationType(e.target.value as NormalizationType)}
                   className="mr-2"
                 />
                 Отчет по документам
               </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="normalizationType"
+                  value="none"
+                  checked={normalizationType === "none"}
+                  onChange={(e) => setNormalizationType(e.target.value as NormalizationType)}
+                  className="mr-2"
+                />
+                Иной отчет
+              </label>
             </div>
           </div>
           
-          {/* Выбор файла с умными кнопками как в модалке */}
+          {/* Выбор файла с интерфейсом, аналогичным модальному окну загрузки */}
           <div className="mb-6">
             <div className="flex items-center gap-3 mb-4">
               <div 
@@ -272,7 +367,6 @@ export default function Depersonalization() {
                 )}
               </div>
               
-              {/* Умные кнопки как в модалке */}
               {!fileUploaded ? (
                 <Button
                   onClick={triggerFileInput}
@@ -309,24 +403,20 @@ export default function Depersonalization() {
               />
             </div>
             
-            {/* Кнопка загрузки на сервер (показывается при выбранном файле, но еще не загруженном) */}
-            {selectedFile && !fileUploaded && (
+            {/* Кнопка запуска процесса загрузки и нормализации */}
+            {selectedFile && !uploadSuccess && (
               <div className="max-w-lg">
                 <Button
-                  onClick={handleUploadReport}
+                  onClick={handleUploadFile}
                   variant="green"
                   size="rounded"
-                  disabled={uploadLoading}
-                  className="w-full transition-all duration-200"
-                  style={{
-                    opacity: uploadLoading ? 0.8 : 1,
-                    backgroundColor: uploadLoading ? 'rgba(34, 197, 94, 0.8)' : undefined
-                  }}
+                  disabled={uploadLoading || normalizeLoading}
+                  className="w-full"
                 >
-                  {uploadLoading ? (
+                  {(uploadLoading || normalizeLoading) ? (
                     <div className="flex items-center justify-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Загрузка...</span>
+                      <span>Подождите, идет загрузка...</span>
                     </div>
                   ) : (
                     "Загрузить для обезличивания"
@@ -341,16 +431,16 @@ export default function Depersonalization() {
             
             {uploadSuccess && (
               <div className="text-green-600 text-sm mt-2">
-                ✓ Отчет загружен успешно. Колонок: {columnsInfo.length}, правил: {defaultRules.length}
+                ✓ Отчет загружен и нормализован. Колонок: {columnsInfo.length}, правил: {defaultRules.length}
               </div>
             )}
           </div>
         </div>
         
-        {/* ПРАВАЯ КОЛОНКА - ПРАВИЛА (появляется после загрузки) */}
+        {/* Правая колонка: управление правилами обезличивания (отображается после успешной нормализации) */}
         {uploadSuccess && (
           <div>
-            {/* Правила по умолчанию */}
+            {/* Стандартные правила, применимые к колонкам отчета */}
             {defaultRules.length > 0 && (
               <div className="mb-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-3">
@@ -384,7 +474,7 @@ export default function Depersonalization() {
               </div>
             )}
             
-            {/* Кастомные правила */}
+            {/* Пользовательские правила: добавляются вручную для любых колонок */}
             <div className="mb-6">
               <div className="flex justify-between items-center mb-3">
                 <h3 className="text-lg font-medium text-gray-900">
@@ -440,7 +530,7 @@ export default function Depersonalization() {
                           <label className="block text-xs text-gray-500 mb-1">Тип замены</label>
                           <select
                             value={rule.type}
-                            onChange={(e) => handleCustomRuleChange(index, 'type', e.target.value)}
+                            onChange={(e) => handleCustomRuleChange(index, 'type', e.target.value as 'numbered' | 'fixed')}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                           >
                             <option value="numbered">Нумерованная</option>
@@ -457,7 +547,7 @@ export default function Depersonalization() {
         )}
       </div>
       
-      {/* Кнопка обезличивания */}
+      {/* Кнопка запуска обезличивания (доступна после успешной нормализации) */}
       {uploadSuccess && (
         <div className="mt-8 border-t pt-6">
           <div className="max-w-lg mx-auto">
@@ -466,16 +556,12 @@ export default function Depersonalization() {
               variant="green"
               size="rounded"
               disabled={anonymizeLoading}
-              className="w-full py-3 text-lg transition-all duration-200"
-              style={{
-                opacity: anonymizeLoading ? 0.8 : 1,
-                backgroundColor: anonymizeLoading ? 'rgba(34, 197, 94, 0.8)' : undefined
-              }}
+              className="w-full py-3 text-lg"
             >
               {anonymizeLoading ? (
                 <div className="flex items-center justify-center gap-2">
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Подождите минутку...</span>
+                  <span>Обезличивание...</span>
                 </div>
               ) : (
                 "Обезличить и скачать"
@@ -487,3 +573,5 @@ export default function Depersonalization() {
     </PageContainer>
   );
 }
+
+

@@ -12,7 +12,8 @@ from starlette.responses import FileResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Импорты роутеров
-from backend.app.common.routes.common import router as common_router
+from backend.app.data_management.routes.file_management import router as file_management_router
+from backend.app.data_management.routes.data_status import router as data_status_router
 from backend.app.rainbow.routes.rainbow import router as rainbow_router
 from backend.app.common.routes.case import router as case_router
 from backend.app.task_manager.routes.tasks import router as tasks_router
@@ -44,7 +45,8 @@ app.add_middleware(
 )
 
 # Роутеры
-app.include_router(common_router)
+app.include_router(file_management_router)
+app.include_router(data_status_router)
 app.include_router(filters_router)
 app.include_router(rainbow_router)
 app.include_router(case_router)

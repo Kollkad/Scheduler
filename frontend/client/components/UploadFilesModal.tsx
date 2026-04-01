@@ -54,17 +54,18 @@ export function UploadFilesModal({
     }
   }, [isOpen, refreshFilesStatus]);
 
-  // Проверка загрузки обязательных файлов
-  const requiredFilesUploaded =
-    Boolean(uploadedFiles?.current_detailed_report?.loaded) &&
-    Boolean(uploadedFiles?.documents_report?.loaded);
+  
+  // Получение статуса файла из нового формата
+  const getFileStatus = (fileType: ModalKey) => {
+    const backendKey = fileTypeToBackendKey[fileType];
+    return uploadedFiles?.files?.[backendKey];
+  };
 
   // Функция получает путь к загруженному файлу
   const getUploadedFilePath = (fileType: ModalKey) => {
-    const backendKey = fileTypeToBackendKey[fileType];
-    return (uploadedFiles as any)?.[backendKey]?.filepath ?? "";
+    const fileStatus = getFileStatus(fileType);
+    return fileStatus?.file?.server_path ?? "";
   };
-
   // Функция формирует отображаемое имя файла
   const getDisplayName = (fileType: ModalKey) => {
     const local = localFiles[fileType];
@@ -74,7 +75,15 @@ export function UploadFilesModal({
       return path.split("/").pop() ?? path;
     }
     return "";
+  };  
+
+  // Функция проверяет загружен ли файл
+  const isUploaded = (fileType: ModalKey) => {
+    const fileStatus = getFileStatus(fileType);
+    return fileStatus?.loaded === true;
   };
+  // Проверка загрузки обязательных файлов
+  const requiredFilesUploaded = isUploaded('currentReport') && isUploaded('documentsReport');
 
   // Функция получает плейсхолдер для поля
   const getPlaceholder = (fileType: ModalKey) => {
@@ -86,12 +95,6 @@ export function UploadFilesModal({
       case "previousReport":
         return "Файл предыдущего детального отчета (опционально)";
     }
-  };
-
-  // Функция проверяет загружен ли файл
-  const isUploaded = (fileType: ModalKey) => {
-    const backendKey = fileTypeToBackendKey[fileType];
-    return Boolean((uploadedFiles as any)?.[backendKey]?.loaded);
   };
 
   // Функция обрабатывает загрузку файла
@@ -136,9 +139,12 @@ export function UploadFilesModal({
   };
 
   // Функция проверяет статус файлов на сервере
-  const checkFilesStatus = async (): Promise<FilesStatusResponse> => {
+  const checkFilesStatus = async (): Promise<boolean> => {
     try {
-      return await apiClient.getFilesStatus();
+      const status = await apiClient.getFilesStatus();
+      const hasDetailed = status.files?.current_detailed_report?.loaded === true;
+      const hasDocuments = status.files?.documents_report?.loaded === true;
+      return hasDetailed && hasDocuments;
     } catch (error) {
       console.error('Ошибка проверки статуса файлов:', error);
       throw error;
@@ -149,10 +155,8 @@ export function UploadFilesModal({
   const handleCalculate = async () => {
     try {
       setUploadStatus('uploading');
-
-      const status = await checkFilesStatus();
-
-      if (status?.ready_for_analysis) {
+      const isReady = await checkFilesStatus();
+      if (isReady) {
         onClose();
         setTimeout(() => { onCalculate(); }, 100);
       } else {
@@ -250,8 +254,7 @@ export function UploadFilesModal({
                   <span className="text-gray-400">{getPlaceholder('currentReport')}</span>
                 )}
               </div>
-              
-              {/* Остальной код без изменений */}
+                            
               {!isUploaded('currentReport') ? (
                 <Button
                   onClick={() => triggerFileInput('currentReport')}
@@ -312,7 +315,6 @@ export function UploadFilesModal({
                 )}
               </div>
               
-              {/* Остальной код без изменений */}
               {!isUploaded('documentsReport') ? (
                 <Button
                   onClick={() => triggerFileInput('documentsReport')}
@@ -374,7 +376,6 @@ export function UploadFilesModal({
                   )}
                 </div>
                 
-                {/* Остальной код без изменений */}
                 {!isUploaded('previousReport') ? (
                   <Button
                     onClick={() => triggerFileInput('previousReport')}

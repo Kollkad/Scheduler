@@ -1,4 +1,4 @@
-# backend/app/common/modules/data_clean_detailed.py
+#backend/app/data_management/modules/data_clean_detailed.py
 """
 Модуль очистки данных детального отчета.
 

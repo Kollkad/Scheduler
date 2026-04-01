@@ -32,7 +32,7 @@ async def search_cases(
         }
     """
     try:
-        from backend.app.common.modules.data_manager import data_manager
+        from backend.app.data_management.modules.data_manager import data_manager
         from backend.app.common.modules.utils import extract_unique_values
 
         results = []

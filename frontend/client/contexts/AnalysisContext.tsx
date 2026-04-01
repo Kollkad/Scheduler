@@ -11,13 +11,12 @@ import {
 import { apiClient } from '@/services/api/client';
 import { API_ENDPOINTS } from '@/services/api/endpoints';
 import { featureFlags } from '@/config/featureFlags';
+import { FilesStatusResponse, FileModel } from '@/services/api/types';
 
 // Интерфейс статуса загруженных файлов для анализа
 export interface FilesStatus {
-  current_detailed_report?: { filepath?: string; loaded?: boolean };
-  documents_report?: { filepath?: string; loaded?: boolean };
-  previous_detailed_report?: { filepath?: string; loaded?: boolean };
-  ready_for_analysis?: boolean;
+  files: Record<string, { loaded: boolean; exists: boolean; file: FileModel | null }>;
+  total_files: number;
 }
 
 interface AnalysisContextType {
@@ -89,11 +88,15 @@ export const AnalysisProvider: React.FC<AnalysisProviderProps> = ({ children }) 
   // Функция обновляет статус загруженных файлов
   const refreshFilesStatus = useCallback(async () => {
     try {
-      const status = await apiClient.get<FilesStatus>(API_ENDPOINTS.FILES_STATUS);
+      const status = await apiClient.getFilesStatus();
       
-      if (!featureFlags.enableComparison && status.previous_detailed_report) {
-        const { previous_detailed_report, ...statusWithoutComparison } = status;
-        setUploadedFiles(statusWithoutComparison);
+      if (!featureFlags.enableComparison) {
+        // Удаляем previous_detailed_report из files
+        const { previous_detailed_report, ...filesWithoutComparison } = status.files;
+        setUploadedFiles({
+          files: filesWithoutComparison,
+          total_files: Object.keys(filesWithoutComparison).length
+        });
       } else {
         setUploadedFiles(status);
       }
@@ -145,9 +148,8 @@ export const AnalysisProvider: React.FC<AnalysisProviderProps> = ({ children }) 
   const runAnalysis = useCallback(async (): Promise<AnalysisStatus> => {
     try {
       setIsAnalyzing(true);
-
-      // Сброс предыдущих данных анализа на клиенте и сервере
       clearChartsCache();
+      
       try {
         console.log('Сбрасываем предыдущие данные анализа...');
         await apiClient.post(API_ENDPOINTS.RESET_ANALYSIS);

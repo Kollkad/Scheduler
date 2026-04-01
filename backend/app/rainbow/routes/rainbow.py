@@ -19,9 +19,8 @@ router = APIRouter(prefix="/api/rainbow", tags=["rainbow"])
 
 # Импорт модулей анализа данных
 try:
-    from backend.app.common.modules.data_manager import data_manager
+    from backend.app.data_management.modules.data_manager import data_manager
     from backend.app.rainbow.modules.rainbow_classifier import RainbowClassifier
-    from backend.app.common.routes.common import current_files
     from backend.app.common.config.column_names import COLUMNS
     from backend.app.common.modules.utils import extract_value
 except ImportError as e:
@@ -63,38 +62,24 @@ async def analyze_rainbow():
         HTTPException: 404 если детальный отчет не загружен в систему
         HTTPException: 500 при возникновении ошибок обработки данных
     """
-    # Проверка наличия загруженного отчета
-    if not current_files["current_detailed_report"]:
-        raise HTTPException(status_code=404, detail="Текущий детальный отчет не загружен")
-
     try:
-       # Этап 1: Загрузка и очистка данных выполняется через менеджер данных
-        detailed_df = data_manager.load_detailed_report(
-            current_files["current_detailed_report"]
-        )
-        # Этап 2: Создание derived данных цветовой классификации
+        detailed_df = data_manager.load_detailed_report()
+
         derived_df = RainbowClassifier.create_derived_rainbow(detailed_df)
         if derived_df is None or derived_df.empty:
-            print("❌ ОШИБКА: derived_rainbow не создан или пуст")
             raise HTTPException(
                 status_code=500,
                 detail="Не удалось создать производные данные для радуги"
             )
 
-        # Сохранение derived данных в менеджер обеспечивает их доступность
-        data_manager._derived_data["detailed_rainbow"] = derived_df
-
-        # Этап 3: Создание cached данных для быстрой фильтрации по цветам
         cached_df = RainbowClassifier.build_colored_cache(detailed_df, derived_df)
         if cached_df is None or cached_df.empty:
-            print("❌ ОШИБКА: colored_cache не создан или пуст")
             raise HTTPException(
                 status_code=500,
                 detail="Не удалось создать кэшированные данные для фильтрации"
             )
 
-        # Сохранение cached данных в менеджер
-        data_manager._cached_data["detailed_colored"] = cached_df
+        data_manager.set_rainbow_data(derived_df, cached_df)
 
         return {
             "success": True,
@@ -103,6 +88,8 @@ async def analyze_rainbow():
             "cachedCount": len(cached_df)
         }
 
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Текущий детальный отчет не загружен")
     except HTTPException:
         raise
     except Exception as e:

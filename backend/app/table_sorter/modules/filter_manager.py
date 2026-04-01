@@ -10,7 +10,7 @@
 from typing import Dict, List, Any
 import pandas as pd
 from backend.app.common.config.column_names import COLUMNS
-from backend.app.common.modules.data_manager import data_manager
+from backend.app.data_management.modules.data_manager import data_manager
 
 
 class FilterSettings:

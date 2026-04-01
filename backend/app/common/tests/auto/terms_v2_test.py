@@ -16,7 +16,7 @@ import pandas as pd
 # Добавление пути к проекту для импортов
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../..'))
 
-from backend.app.common.modules.data_manager import data_manager
+from backend.app.data_management.modules.data_manager import data_manager
 from backend.app.common.config.column_names import COLUMNS, VALUES
 from backend.app.common.tests.tests_config import TestsConfig
 

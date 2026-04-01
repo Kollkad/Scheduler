@@ -1,4 +1,4 @@
-# backend/app/common/modules/gosb_normalization.py
+#backend/app/data_management/modules/gosb_normalization.py
 """
 Модуль нормализации ГОСБ для детальных отчетов.
 

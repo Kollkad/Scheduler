@@ -19,7 +19,7 @@ import tempfile
 import logging
 
 from backend.app.common.config.column_names import COLUMNS
-from backend.app.common.modules.data_manager import data_manager
+from backend.app.data_management.modules.data_manager import data_manager
 from backend.app.saving_results.modules.saving_results_settings import (
     generate_filename,
     save_with_xlsxwriter_formatting,

@@ -1,6 +1,5 @@
+#backend/app/data_management/modules/data_import.py
 """
-backend/app/common/modules/data_import.py
-
 Модуль загрузки данных из Excel файлов.
 Использует быстрые методы загрузки с openpyxl как основной вариант.
 """

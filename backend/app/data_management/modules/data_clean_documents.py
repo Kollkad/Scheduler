@@ -1,4 +1,4 @@
-# backend/app/common/modules/data_clean_documents.py
+#backend/app/data_management/modules/data_clean_documents.py
 """
 Модуль очистки данных отчета по полученным и переданным документам.
 

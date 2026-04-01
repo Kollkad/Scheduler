@@ -21,10 +21,10 @@ from typing import Dict, List
 # Добавляем путь к проекту
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../..'))
 
-from backend.app.common.modules.data_import import load_excel_data
-from backend.app.common.modules.data_clean_detailed import clean_data
-from backend.app.common.modules.data_clean_documents import clean_documents_data
-from backend.app.common.modules.data_manager import data_manager
+from backend.app.data_management.modules.data_import import load_excel_data
+from backend.app.data_management.modules.data_clean_detailed import clean_data
+from backend.app.data_management.modules.data_clean_documents import clean_documents_data
+from backend.app.data_management.modules.data_manager import data_manager
 from backend.app.rainbow.modules.rainbow_classifier import RainbowClassifier
 from backend.app.rainbow.modules.rainbow_by_l import RainbowByLClassifier
 from backend.app.terms_of_support_v2.modules.terms_analyzer_v2 import build_production_table

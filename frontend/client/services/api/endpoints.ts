@@ -40,9 +40,10 @@ export const API_ENDPOINTS = {
   TASK_DETAILS: '/api/tasks',
 
   // ==================== FILE OPERATIONS ====================
-  UPLOAD_FILE: '/api/upload-file',
-  FILES_STATUS: '/api/files-status',
-  REMOVE_FILE: '/api/remove-file',
+  UPLOAD_FILE: '/api/data/upload-file',
+  FILES_STATUS: '/api/data/files-status',
+  FILE_STATUS: '/api/data/file-status',
+  REMOVE_FILE: '/api/data/remove-file',
 
   // ==================== TABLE SORTER & FILTERS ====================
   UNIQUE_VALUES: '/api/table-sorter/unique-values',
@@ -66,15 +67,15 @@ export const API_ENDPOINTS = {
   SAVE_ALL_PROCESSED_DATA_STATUS: '/api/save/all-processed-data',
   SAVE_TASKS_EXECUTOR: '/api/save/tasks-by-executor',
 
-  // ==================== DEPERSONALIZATION ENDPOINTS ====================
-  DEPERSONALIZATION_LOAD_REPORT: '/api/additional_processing/load_report',
-  DEPERSONALIZATION_GET_DEFAULT_RULES: '/api/additional_processing/get_default_rules',
-  DEPERSONALIZATION_ANONYMIZE: '/api/additional_processing/anonymize',
-  DEPERSONALIZATION_DOWNLOAD: '/api/additional_processing/download_anonymized',
-  DEPERSONALIZATION_CLEAR_TEMP_DATA: '/api/additional_processing/clear_temp_data',
+  // ==================== ANONYMIZATION ====================
+  ANONYMIZATION_NORMALIZE: '/api/additional_processing/normalize',
+  ANONYMIZATION_GET_DEFAULT_RULES: '/api/additional_processing/get_default_rules',
+  ANONYMIZATION_ANONYMIZE: '/api/additional_processing/anonymize',
+  ANONYMIZATION_DOWNLOAD: '/api/additional_processing/download',
 
-  // ==================== RESET ====================
-  RESET_ANALYSIS: '/api/reset-analysis',
+  // ==================== DATA STATUS ====================
+  TEST_DATA: '/api/data/test-data',
+  RESET_ANALYSIS: '/api/data/reset-analysis',
 
   // ==================== УСТАРЕВШИЕ (НЕ ИСПОЛЬЗОВАТЬ) ====================
   // TERMS_LAWSUIT_ANALYZE: '/api/terms/lawsuit/analyze_l', // УСТАРЕЛО - использовать TERMS_V2_LAWSUIT_ANALYZE

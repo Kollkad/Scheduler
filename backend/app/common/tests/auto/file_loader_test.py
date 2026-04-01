@@ -12,7 +12,7 @@ import pandas as pd
 # Добавляем путь к проекту
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../..'))
 
-from backend.app.common.modules.data_manager import data_manager
+from backend.app.data_management.modules.data_manager import data_manager
 from backend.app.common.tests.tests_config import TestsConfig
 
 

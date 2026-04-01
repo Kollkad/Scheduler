@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import Optional, List, Dict, Any
 import pandas as pd
 
-from backend.app.common.modules.data_manager import data_manager
+from backend.app.data_management.modules.data_manager import data_manager
 from backend.app.task_manager.modules.task_analyzer import task_analyzer
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
@@ -24,6 +24,10 @@ async def calculate_tasks(executor: Optional[str] = Query(None,
 
     Выполняет анализ данных и формирование задач для всех доступных
     типов производств с возможностью фильтрации по исполнителю.
+    Для расчета необходимы предварительно выполненные анализы:
+    - исковое производство (analyze_lawsuit)
+    - приказное производство (analyze_order)
+    - анализ документов (analyze_documents)
 
     Args:
         executor (str, optional): Ответственный исполнитель для фильтрации
@@ -32,14 +36,18 @@ async def calculate_tasks(executor: Optional[str] = Query(None,
         dict: Результат расчета задач с статистикой
 
     Raises:
-        HTTPException: Возникает при отсутствии необходимых данных или ошибках расчета
+        HTTPException: 400 если нет данных для расчета, 500 при ошибках
     """
     try:
-        # Проверка загрузки необходимых отчетов
-        if not data_manager.is_loaded("both"):
+        # Проверка наличия данных для расчета задач
+        has_lawsuit = data_manager.get_processed_data("lawsuit_staged") is not None
+        has_order = data_manager.get_processed_data("order_staged") is not None
+        has_documents = data_manager.get_processed_data("documents_processed") is not None
+
+        if not (has_lawsuit or has_order or has_documents):
             raise HTTPException(
                 status_code=400,
-                detail="Необходимо загрузить оба отчета (детальный и документов)"
+                detail="Нет данных для расчета задач. Сначала выполните анализы: /analyze_lawsuit, /analyze_order, /analyze_documents"
             )
 
         print("🔄 Начинается расчет задач...")
@@ -70,6 +78,8 @@ async def calculate_tasks(executor: Optional[str] = Query(None,
             "message": f"Рассчитано {len(filtered_tasks)} задач" + (f" для {executor}" if executor else "")
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"❌ Ошибка расчета задач: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка расчета задач: {str(e)}")

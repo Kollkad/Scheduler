@@ -17,9 +17,7 @@
 from fastapi import APIRouter, HTTPException, Query
 import pandas as pd
 
-from backend.app.common.modules.data_manager import data_manager
-from backend.app.common.routes.common import current_files
-
+from backend.app.data_management.modules.data_manager import data_manager
 from backend.app.terms_of_support_v2.modules.terms_analyzer_v2 import prepare_case_data, build_production_table
 from backend.app.common.config.terms_checks_config import LAWSUIT_CHECKS_MAPPING
 from backend.app.common.modules.utils import filter_production_cases
@@ -54,7 +52,7 @@ class LawsuitChartAnalyzer:
         исключений (reopened, complaint_filed, error_dublicate, withdraw_by_the_initiator).
 
         Returns:
-            List[Dict]: Список словарей с данными для диаграмм в формате:
+            List[Dict]: Список словачей с данными для диаграмм в формате:
                        [{"group_name": str, "values": [int, int, int, int]}, ...]
                        где values содержат счетчики для каждого сегмента диаграммы
         """
@@ -127,62 +125,14 @@ class LawsuitChartAnalyzer:
         return results
 
 
-@router.get("/analyze_lawsuit_charts")
-async def analyze_lawsuit_charts():
-    """
-    Эндпоинт для получения данных искового производства в формате для диаграмм.
-
-    Загружает детальный отчет, фильтрует дела искового производства, создает таблицу
-    и преобразует данные в формат, подходящий диаграмме.
-
-    Returns:
-        Dict: Результат анализа с данными для диаграмм:
-              {
-                  "success": bool,
-                  "data": List[Dict],  # Данные для диаграмм
-                  "total_cases": int,  # Общее количество обработанных дел
-                  "message": str       # Сообщение о результате выполнения
-              }
-
-    Raises:
-        HTTPException: 404 если детальный отчет не загружен
-        HTTPException: 500 при ошибках обработки данных
-    """
-    if not current_files["current_detailed_report"]:
-        raise HTTPException(status_code=404, detail="Детальный отчет не загружен")
-
-    try:
-        # Проверка наличия кэшированных данных
-        staged_df = data_manager.get_processed_data("lawsuit_staged")
-
-        if staged_df is None:
-            # Загрузка и обработка данных при отсутствии кэша
-            df = data_manager.load_detailed_report(current_files["current_detailed_report"])
-            df = filter_production_cases(df, 'lawsuit')
-            staged_df = build_production_table(df, 'lawsuit')
-            data_manager.set_processed_data("lawsuit_staged", staged_df)
-
-        # Анализ данных для построения диаграмм
-        analyzer = LawsuitChartAnalyzer(staged_df)
-        chart_data = analyzer.analyze_for_charts()
-
-        return {
-            "success": True,
-            "data": chart_data,
-            "totalCases": len(staged_df),
-            "message": "Данные для диаграмм подготовлены"
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
-
-
 @router.get("/analyze_lawsuit")
 async def analyze_lawsuit_terms():
     """
-    Эндпоинт для анализа искового производства
+    Эндпоинт для анализа искового производства.
+    Только этот эндпоинт имеет право загружать данные и выполнять анализ.
+
     Выполняет полный анализ дел искового производства с определением этапов
-    и статусов мониторинга
+    и статусов мониторинга.
 
     Returns:
         Dict: Результат анализа в формате v2:
@@ -197,19 +147,19 @@ async def analyze_lawsuit_terms():
         HTTPException: 404 если детальный отчет не загружен
         HTTPException: 500 при ошибках обработки данных
     """
-    if not current_files["current_detailed_report"]:
-        raise HTTPException(status_code=404, detail="Детальный отчет не загружен")
-
     try:
-        # Проверка наличия кэшированных данных
-        staged_df = data_manager.get_processed_data("lawsuit_staged")
+        # Проверка наличия загруженного отчета
+        try:
+            df = data_manager.load_detailed_report()
+        except ValueError:
+            raise HTTPException(status_code=404, detail="Детальный отчет не загружен")
 
-        if staged_df is None:
-            # Загрузка и обработка данных при отсутствии кэша
-            df = data_manager.load_detailed_report(current_files["current_detailed_report"])
-            df = filter_production_cases(df, 'lawsuit')
-            staged_df = build_production_table(df, 'lawsuit')
-            data_manager.set_processed_data("lawsuit_staged", staged_df)
+        # Фильтрация и анализ данных
+        df = filter_production_cases(df, 'lawsuit')
+        staged_df = build_production_table(df, 'lawsuit')
+
+        # Сохранение результатов в кэш
+        data_manager.set_processed_data("lawsuit_staged", staged_df)
 
         # Формирование основных данных без внутреннего столбца completion_status
         result_data = staged_df[["caseCode", "caseStage", "monitoringStatus"]].to_dict(orient="records")
@@ -220,6 +170,55 @@ async def analyze_lawsuit_terms():
             "data": result_data,
             "message": "Анализ искового производства выполнен"
         }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
+
+
+@router.get("/analyze_lawsuit_charts")
+async def analyze_lawsuit_charts():
+    """
+    Эндпоинт для получения данных искового производства в формате для диаграмм.
+    Использует только предварительно рассчитанные данные.
+
+    Returns:
+        Dict: Результат анализа с данными для диаграмм:
+              {
+                  "success": bool,
+                  "data": List[Dict],  # Данные для диаграмм
+                  "total_cases": int,  # Общее количество обработанных дел
+                  "message": str       # Сообщение о результате выполнения
+              }
+
+    Raises:
+        HTTPException: 404 если анализ не выполнен
+        HTTPException: 500 при ошибках обработки данных
+    """
+    try:
+        # Получение предварительно рассчитанных данных
+        staged_df = data_manager.get_processed_data("lawsuit_staged")
+
+        if staged_df is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Анализ искового производства не выполнен. Сначала вызовите /analyze_lawsuit"
+            )
+
+        # Анализ данных для построения диаграмм
+        analyzer = LawsuitChartAnalyzer(staged_df)
+        chart_data = analyzer.analyze_for_charts()
+
+        return {
+            "success": True,
+            "data": chart_data,
+            "totalCases": len(staged_df),
+            "message": "Данные для диаграмм подготовлены"
+        }
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
 
@@ -228,6 +227,7 @@ async def analyze_lawsuit_terms():
 async def get_filtered_cases(stage: str = Query(...), status: str = Query(...)):
     """
     Фильтрация дел искового производства по этапу и статусу мониторинга.
+    Использует только предварительно рассчитанные данные.
 
     Args:
         stage (str): Название проверки (например: first_status_changed_14days)
@@ -244,49 +244,51 @@ async def get_filtered_cases(stage: str = Query(...), status: str = Query(...)):
               }
 
     Raises:
-        HTTPException: 404 если детальный отчет не загружен
+        HTTPException: 404 если анализ не выполнен
         HTTPException: 400 если указана неизвестная проверка
         HTTPException: 500 при ошибках обработки данных
     """
-    if not current_files["current_detailed_report"]:
-        raise HTTPException(status_code=404, detail="Детальный отчет не загружен")
+    try:
+        # Получение предварительно рассчитанных данных
+        staged_df = data_manager.get_processed_data("lawsuit_staged")
 
-    # Получение кэшированных данных
-    staged_df = data_manager.get_processed_data("lawsuit_staged")
+        if staged_df is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Анализ искового производства не выполнен. Сначала вызовите /analyze_lawsuit"
+            )
 
-    # Обработка данных при отсутствии кэша
-    if staged_df is None:
-        df = data_manager.load_detailed_report(current_files["current_detailed_report"])
-        df = filter_production_cases(df, 'lawsuit')
-        staged_df = build_production_table(df, 'lawsuit')
-        data_manager.set_processed_data("lawsuit_staged", staged_df)
+        # Определение базового этапа и индекса проверки
+        base_stage = None
+        check_index = None
+        for stage_name, checks in LAWSUIT_CHECKS_MAPPING.items():
+            if stage in checks:
+                base_stage = stage_name
+                check_index = checks.index(stage)
+                break
 
-    # Определение базового этапа и индекса проверки
-    base_stage = None
-    check_index = None
-    for stage_name, checks in LAWSUIT_CHECKS_MAPPING.items():
-        if stage in checks:
-            base_stage = stage_name
-            check_index = checks.index(stage)
-            break
+        if base_stage is None:
+            raise HTTPException(status_code=400, detail=f"Неизвестная проверка: {stage}")
 
-    if base_stage is None:
-        raise HTTPException(status_code=400, detail=f"Неизвестная проверка: {stage}")
+        # Фильтрация данных по этапу и статусу
+        mask = (
+                (staged_df["caseStage"] == base_stage) &
+                (staged_df["monitoringStatus"].str.split(";").str[check_index] == status)
+        )
+        filtered = staged_df[mask]
 
-    # Фильтрация данных по этапу и статусу
-    mask = (
-            (staged_df["caseStage"] == base_stage) &
-            (staged_df["monitoringStatus"].str.split(";").str[check_index] == status)
-    )
-    filtered = staged_df[mask]
+        # Формирование результата с подготовленными данными дел
+        result_cases = [prepare_case_data(row, base_stage, status) for _, row in filtered.iterrows()]
 
-    # Формирование результата с подготовленными данными дел
-    result_cases = [prepare_case_data(row, base_stage, status) for _, row in filtered.iterrows()]
+        return {
+            "success": True,
+            "stage": stage,
+            "status": status,
+            "count": len(result_cases),
+            "cases": result_cases
+        }
 
-    return {
-        "success": True,
-        "stage": stage,
-        "status": status,
-        "count": len(result_cases),
-        "cases": result_cases
-    }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка фильтрации: {str(e)}")

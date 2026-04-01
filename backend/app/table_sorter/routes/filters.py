@@ -92,7 +92,7 @@ async def apply_filters(filters: Dict[str, Any] = Body(...)):
         dict: Результат фильтрации
     """
     try:
-        from backend.app.common.modules.data_manager import data_manager
+        from backend.app.data_management.modules.data_manager import data_manager
 
         # Получение данных с цветовой классификацией
         df = data_manager.get_colored_data("detailed")

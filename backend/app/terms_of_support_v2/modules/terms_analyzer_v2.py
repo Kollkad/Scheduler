@@ -20,7 +20,7 @@ from backend.app.common.config.column_names import COLUMNS, VALUES
 from backend.app.common.config.calendar_config import russian_calendar
 from backend.app.common.config.terms_checks_config import LAWSUIT_CHECKS_MAPPING, ORDER_CHECKS_MAPPING
 from backend.app.common.modules.utils import get_filing_date, safe_get_column
-from backend.app.common.modules.data_manager import data_manager
+from backend.app.data_management.modules.data_manager import data_manager
 
 # ===== ИМПОРТЫ ДЛЯ BUILD_PRODUCTION_TABLE =====
 from backend.app.terms_of_support_v2.modules.lawsuit_stage_v2 import assign_lawsuit_stages

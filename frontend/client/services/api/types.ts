@@ -1,17 +1,43 @@
-//client\services\api\types.ts
+// client/services/api/types.ts
 
 // ==================== FILE OPERATIONS ====================
+export interface FileModel {
+  id: string;
+  name: string;
+  type: string;
+  server_path: string;
+  uploaded_at: string;
+  uploaded_by: string;
+}
+
 export interface FileStatus {
   loaded: boolean;
-  filepath: string | null;
   exists: boolean;
+  file: FileModel | null;
 }
 
 export interface FilesStatusResponse {
-  current_detailed_report: FileStatus;
-  documents_report: FileStatus;
-  previous_detailed_report: FileStatus;
-  ready_for_analysis: boolean;
+  files: Record<string, FileStatus>;
+  total_files: number;
+}
+
+export interface SingleFileStatusResponse {
+  file_type: string;
+  exists: boolean;
+  file: FileModel | null;
+}
+
+// ==================== UPLOAD ====================
+export interface UploadResponse {
+  message: string;
+  file: FileModel;
+}
+
+// ==================== REMOVE ====================
+export interface RemoveResponse {
+  message: string;
+  file_type: string;
+  removed: boolean;
 }
 
 // ==================== SAVING ====================
@@ -32,21 +58,6 @@ export interface StatusResponse {
   success: boolean;
   status: AvailableDataStatus;
   message: string;
-}
-
-// ==================== UPLOAD ====================
-export interface UploadResponse {
-  message: string;
-  filename: string;
-  file_type: string;
-  filepath: string;
-}
-
-// ==================== REMOVE ====================
-export interface RemoveResponse {
-  message: string;
-  file_type: string;
-  removed: boolean;
 }
 
 

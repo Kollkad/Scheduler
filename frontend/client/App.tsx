@@ -17,7 +17,7 @@ import DynamicCaseDetail from '@/pages/DynamicCaseDetail';
 import DocumentDetail from '@/pages/DocumentDetail';
 import { AnalysisProvider } from "@/contexts/AnalysisContext";
 import TaskDetail from './pages/TaskDetail';
-import Depersonalization from "./pages/Depersonalization";
+import Anonymization from "./pages/Anonymization";
 import UserProfileDetail from './pages/UserProfileDetail';
 import { AuthProvider } from '@/contexts/AuthContext';
 
@@ -40,7 +40,7 @@ const App = () => {
                   <Route path="/search" element={<Search />} />
                   <Route path="/tasks" element={<Tasks />} />
                   <Route path="/terms" element={<TermsOfSupport />} />
-                  <Route path="/depersonalization" element={<Depersonalization />} />
+                  <Route path="/anonymization" element={<Anonymization />} />
                   <Route path="/case/:caseCode" element={<DynamicCaseDetail />} />
                   <Route path="/document" element={<DocumentDetail />} />
                   <Route path="/filtered-cases" element={<FilteredCases />} />

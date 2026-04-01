@@ -1,13 +1,13 @@
 # backend/app/document_monitoring_v2/routes/document_terms_v2.py
 """
-Маршрутыs для системы мониторинга документов
+Маршруты для системы мониторинга документов
 
 Предоставляет эндпоинты для анализа, фильтрации и получения статистики
 по документам с использованием оптимизированных алгоритмов обработки.
 
 Основные эндпоинты:
+- /analyze: Запуск анализа документов
 - /analyze_document_charts: Получение данных для построения диаграмм
-- /analyze_documents: Запуск анализа документов
 - /filter_documents: Фильтрация документов по статусу и типу
 - /document_statuses: Получение статистики по статусам документов
 - /document: Получение детальной информации о документе
@@ -17,8 +17,7 @@ from fastapi import APIRouter, HTTPException, Query
 import pandas as pd
 from datetime import datetime
 
-from backend.app.common.modules.data_manager import data_manager
-from backend.app.common.routes.common import current_files
+from backend.app.data_management.modules.data_manager import data_manager
 from backend.app.document_monitoring_v2.modules.document_stage_checks_v2 import (
     analyze_documents,
     save_document_monitoring_status,
@@ -108,10 +107,62 @@ class DocumentChartAnalyzer:
         return results
 
 
+@router.get("/analyze_documents")
+async def analyze_documents_terms():
+    """
+    Запускает процесс анализа документов и сохраняет результаты.
+    Только этот эндпоинт имеет право загружать данные и выполнять анализ.
+
+    Returns:
+        dict: Результат анализа в формате:
+            {
+                "success": bool,
+                "count": int,
+                "message": str
+            }
+
+    Raises:
+        HTTPException: 404 если отчет документов не загружен
+        HTTPException: 500 при ошибке обработки данных
+    """
+    try:
+        # Проверка наличия загруженного отчета документов
+        try:
+            documents_df = data_manager.load_documents_report()
+        except ValueError:
+            raise HTTPException(status_code=404, detail="Отчет документов не загружен")
+
+        # Проверка наличия данных в загруженном отчете
+        if documents_df is None or documents_df.empty:
+            return {
+                "success": True,
+                "count": 0,
+                "message": "Отчет документов пуст"
+            }
+
+        # Выполнение анализа документов
+        analyzed_df = analyze_documents(documents_df)
+
+        # Сохранение результатов анализа в кэш
+        data_manager.set_processed_data("documents_processed", analyzed_df)
+
+        return {
+            "success": True,
+            "count": len(analyzed_df),
+            "message": f"Анализ документов выполнен успешно. Обработано {len(analyzed_df)} записей"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка анализа документов: {str(e)}")
+
+
 @router.get("/analyze_document_charts")
 async def analyze_document_charts():
     """
     Предоставляет данные документов в формате для построения диаграмм.
+    Использует только предварительно рассчитанные данные.
 
     Returns:
         Dict: Результат анализа с данными для визуализации:
@@ -123,30 +174,18 @@ async def analyze_document_charts():
             }
 
     Raises:
-        HTTPException: 404 если отчет документов не загружен
-        HTTPException: 500 при ошибке анализа данных
+        HTTPException: 404 если анализ документов не выполнен
+        HTTPException: 500 при ошибке обработки данных
     """
-    if not current_files.get("documents_report"):
-        raise HTTPException(status_code=404, detail="Отчет документов не загружен")
-
     try:
-        # Использование кэшированных обработанных данных
+        # Получение предварительно рассчитанных данных
         processed_df = data_manager.get_processed_data("documents_processed")
 
         if processed_df is None:
-            # Загрузка и анализ данных при отсутствии кэша
-            documents_df = data_manager.load_documents_report(current_files["documents_report"])
-
-            if documents_df.empty:
-                return {
-                    "success": True,
-                    "data": [],
-                    "totalDocuments": 0,
-                    "message": "Отчет документов пуст"
-                }
-
-            processed_df = analyze_documents(documents_df)
-            data_manager.set_processed_data("documents_processed", processed_df)
+            raise HTTPException(
+                status_code=404,
+                detail="Анализ документов не выполнен. Сначала вызовите /api/documents/analyze"
+            )
 
         # Анализ данных для построения диаграмм
         analyzer = DocumentChartAnalyzer(processed_df)
@@ -159,53 +198,10 @@ async def analyze_document_charts():
             "message": f"Данные для диаграмм документов подготовлены. Обработано {len(processed_df)} документов"
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка анализа документов для диаграмм: {str(e)}")
-
-
-@router.get("/analyze_documents")
-async def analyze_documents_terms():
-    """
-    Запускает процесс анализа документов и сохраняет результаты.
-
-    Returns:
-        dict: Результат анализа в формате:
-            {
-                "success": bool,
-                "count": int,
-                "file": str,
-                "message": str
-            }
-
-    Raises:
-        HTTPException: 404 если отчет документов не загружен
-        HTTPException: 500 при ошибке обработки данных
-    """
-    if not current_files.get("documents_report"):
-        raise HTTPException(status_code=404, detail="Отчет документов не загружен")
-
-    try:
-        documents_df = data_manager.load_documents_report(current_files["documents_report"])
-
-        # Проверка наличия данных в загруженном отчете
-        if documents_df.empty:
-            return {
-                "success": True,
-                "count": 0,
-                "file": "no_data",
-                "message": "Отчет документов пуст"
-            }
-
-        analyzed_df = analyze_documents(documents_df)
-        data_manager.set_processed_data("documents_processed", analyzed_df)
-
-        return {
-            "success": True,
-            "count": len(analyzed_df),
-            "message": f"Анализ документов выполнен успешно. Обработано {len(analyzed_df)} записей"
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка анализа документов: {str(e)}")
 
 
 @router.get("/filter_documents")
@@ -215,6 +211,7 @@ async def filter_documents(
 ):
     """
     Фильтрует документы по статусу мониторинга и типу документа.
+    Использует только предварительно рассчитанные данные.
 
     Args:
         status (str): Статус для фильтрации (timely/overdue/no_data)
@@ -231,31 +228,18 @@ async def filter_documents(
             }
 
     Raises:
-        HTTPException: 404 если отчет документов не загружен
+        HTTPException: 404 если анализ документов не выполнен
         HTTPException: 500 при ошибке фильтрации данных
     """
-    if not current_files.get("documents_report"):
-        raise HTTPException(status_code=404, detail="Отчет документов не загружен")
-
     try:
-        # Использование кэшированных обработанных данных
+        # Получение предварительно рассчитанных данных
         processed_df = data_manager.get_processed_data("documents_processed")
 
         if processed_df is None:
-            # Загрузка и анализ данных при отсутствии кэша
-            documents_df = data_manager.load_documents_report(current_files["documents_report"])
-
-            if documents_df.empty:
-                return {
-                    "success": True,
-                    "count": 0,
-                    "status": status,
-                    "documentType": documentType,
-                    "documents": []
-                }
-
-            processed_df = analyze_documents(documents_df)
-            data_manager.set_processed_data("documents_processed", processed_df)
+            raise HTTPException(
+                status_code=404,
+                detail="Анализ документов не выполнен. Сначала вызовите /api/documents/analyze"
+            )
 
         # Фильтрация по статусу мониторинга
         filtered = processed_df[processed_df["monitoringStatus"] == status]
@@ -285,6 +269,8 @@ async def filter_documents(
             "documents": filtered.to_dict(orient="records")
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка фильтрации документов: {str(e)}")
 
@@ -293,6 +279,7 @@ async def filter_documents(
 async def get_document_statuses():
     """
     Предоставляет статистику распределения документов по статусам мониторинга.
+    Использует только предварительно рассчитанные данные.
 
     Returns:
         dict: Статистика документов в формате:
@@ -304,29 +291,18 @@ async def get_document_statuses():
             }
 
     Raises:
-        HTTPException: 404 если отчет документов не загружен
+        HTTPException: 404 если анализ документов не выполнен
         HTTPException: 500 при ошибке анализа статистики
     """
-    if not current_files.get("documents_report"):
-        raise HTTPException(status_code=404, detail="Отчет документов не загружен")
-
     try:
-        # Использование кэшированных обработанных данных
+        # Получение предварительно рассчитанных данных
         processed_df = data_manager.get_processed_data("documents_processed")
 
         if processed_df is None:
-            # Загрузка и анализ данных при отсутствии кэша
-            documents_df = data_manager.load_documents_report(current_files["documents_report"])
-
-            if documents_df.empty:
-                return {
-                    "success": True,
-                    "totalDocuments": 0,
-                    "statusDistribution": {}
-                }
-
-            processed_df = analyze_documents(documents_df)
-            data_manager.set_processed_data("documents_processed", processed_df)
+            raise HTTPException(
+                status_code=404,
+                detail="Анализ документов не выполнен. Сначала вызовите /api/documents/analyze"
+            )
 
         # Подсчет распределения документов по статусам
         status_counts = processed_df["monitoringStatus"].value_counts().to_dict()
@@ -337,6 +313,9 @@ async def get_document_statuses():
             "statusDistribution": status_counts,
             "message": f"Проанализировано {len(processed_df)} документов"
         }
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка анализа статусов: {str(e)}")
 
@@ -349,6 +328,7 @@ async def get_document_details(
 ):
     """
     Предоставляет детальную информацию о конкретном документе.
+    Использует только предварительно рассчитанные данные.
 
     Args:
         case_code (str): Код дела для поиска
@@ -367,16 +347,23 @@ async def get_document_details(
             }
 
     Raises:
-        HTTPException: 404 если документ не найден или данные не загружены
+        HTTPException: 404 если документ не найден или анализ не выполнен
         HTTPException: 500 при ошибке получения данных
     """
     try:
         from backend.app.common.config.column_names import COLUMNS
 
+        # Получение предварительно рассчитанных данных
         processed_docs = data_manager.get_processed_data("documents_processed")
         original_docs = data_manager.get_documents_data()
 
-        if processed_docs is None or processed_docs.empty or original_docs is None or original_docs.empty:
+        if processed_docs is None or processed_docs.empty:
+            raise HTTPException(
+                status_code=404,
+                detail="Анализ документов не выполнен. Сначала вызовите /api/documents/analyze"
+            )
+
+        if original_docs is None or original_docs.empty:
             raise HTTPException(status_code=404, detail="Данные документов не загружены")
 
         # Поиск документа в обработанных данных
@@ -414,5 +401,7 @@ async def get_document_details(
             "message": "Данные документа получены"
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка получения документа: {str(e)}")

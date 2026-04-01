@@ -16,7 +16,7 @@ from fastapi import APIRouter, HTTPException
 from typing import Dict, Any, List
 import pandas as pd
 from backend.app.common.config.column_names import COLUMNS, VALUES
-from backend.app.common.modules.data_manager import data_manager
+from backend.app.data_management.modules.data_manager import data_manager
 
 router = APIRouter(prefix="/api/case", tags=["case"])
 
