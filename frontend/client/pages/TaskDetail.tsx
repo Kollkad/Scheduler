@@ -1,4 +1,5 @@
 // frontend/client/pages/TaskDetail.tsx
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader, CheckCircle, XCircle, AlertCircle } from "lucide-react";
@@ -6,6 +7,7 @@ import { PageContainer } from "@/components/PageContainer";
 import { apiClient } from "@/services/api/client";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { Button } from "@/components/ui/button";
+import { formatDate } from "@/utils/dateFormat";
 
 type TaskDetails = {
     taskCode: string;
@@ -23,6 +25,7 @@ type TaskDetails = {
     department?: string;
     requestCode?: string;
 };
+
 export default function TaskDetail() {
     const navigate = useNavigate();
     const { taskCode } = useParams<{ taskCode: string }>();
@@ -194,14 +197,14 @@ export default function TaskDetail() {
                         <div>
                             <h3 className="text-sm font-medium text-text-primary">Дата создания</h3>
                             <p className="mt-1 text-sm text-text-primary">
-                                {new Date(taskData.createdDate).toLocaleDateString('ru-RU')}
+                                {formatDate(taskData.createdDate)}
                             </p>
                         </div>
                     </div>
                 </div>
 
                 {/* Причины постановки задачи */}
-                <div className="pt-6 border-t border-border-default">
+                <div className="pt-6 border-t border-border">
                     <h3 className="text-sm font-medium text-text-primary mb-2">Причины постановки задачи</h3>
                     <p className="text-sm text-text-primary">
                         {taskData.reasonText || "Причина не указана"}

@@ -1,4 +1,5 @@
 // src/components/DocumentDetail.tsx
+
 import { useState, useEffect } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader } from "lucide-react";
@@ -7,6 +8,7 @@ import { TabsContainer } from "@/components/TabsContainer";
 import { FieldGroup } from "@/components/FieldGroup";
 import { CaseService, DocumentDetails } from "@/services/case/caseService";
 import { Button } from "@/components/ui/button";
+import { formatDate } from "@/utils/dateFormat";
 
 export function DocumentDetail() {
   const navigate = useNavigate();
@@ -134,10 +136,16 @@ function createDocumentFieldGroups(document: Record<string, any>) {
 
   // Цикл перебирает все поля документа и распределяет их по соответствующим группам
   Object.entries(document).forEach(([key, value]) => {
+    // Форматирование значения, если это дата
+    let formattedValue = value;
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+      formattedValue = formatDate(value);
+    }
+    
     const field = {
       id: key,
       label: key,
-      value: value,
+      value: formattedValue,
       type: getFieldType(value)
     };
 
@@ -163,7 +171,7 @@ function createDocumentFieldGroups(document: Record<string, any>) {
 function getFieldType(value: any): 'text' | 'number' | 'date' | 'boolean' | 'currency' {
   if (typeof value === 'boolean') return 'boolean';
   if (typeof value === 'number') return 'number';
-  if (typeof value === 'string' && !isNaN(Date.parse(value))) return 'date';
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) return 'date';
   return 'text';
 }
 

@@ -1,4 +1,5 @@
 // src/components/DynamicCaseDetail.tsx
+
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader } from "lucide-react";
@@ -8,6 +9,7 @@ import { FieldGroup } from "@/components/FieldGroup";
 import { CaseService, CaseDetails } from "@/services/case/caseService";
 import { Button } from "@/components/ui/button";
 import { CaseLifecycleTimeline } from "@/components/ui/CaseLifecycleTimeline";
+import { formatDate } from "@/utils/dateFormat";
 
 export function DynamicCaseDetail() {
   const navigate = useNavigate();
@@ -32,7 +34,12 @@ export function DynamicCaseDetail() {
       
       // Проверка выполняется для обеспечения корректности полученных данных
       if (data && data.success) {
-        setCaseData(data);
+        // Форматирование дат во всех полях перед сохранением
+        const formattedFieldGroups = formatDatesInFieldGroups(data.fieldGroups);
+        setCaseData({
+          ...data,
+          fieldGroups: formattedFieldGroups
+        });
       } else {
         throw new Error('Данные не найдены или некорректны');
       }
@@ -43,6 +50,27 @@ export function DynamicCaseDetail() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Рекурсивная функция форматирует даты во всех полях групп
+  const formatDatesInFieldGroups = (fieldGroups: Record<string, any[]>): Record<string, any[]> => {
+    const result: Record<string, any[]> = {};
+    
+    Object.entries(fieldGroups).forEach(([groupName, fields]) => {
+      result[groupName] = fields.map(field => {
+        // Проверка, является ли значение поля датой
+        if (typeof field.value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(field.value)) {
+          return {
+            ...field,
+            value: formatDate(field.value),
+            type: 'date'
+          };
+        }
+        return field;
+      });
+    });
+    
+    return result;
   };
 
   if (loading) {

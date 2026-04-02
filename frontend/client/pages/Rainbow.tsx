@@ -1,6 +1,7 @@
 // frontend/client/pages/Rainbow.tsx
+
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { DefaultChart } from "@/components/DefaultChart";
 import { PageContainer } from "@/components/PageContainer";
 import { RainbowMeanings } from "@/components/RainbowMeanings";
@@ -14,6 +15,7 @@ import { sorterConfig } from '@/config/sorterConfig';
 import { rainbowTableConfig } from '@/config/tableConfig';
 import { transformRainbowData } from '@/utils/dataTransform';
 import { useFilterOptions } from '@/hooks/useFilterOptions';
+import { useTableFiltersWithUrl } from '@/hooks/useTableFiltersWithUrl';
 import { FilterService } from '@/services/filter/FilterService';
 import { apiClient } from '@/services/api/client';
 import { API_ENDPOINTS } from '@/services/api/endpoints';
@@ -26,7 +28,7 @@ interface RainbowItem {
   full_name?: string;
 }
 
-// Конфигурация полей формы с динамической загрузкой опций
+// Конфигурация полей формы с исключением неактивных полей на основе feature-флага
 const rainbowFormFields = sorterConfig.rainbow.fields
   .filter(field => {
     if (field.id === 'previous_color' && !featureFlags.hasPreviousReport) {
@@ -36,12 +38,12 @@ const rainbowFormFields = sorterConfig.rainbow.fields
   })
   .map(field => ({
     ...field,
-    options: [] // Опции загружаются динамически
+    options: [] // Опции загружаются динамически через useFilterOptions
   }));
 
 const tableColumns = rainbowTableConfig.columns;
 
-// Ключ для localStorage кэша
+// Ключи для кэширования данных диаграммы в localStorage
 const RAINBOW_CACHE_KEY = 'rainbow_diagram_cache';
 const CACHE_TTL = 5 * 60 * 1000; // 5 минут
 
@@ -52,13 +54,12 @@ interface CacheData {
   timestamp: number;
 }
 
-// Генерация ключа кэша с учетом фильтров
+// Генерация уникального ключа кэша на основе применённых фильтров
 const generateCacheKey = (filters?: Record<string, string>): string => {
   if (!filters || Object.keys(filters).length === 0) {
     return RAINBOW_CACHE_KEY;
   }
   
-  // Сортируем фильтры для консистентного ключа
   const sortedFilters = Object.keys(filters)
     .sort()
     .reduce((acc, key) => {
@@ -69,8 +70,53 @@ const generateCacheKey = (filters?: Record<string, string>): string => {
   return `${RAINBOW_CACHE_KEY}_${JSON.stringify(sortedFilters)}`;
 };
 
+// Получение русских названий полей из конфига таблицы
+const getFilterFieldLabel = (fieldKey: string): string => {
+  const column = rainbowTableConfig.columns.find(col => col.key === fieldKey);
+  return column?.title || fieldKey;
+};
+
+// Преобразование объекта фильтров в читаемую строку
+const formatFiltersToString = (filters: Record<string, string>): string => {
+  const entries = Object.entries(filters)
+    .filter(([, value]) => value && value !== '')
+    .map(([key, value]) => {
+      const fieldName = getFilterFieldLabel(key);
+      return `${fieldName}: ${value}`;
+    });
+  
+  if (entries.length === 0) return '';
+  return entries.join(', ');
+};
+
+// Формирование объединённых фильтров (форма + таблица)
+const getMergedFiltersDisplay = (formFilters: Record<string, string>, tableFilters: Record<string, string[]>): Record<string, string> => {
+  const result: Record<string, string> = { ...formFilters };
+  
+  // Преобразование фильтров таблицы в формат {поле: значение}
+  Object.entries(tableFilters).forEach(([key, values]) => {
+    if (values && values.length > 0) {
+      result[key] = values[0];
+    }
+  });
+  
+  return result;
+};
+
+// Получение фильтров таблицы из URL (для отображения при обновлении страницы)
+const getTableFiltersFromUrl = (searchParams: URLSearchParams): Record<string, string[]> => {
+  const filtersParam = searchParams.get('rainbow_filters');
+  if (!filtersParam) return {};
+  try {
+    return JSON.parse(decodeURIComponent(filtersParam));
+  } catch {
+    return {};
+  }
+};
+
 export default function Rainbow() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isAnalyzing, rainbowTrigger } = useAnalysis();
   const [total, setTotal] = useState(0);
   const [rainbowData, setRainbowData] = useState<RainbowItem[]>([]);
@@ -81,10 +127,62 @@ export default function Rainbow() {
   const [reportStatus, setReportStatus] = useState<"idle" | "loading" | "ready">("idle");
   const [diagramFiltered, setDiagramFiltered] = useState<boolean>(false);
   
-  // Флаг для предотвращения множественных одновременных запросов
   const isFetchingRef = useRef(false);
+  const prevFilterConfigRef = useRef<string>(''); // Отслеживание предыдущих фильтров таблицы для предотвращения бесконечных циклов
+  const isInitialLoadRef = useRef(false);
 
-  // Функция загрузки кэша из localStorage
+  // Хук для синхронизации фильтров и сортировки таблицы с параметрами URL
+  const { sortConfig, filterConfig, onSortChange, onFilterChange } = useTableFiltersWithUrl({
+    tableKey: 'rainbow'
+  });
+
+  // Получение объединённых фильтров для отображения (с прямым чтением из URL)
+  const getDisplayFilters = (): Record<string, string> => {
+    const formFilters: Record<string, string> = {};
+    for (const [key, value] of searchParams.entries()) {
+      if (key !== 'rainbow_sort' && key !== 'rainbow_sort_dir' && key !== 'rainbow_filters') {
+        formFilters[key] = value;
+      }
+    }
+    const tableFiltersFromUrl = getTableFiltersFromUrl(searchParams);
+    return getMergedFiltersDisplay(formFilters, tableFiltersFromUrl);
+  };
+
+  const displayFilters = getDisplayFilters();
+  const displayFiltersString = formatFiltersToString(displayFilters);
+
+  // Восстановление фильтров формы из URL при загрузке страницы
+  useEffect(() => {
+    const formFilters: Record<string, string> = {};
+    for (const [key, value] of searchParams.entries()) {
+      // Исключение параметров, принадлежащих таблице
+      if (key !== 'rainbow_sort' && key !== 'rainbow_sort_dir' && key !== 'rainbow_filters') {
+        formFilters[key] = value;
+      }
+    }
+    
+    // Получение фильтров таблицы из URL
+    const tableFiltersFromUrl = getTableFiltersFromUrl(searchParams);
+    
+    // Объединение фильтров для первоначальной загрузки
+    const mergedFilters: Record<string, string> = { ...formFilters };
+    Object.entries(tableFiltersFromUrl).forEach(([key, values]) => {
+      if (values && values.length > 0) {
+        mergedFilters[key] = values[0];
+      }
+    });
+    
+    if (Object.keys(formFilters).length > 0 || Object.keys(tableFiltersFromUrl).length > 0) {
+      setCurrentFilters(formFilters);
+      isInitialLoadRef.current = true;
+      const timer = setTimeout(() => {
+        handleGenerateReportWithFilters(mergedFilters);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  // Чтение данных диаграммы из кэша localStorage
   const loadFromCache = (filters?: Record<string, string>): CacheData | null => {
     try {
       const cacheKey = generateCacheKey(filters);
@@ -101,7 +199,7 @@ export default function Rainbow() {
     }
   };
 
-  // Функция сохранения в кэш
+  // Сохранение данных диаграммы в кэш localStorage
   const saveToCache = (data: RainbowItem[], total: number, filters?: Record<string, string>) => {
     try {
       const cacheKey = generateCacheKey(filters);
@@ -117,7 +215,7 @@ export default function Rainbow() {
     }
   };
 
-  // Функция загрузки данных диаграммы с бэкенда
+  // Загрузка данных диаграммы с бэкенда
   const loadDiagramData = async (filters?: Record<string, string>) => {
     if (isFetchingRef.current) return null;
     isFetchingRef.current = true;
@@ -135,13 +233,6 @@ export default function Rainbow() {
       });
       
       if (response.success && response.data) {
-        console.log('Данные диаграммы получены:', {
-          filtered: response.filtered,
-          totalCases: response.totalCases,
-          dataLength: response.data.length
-        });
-
-        // Преобразование данных для диаграммы
         const transformedData = transformRainbowData(
           response.data, 
           rainbowChartConfig.items,
@@ -149,7 +240,6 @@ export default function Rainbow() {
         );        
         const totalCases = response.totalCases || 0;
         
-        // Сохраняем в кэш
         saveToCache(transformedData, totalCases, filters);
         
         return {
@@ -167,81 +257,22 @@ export default function Rainbow() {
     }
   };
 
-  useEffect(() => {
-    // 1. Загружаем данные из кэша (если есть и не устарели)
-    const cached = loadFromCache(); // Без фильтров для начальной загрузки
-    if (cached) {
-      setRainbowData(cached.data);
-      setTotal(cached.total);
-      setDiagramFiltered(false);
-    } else {
-      // 2. Или показываем дефолтные данные
-      const defaultData = transformRainbowData([], rainbowChartConfig.items);
-      setRainbowData(defaultData);
-      setTotal(0);
-      setDiagramFiltered(false);
-    }
-
-    // 3. Фоновая загрузка актуальных данных
-    const loadFreshData = async () => {
-      const result = await loadDiagramData(); // Без фильтров
-      if (result) {
-        setRainbowData(result.data);
-        setTotal(result.total);
-        setDiagramFiltered(result.filtered);
-      }
-    };
-
-    // Запускаем фоновую загрузку
-    const shouldLoadImmediately = !cached || (Date.now() - cached.timestamp > CACHE_TTL);
-    
-    if (shouldLoadImmediately) {
-      loadFreshData();
-    } else {
-      // Если кэш свежий, загружаем в фоне с небольшой задержкой
-      setTimeout(loadFreshData, 1000);
-    }
-
-    // 4. Загружаем фильтры
-    loadOptions().catch(error => {
-      console.error('Ошибка загрузки фильтров:', error);
-    });
-  }, []);
-
-  // Данные по умолчанию для таблицы до формирования отчета
-  const defaultTableData = [{
-    caseCode: 'Сначала сформируйте отчет',
-    responsibleExecutor: '-',
-    gosb: '-',
-    currentPeriodColor: '-',
-    courtProtectionMethod: '-',
-    courtReviewingCase: '-',
-    ...(featureFlags.hasPreviousReport && { previousPeriodColor: '-' })
-  }];
-
-  // Функция формирует отчет на основе текущих фильтров
-  const handleGenerateReport = async () => {
+  // Основная функция загрузки таблицы и диаграммы с применением фильтров
+  const handleGenerateReportWithFilters = async (filters: Record<string, string>) => {
     try {
-      if (Object.keys(currentFilters).length === 0) {
-        console.log('Нет активных фильтров');
+      if (Object.keys(filters).length === 0) {
         return;
       }
 
-      console.log('Отправляем фильтры:', currentFilters);
       setReportStatus("loading");
 
-      // ПАРАЛЛЕЛЬНАЯ ЗАГРУЗКА таблицы и диаграммы
+      // Параллельная загрузка табличных данных и данных диаграммы
       const [tableResult, diagramResult] = await Promise.allSettled([
-        // 1. Загрузка табличных данных (существующий запрос)
-        FilterService.applyFilters(currentFilters),
-        
-        // 2. Загрузка данных для диаграммы с теми же фильтрами
-        loadDiagramData(currentFilters)
+        FilterService.applyFilters(filters),
+        loadDiagramData(filters)
       ]);
 
-      // Обработка результатов таблицы
       if (tableResult.status === 'fulfilled' && tableResult.value.success) {
-        console.log('Табличные данные получены, записей:', tableResult.value.data.length);
         const fullTableData = tableResult.value.data.map((caseItem: any) => ({
           caseCode: caseItem.caseCode || 'Не указан',
           responsibleExecutor: caseItem.responsibleExecutor || 'Не указан',
@@ -256,36 +287,90 @@ export default function Rainbow() {
 
         setTableData(fullTableData);
       } else {
-        console.error('Ошибка при загрузке таблицы:', 
-          tableResult.status === 'rejected' ? tableResult.reason : tableResult.value?.message);
         setTableData([]);
       }
 
-      // Обработка результатов диаграммы
       if (diagramResult.status === 'fulfilled' && diagramResult.value) {
-        console.log('Данные диаграммы получены успешно');
         setRainbowData(diagramResult.value.data);
         setTotal(diagramResult.value.total);
         setDiagramFiltered(diagramResult.value.filtered);
-      } else {
-        console.error('Ошибка при загрузке диаграммы:', 
-          diagramResult.status === 'rejected' ? diagramResult.reason : 'Неизвестная ошибка');
       }
 
       setReportStatus("ready");
-      console.log('Отчет сформирован');
+      isInitialLoadRef.current = false;
 
     } catch (error) {
       console.error('Ошибка формирования отчета:', error);
       setReportStatus("idle");
+      isInitialLoadRef.current = false;
     }
   };
 
-  // Эффект для обновления после завершения анализа
+  // Обновление параметров URL при изменении фильтров формы
+  const updateUrlWithFormFilters = (filters: Record<string, string>) => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) {
+        params.set(key, value);
+      }
+    });
+    setSearchParams(params, { replace: true });
+  };
+
+  // Загрузка начальных данных при монтировании компонента
+  useEffect(() => {
+    const loadInitialData = async () => {
+      const cached = loadFromCache();
+      if (cached) {
+        setRainbowData(cached.data);
+        setTotal(cached.total);
+        setDiagramFiltered(false);
+      } else {
+        const defaultData = transformRainbowData([], rainbowChartConfig.items);
+        setRainbowData(defaultData);
+        setTotal(0);
+        setDiagramFiltered(false);
+      }
+
+      const result = await loadDiagramData();
+      if (result) {
+        setRainbowData(result.data);
+        setTotal(result.total);
+        setDiagramFiltered(result.filtered);
+      }
+
+      loadOptions().catch(error => {
+        console.error('Ошибка загрузки фильтров:', error);
+      });
+    };
+
+    loadInitialData();
+  }, []);
+
+  // Данные по умолчанию для отображения в таблице до формирования отчёта
+  const defaultTableData = [{
+    caseCode: 'Сначала сформируйте отчет',
+    responsibleExecutor: '-',
+    gosb: '-',
+    currentPeriodColor: '-',
+    courtProtectionMethod: '-',
+    courtReviewingCase: '-',
+    ...(featureFlags.hasPreviousReport && { previousPeriodColor: '-' })
+  }];
+
+  // Обработчик нажатия кнопки "Сформировать отчет"
+  const handleGenerateReport = async () => {
+    if (Object.keys(currentFilters).length === 0) {
+      return;
+    }
+    updateUrlWithFormFilters(currentFilters);
+    await handleGenerateReportWithFilters(currentFilters);
+  };
+
+  // Обновление данных диаграммы после завершения анализа
   useEffect(() => {
     const refreshAfterAnalysis = async () => {
-      if (isAnalyzing) return; // если анализ идет - не делаем запрос
-      console.log('Обновление данных диаграммы Rainbow после анализа');
+      if (isAnalyzing) return;
       const result = await loadDiagramData(currentFilters);
       if (result) {
         setRainbowData(result.data);
@@ -297,32 +382,24 @@ export default function Rainbow() {
     refreshAfterAnalysis();
   }, [rainbowTrigger, isAnalyzing]);
 
-  // Функция сброса фильтров и возврата к общей статистике
+  // Сброс всех фильтров и возврат к общей статистике
   const handleResetFilters = async () => {
-    try {
-      setReportStatus("loading");
-      
-      // Очищаем таблицу
-      setTableData([]);
-      setCurrentFilters({});
-      
-      // Загружаем общие данные диаграммы (без фильтров)
-      const result = await loadDiagramData();
-      if (result) {
-        setRainbowData(result.data);
-        setTotal(result.total);
-        setDiagramFiltered(result.filtered);
-      }
-      
-      setReportStatus("idle");
-      console.log('Фильтры сброшены, загружена общая статистика');
-    } catch (error) {
-      console.error('Ошибка сброса фильтров:', error);
-      setReportStatus("idle");
+    setReportStatus("loading");
+    setTableData([]);
+    setCurrentFilters({});
+    setSearchParams({}, { replace: true });
+    
+    const result = await loadDiagramData();
+    if (result) {
+      setRainbowData(result.data);
+      setTotal(result.total);
+      setDiagramFiltered(result.filtered);
     }
+    
+    setReportStatus("idle");
   };
 
-  // Конфигурация кнопок формы с обработчиками
+  // Конфигурация кнопок формы
   const rainbowFormButtons = [
     { 
       type: 'secondary' as const, 
@@ -337,26 +414,55 @@ export default function Rainbow() {
     }
   ];
 
-  // Обработчик изменений фильтров в форме
   const handleFiltersChange = (filters: Record<string, string>) => {
-    console.log('Фильтры изменены:', filters);
     setCurrentFilters(filters);
   };
 
-  // Обработчик клика по строке таблицы для перехода к деталям дела
+  // Переход на страницу деталей дела при клике по строке таблицы
   const handleRowClick = (row: Record<string, any>) => {
     if (tableData.length > 1 && row.caseCode !== '-') {
       navigate(`/case/${row.caseCode}`);
     }
   };
 
-  // Обработчик клика по столбцу диаграммы для фильтрации дел по цвету
+  // Переход на страницу отфильтрованных дел при клике по столбцу диаграммы
   const handleBarClick = (item: { name: string; label: string; value: number; color: string }) => {
     if (item.value > 0) {
       const filters = diagramFiltered ? currentFilters : {};
       navigate(`/filtered-cases?source=rainbow&color=${encodeURIComponent(item.name)}&count=${item.value}&filters=${encodeURIComponent(JSON.stringify(filters))}`);
     }
   };
+
+  // При изменении фильтров в таблице (SortButton) происходит объединение с фильтрами формы и перезагрузка графика
+  useEffect(() => {
+    // Пропуск обработки во время первоначальной загрузки
+    if (isInitialLoadRef.current) return;
+    
+    const currentFiltersKey = JSON.stringify(filterConfig);
+    
+    // Предотвращение повторных вызовов с теми же фильтрами
+    if (prevFilterConfigRef.current === currentFiltersKey) {
+      return;
+    }
+    prevFilterConfigRef.current = currentFiltersKey;
+    
+    if (reportStatus === "ready" && filterConfig && Object.keys(filterConfig).length > 0) {
+      // Преобразование фильтров из таблицы в формат, ожидаемый бэкендом
+      const tableFilters: Record<string, string> = {};
+      Object.entries(filterConfig).forEach(([key, values]) => {
+        if (values && values.length > 0) {
+          tableFilters[key] = values[0];
+        }
+      });
+      
+      // Объединение фильтров формы и таблицы для перезагрузки графика
+      const mergedFilters = { ...currentFilters, ...tableFilters };
+      
+      if (Object.keys(mergedFilters).length > 0) {
+        handleGenerateReportWithFilters(mergedFilters);
+      }
+    }
+  }, [filterConfig, reportStatus, currentFilters]);
 
   return (
     <PageContainer>
@@ -368,6 +474,11 @@ export default function Rainbow() {
             {diagramFiltered && ' (отфильтровано)'}
           </p>
         </div>
+        {diagramFiltered && displayFiltersString && (
+          <p className="text-sm text-text-secondary mt-1">
+            Примененные фильтры: {displayFiltersString}
+          </p>
+        )}
         {isAnalyzing && <p className="text-blue">Идет анализ...</p>}
       </div>
 
@@ -409,17 +520,21 @@ export default function Rainbow() {
           <>
             <div className="mb-4 p-3 bg-bg-default-light-field rounded-md">
               <p className="text-sm text-text-secondary">
-                {diagramFiltered 
-                  ? `Диаграмма отображает распределение по цветам для отфильтрованных дел (${total} шт.)`
-                  : `Диаграмма отображает общее распределение по цветам (${total} шт.)`}
+                Таблица и диаграмма отражают {tableData.length.toLocaleString()} дел
               </p>
-              <p className="text-sm text-text-secondary mt-1">
-                В таблице: {tableData.length} записей
-              </p>
+              {diagramFiltered && displayFiltersString && (
+                <p className="text-sm text-text-secondary mt-1">
+                  Примененные фильтры: {displayFiltersString}
+                </p>
+              )}
             </div>
             <ReusableDataTable
               columns={tableColumns}
               data={tableData.length > 0 ? tableData : defaultTableData}
+              sortConfig={sortConfig}
+              onSortChange={onSortChange}
+              filterConfig={filterConfig}
+              onFilterChange={onFilterChange}
               onRowClick={handleRowClick}
               isLoading={isAnalyzing}
             />

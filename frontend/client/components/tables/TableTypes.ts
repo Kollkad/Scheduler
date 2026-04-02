@@ -1,4 +1,5 @@
-// TableTypes.ts
+// frontend/client/components/tables/TableTypes.ts
+
 export interface TableColumn {
   key: string;
   title: string;
@@ -13,24 +14,27 @@ export interface TableConfig {
   sortable?: boolean;
 }
 
+export interface FilterConfig {
+  [columnKey: string]: string[];
+}
+
 export interface TableProps {
   columns: TableColumn[];
   data: Record<string, any>[];
   className?: string;
   onRowClick?: (row: Record<string, any>, index: number) => void;
-  // Поля для будущей функциональности
   isLoading?: boolean;
   currentPage?: number;
   totalPages?: number;
   onPageChange?: (page: number) => void;
   onSort?: (columnKey: string, direction: 'asc' | 'desc') => void;
-  // Поля для состояния загрузки и пустых данных
   emptyMessage?: string;
   loadingMessage?: string;
-  // Поля сортировки
   sortConfig?: {
     key: string;
     direction: 'asc' | 'desc';
   } | null;
   onSortChange?: (sortConfig: { key: string; direction: 'asc' | 'desc' } | null) => void;
+  filterConfig?: FilterConfig;
+  onFilterChange?: (filterConfig: FilterConfig) => void;
 }

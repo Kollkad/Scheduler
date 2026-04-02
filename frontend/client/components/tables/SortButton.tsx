@@ -1,4 +1,5 @@
-// SortButton.tsx
+// frontend/client/components/tables/SortButton.tsx
+
 import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Filter, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -29,16 +30,19 @@ export function SortButton({
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const [placement, setPlacement] = useState<'left' | 'right'>('right');
 
+  // Синхронизация локального состояния с внешними пропсами
   useEffect(() => {
     setLocalSelectedValues(selectedFilterValues);
   }, [selectedFilterValues]);
 
+  // Фильтрация опций по поисковому запросу
   const filteredOptions = searchTerm
     ? filterOptions.filter(option =>
         option.label.toLowerCase().includes(searchTerm.toLowerCase())
       )
     : filterOptions;
 
+  // Закрытие попапа при клике вне его области
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as Node;
@@ -58,7 +62,7 @@ export function SortButton({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
-  // При ресайзе закрываем / перерасчитываем
+  // Закрытие попапа при изменении размера окна
   useEffect(() => {
     function onResize() {
       setIsOpen(false);
@@ -70,8 +74,6 @@ export function SortButton({
   const handleButtonClick = () => {
     if (!isOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
-
-      // начальные предположения: позиционируем под кнопкой, по левому краю кнопки
       const initialLeft = rect.left;
       const initialTop = rect.bottom + 4;
 
@@ -82,7 +84,7 @@ export function SortButton({
     }
   };
 
-  // После рендера popup — корректируем позицию, чтобы он не вылезал за экран и выбрать сторону
+  // Автоматическое позиционирование попапа для предотвращения выхода за границы экрана
   useLayoutEffect(() => {
     if (!isOpen) return;
     if (!buttonRef.current) return;
@@ -100,32 +102,29 @@ export function SortButton({
     const spaceBelow = window.innerHeight - btnRect.bottom;
     const spaceAbove = btnRect.top;
 
-    // Выбор horizontal placement: если справа мало места — привязываем к правому краю кнопки
+    // Определение горизонтального позиционирования
     let newLeft: number;
     let newPlacement: 'left' | 'right' = 'left';
     if (spaceOnRight >= dropdownWidth) {
-      newLeft = btnRect.left; // помещается справа (выравнивание по левому краю кнопки)
+      newLeft = btnRect.left;
       newPlacement = 'left';
     } else if (spaceOnLeft >= dropdownWidth) {
-      newLeft = btnRect.right - dropdownWidth; // помещается слева (align to right of button)
+      newLeft = btnRect.right - dropdownWidth;
       newPlacement = 'right';
     } else {
-      // никуда полностью не помещается — стараемся держать в видимой области
       newLeft = Math.max(8, Math.min(btnRect.left, window.innerWidth - dropdownWidth - 8));
       newPlacement = spaceOnRight >= spaceOnLeft ? 'left' : 'right';
     }
 
-    // Выбор vertical placement: открывать сверху или снизу
+    // Определение вертикального позиционирования
     let newTop: number;
     if (spaceBelow >= dropdownHeight + 8) {
-      newTop = btnRect.bottom + 4; // открываем вниз
+      newTop = btnRect.bottom + 4;
     } else if (spaceAbove >= dropdownHeight + 8) {
-      newTop = btnRect.top - dropdownHeight - 4; // открываем вверх
+      newTop = btnRect.top - dropdownHeight - 4;
     } else {
-      // подстраиваем чтобы не выйти за пределы экрана
       if (spaceBelow >= spaceAbove) {
         newTop = btnRect.bottom + 4;
-        // если всё равно выходит — уменьшаем top чтобы влезло
         if (newTop + dropdownHeight > window.innerHeight) {
           newTop = Math.max(8, window.innerHeight - dropdownHeight - 8);
         }
@@ -194,10 +193,11 @@ export function SortButton({
               zIndex: 9999,
               minWidth: 320
             }}
-            className="bg-white border border-border-default rounded-xl shadow-lg overflow-hidden w-[36rem]"
+            className="bg-white border border-border rounded-xl shadow-lg overflow-hidden w-[36rem]"
           >
             <div className="flex">
-              <div className="flex-1 p-4 border-r border-border-default">
+              {/* Блок фильтрации */}
+              <div className="flex-1 p-4 border-r border-border">
                 <h3 className="text-sm font-medium text-text-primary mb-3">Фильтрация</h3>
 
                 <div className="relative mb-3">
@@ -207,7 +207,7 @@ export function SortButton({
                     placeholder="Поиск..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-8 pr-8 py-2 text-sm border border-border-default rounded-lg focus:outline-none focus:ring-2 focus:ring-blue focus:border-transparent text-text-primary bg-white"
+                    className="w-full pl-8 pr-8 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue focus:border-transparent text-text-primary bg-white"
                   />
                   {searchTerm && (
                     <button
@@ -219,7 +219,7 @@ export function SortButton({
                   )}
                 </div>
 
-                <div className="max-h-48 overflow-y-auto mb-4 border border-border-default rounded-lg">
+                <div className="max-h-48 overflow-y-auto mb-4 border border-border rounded-lg">
                   {filteredOptions.length > 0 ? (
                     filteredOptions.map((option) => (
                       <label
@@ -230,7 +230,7 @@ export function SortButton({
                           type="checkbox"
                           checked={localSelectedValues.includes(option.value)}
                           onChange={() => handleFilterToggle(option.value)}
-                          className="h-4 w-4 text-blue rounded border-border-default focus:ring-blue mr-3"
+                          className="h-4 w-4 text-blue rounded border-border focus:ring-blue mr-3"
                         />
                         <span className="flex-1 text-text-primary">{option.label}</span>
                       </label>
@@ -252,6 +252,7 @@ export function SortButton({
                 </div>
               </div>
 
+              {/* Блок сортировки */}
               <div className="w-1/3 p-4">
                 <h3 className="text-sm font-medium text-text-primary mb-3">Сортировка</h3>
                 <div className="space-y-1">
@@ -274,7 +275,7 @@ export function SortButton({
                   {isActive && (
                     <button
                       onClick={() => handleSortClick(null)}
-                      className="block w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-bg-default-light-field rounded transition-colors border-t border-border-default mt-2 pt-2"
+                      className="block w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-bg-default-light-field rounded transition-colors border-t border-border mt-2 pt-2"
                     >
                       ✕ Сбросить
                     </button>

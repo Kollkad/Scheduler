@@ -1,4 +1,5 @@
 // frontend/client/pages/Tasks.tsx
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { PageContainer } from "@/components/PageContainer";
@@ -11,6 +12,7 @@ import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { apiClient } from "@/services/api/client";
 import { CompactTaskList } from "@/components/CompactTaskList";
 import { savingService, SaveDataType } from "@/services/saving/SavingService";
+import { useTableFiltersWithUrl } from "@/hooks/useTableFiltersWithUrl";
 
 type TaskItem = {
   taskCode: string;
@@ -35,6 +37,10 @@ export default function Tasks() {
   const [reportStatus, setReportStatus] = useState<"idle" | "loading" | "ready">("idle");
   const [viewMode, setViewMode] = useState<"table" | "compact">("table");
 
+  const { sortConfig, filterConfig, onSortChange, onFilterChange } = useTableFiltersWithUrl({
+    tableKey: 'tasks'
+  });
+
   const selectedExecutor = filters["responsibleExecutor"] || "";
 
   const handleClearAll = () => {
@@ -55,8 +61,6 @@ export default function Tasks() {
   const formFields = sorterConfig.rainbow.fields
     .filter((f) => f.id === "responsibleExecutor")
     .map((f) => ({ ...f, options: [] }));
-
-  
 
   const handleFiltersChange = (newFilters: Record<string, string>) => {
     setFilters(newFilters);
@@ -112,7 +116,6 @@ export default function Tasks() {
         { responsibleExecutor: selectedExecutor }
       );
       
-      // Генерация имя на фронте
       const fileName = `Задачи_${selectedExecutor}_${new Date().toLocaleDateString('ru-RU')}.xlsx`;
       
       const link = document.createElement('a');
@@ -230,6 +233,10 @@ export default function Tasks() {
             columns={tasksTableConfig.columns}
             data={tasks.length > 0 ? tasks : []}
             isLoading={isLoading}
+            sortConfig={sortConfig}
+            onSortChange={onSortChange}
+            filterConfig={filterConfig}
+            onFilterChange={onFilterChange}
             onRowClick={handleTaskClick}
           />
         )}

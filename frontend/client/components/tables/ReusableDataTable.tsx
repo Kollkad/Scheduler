@@ -1,7 +1,9 @@
-// ReusableDataTable.tsx
-import { TableProps } from './TableTypes';
+// frontend/client/components/tables/ReusableDataTable.tsx
+
+import { TableProps, FilterConfig } from './TableTypes';
 import { SortButton } from './SortButton';
 import { useState, useMemo } from 'react';
+import { formatDate } from '@/utils/dateFormat';
 
 export function ReusableDataTable({ 
   columns, 
@@ -11,14 +13,28 @@ export function ReusableDataTable({
   isLoading = false,
   loadingMessage = "Загрузка данных...",
   sortConfig,
-  onSortChange
+  onSortChange,
+  filterConfig: externalFilterConfig,
+  onFilterChange
 }: TableProps) {
 
   const [localSortConfig, setLocalSortConfig] = useState<{key: string; direction: 'asc' | 'desc'} | null>(null);
-  const [filters, setFilters] = useState<Record<string, string[]>>({});
+  const [localFilters, setLocalFilters] = useState<FilterConfig>({});
+
+  // Использование внешних фильтров при их наличии, иначе локальное состояние
+  const filters = externalFilterConfig !== undefined ? externalFilterConfig : localFilters;
+  
+  const setFilters = (newFilters: FilterConfig) => {
+    if (onFilterChange) {
+      onFilterChange(newFilters);
+    } else {
+      setLocalFilters(newFilters);
+    }
+  };
 
   const currentSortConfig = sortConfig || localSortConfig;
 
+  // Формирование списка уникальных значений для фильтрации по колонке
   const getUniqueValuesForColumn = (columnKey: string) => {
     const values = data.map(row => row[columnKey]).filter(value => value != null && value !== '');
     const uniqueValues = [...new Set(values)];
@@ -49,12 +65,17 @@ export function ReusableDataTable({
   };
 
   const handleFilterChange = (columnKey: string, selectedValues: string[]) => {
-    setFilters(prev => ({
-      ...prev,
-      [columnKey]: selectedValues
-    }));
+    const newFilters = { ...filters, [columnKey]: selectedValues };
+    
+    // Удаление ключа из объекта при пустом массиве выбранных значений
+    if (selectedValues.length === 0) {
+      delete newFilters[columnKey];
+    }
+    
+    setFilters(newFilters);
   };
 
+  // Применение фильтров к данным
   const filteredData = useMemo(() => {
     let result = data;
     
@@ -69,6 +90,7 @@ export function ReusableDataTable({
     return result;
   }, [data, filters]);
 
+  // Применение сортировки к отфильтрованным данным
   const sortedData = useMemo(() => {
     if (!currentSortConfig) return filteredData;
 
@@ -76,10 +98,12 @@ export function ReusableDataTable({
       const aValue = a[currentSortConfig.key];
       const bValue = b[currentSortConfig.key];
 
+      // Сравнение числовых значений
       if (typeof aValue === 'number' && typeof bValue === 'number') {
         return currentSortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
       }
 
+      // Сравнение строковых значений с поддержкой русского языка
       const aString = String(aValue || '').toLowerCase();
       const bString = String(bValue || '').toLowerCase();
 
@@ -91,14 +115,16 @@ export function ReusableDataTable({
     });
   }, [filteredData, currentSortConfig]);
 
-  const formatValue = (key: string, value: any) => {
+  // Форматирование отображаемого значения в ячейке таблицы
+  const formatValue = (value: any) => {
     if (!value) return '';
-    if (typeof value === 'string') {
-      if (/^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}:\d{2})?$/.test(value)) {
-        const date = new Date(value.replace(' ', 'T'));
-        if (!isNaN(date.getTime())) return date.toLocaleDateString('ru-RU');
-      }
+    
+    // Форматирование даты через утилиту
+    const formattedDate = formatDate(value);
+    if (formattedDate !== '—') {
+      return formattedDate;
     }
+    
     return value;
   };
 
@@ -116,13 +142,13 @@ export function ReusableDataTable({
 
   return (
     <div className={`mt-6 overflow-x-auto ${className}`}>
-      <table className="w-full text-xs border border-border-default border-collapse">
+      <table className="w-full text-xs border border-border border-collapse">
         <thead>
           <tr className="bg-table-header-bg">
             {columns.map((column) => (
               <th 
                 key={column.key}
-                className="px-3 py-2 text-left font-medium text-text-primary border border-border-default"
+                className="px-3 py-2 text-left font-medium text-text-primary border border-border"
                 style={{ 
                   fontSize: '11px',
                   width: column.width || 'auto',
@@ -156,13 +182,13 @@ export function ReusableDataTable({
               {columns.map((column) => (
                 <td 
                   key={column.key}
-                  className="px-3 py-2 text-text-primary border border-border-default"
+                  className="px-3 py-2 text-text-primary border border-border"
                   style={{ 
                     fontSize: '11px',
                     textAlign: column.align || 'left'
                   }}
                 >
-                  {formatValue(column.key, row[column.key])}
+                  {formatValue(row[column.key])}
                 </td>
               ))}
             </tr>
