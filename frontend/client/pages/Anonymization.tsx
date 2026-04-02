@@ -297,8 +297,8 @@ export default function Anonymization() {
   return (
     <PageContainer>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Обезличивание отчетов</h1>
-        <p className="text-gray-600">
+        <h1 className="text-2xl font-bold text-text-primary mb-2">Обезличивание отчетов</h1>
+        <p className="text-text-secondary">
           Загрузите файл для удаления персональных данных
         </p>
       </div>
@@ -308,40 +308,40 @@ export default function Anonymization() {
         <div>
           {/* Выбор типа нормализации влияет на предобработку файла */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-text-secondary mb-2">
               Тип отчета
             </label>
             <div className="flex gap-4">
-              <label className="flex items-center">
+              <label className="flex items-center text-text-primary">
                 <input
                   type="radio"
                   name="normalizationType"
                   value="detailed_report"
                   checked={normalizationType === "detailed_report"}
                   onChange={(e) => setNormalizationType(e.target.value as NormalizationType)}
-                  className="mr-2"
+                  className="mr-2 text-green focus:ring-blue"
                 />
                 Детальный отчет
               </label>
-              <label className="flex items-center">
+              <label className="flex items-center text-text-primary">
                 <input
                   type="radio"
                   name="normalizationType"
                   value="documents_report"
                   checked={normalizationType === "documents_report"}
                   onChange={(e) => setNormalizationType(e.target.value as NormalizationType)}
-                  className="mr-2"
+                  className="mr-2 text-green focus:ring-blue"
                 />
                 Отчет по документам
               </label>
-              <label className="flex items-center">
+              <label className="flex items-center text-text-primary">
                 <input
                   type="radio"
                   name="normalizationType"
                   value="none"
                   checked={normalizationType === "none"}
                   onChange={(e) => setNormalizationType(e.target.value as NormalizationType)}
-                  className="mr-2"
+                  className="mr-2 text-green focus:ring-blue"
                 />
                 Иной отчет
               </label>
@@ -352,18 +352,18 @@ export default function Anonymization() {
           <div className="mb-6">
             <div className="flex items-center gap-3 mb-4">
               <div 
-                className={`flex-1 border-b border-gray-300 py-2 min-h-[40px] flex items-center overflow-hidden max-w-lg
+                className={`flex-1 border-b border-border-default py-2 min-h-[40px] flex items-center overflow-hidden max-w-lg
                   ${!fileUploaded ? 
-                    'cursor-pointer hover:border-green-500 transition-colors duration-200' : 
+                    'cursor-pointer hover:border-green transition-colors duration-200' : 
                     'cursor-default'}`}
                 onClick={!fileUploaded ? triggerFileInput : undefined}
               >
                 {selectedFile ? (
                   <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <span className="text-gray-900 truncate">{selectedFile.name}</span>
+                    <span className="text-text-primary truncate">{selectedFile.name}</span>
                   </div>
                 ) : (
-                  <span className="text-gray-400">Выберите файл отчета (.xlsx, .xls)</span>
+                  <span className="text-text-tertiary">Выберите файл отчета (.xlsx, .xls)</span>
                 )}
               </div>
               
@@ -426,11 +426,11 @@ export default function Anonymization() {
             )}
             
             {uploadError && (
-              <p className="text-red-500 text-sm mt-2">Ошибка: {uploadError}</p>
+              <p className="text-red text-sm mt-2">Ошибка: {uploadError}</p>
             )}
             
             {uploadSuccess && (
-              <div className="text-green-600 text-sm mt-2">
+              <div className="text-green text-sm mt-2">
                 ✓ Отчет загружен и нормализован. Колонок: {columnsInfo.length}, правил: {defaultRules.length}
               </div>
             )}
@@ -443,27 +443,27 @@ export default function Anonymization() {
             {/* Стандартные правила, применимые к колонкам отчета */}
             {defaultRules.length > 0 && (
               <div className="mb-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-3">
+                <h3 className="text-lg font-medium text-text-primary mb-3">
                   Правила обезличивания ({defaultRules.length})
                 </h3>
-                <div className="space-y-2 max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-4 bg-white">
+                <div className="space-y-2 max-h-60 overflow-y-auto border border-border-default rounded-lg p-4 bg-white">
                   {defaultRules.map((rule, index) => {
                     const isEnabled = enabledRules.some(r => 
                       r.column === rule.column && r.type === rule.type && r.replacement === rule.replacement
                     );
                     
                     return (
-                      <div key={index} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded">
+                      <div key={index} className="flex items-center gap-3 p-2 hover:bg-bg-default-light-field rounded">
                         <input
                           type="checkbox"
                           id={`rule-${index}`}
                           checked={isEnabled}
                           onChange={(e) => handleToggleRule(rule, e.target.checked)}
-                          className="h-4 w-4"
+                          className="h-4 w-4 text-green focus:ring-blue border-border-default rounded"
                         />
                         <label htmlFor={`rule-${index}`} className="flex-1 cursor-pointer">
-                          <div className="font-medium text-sm">{rule.column}</div>
-                          <div className="text-xs text-gray-500">
+                          <div className="font-medium text-sm text-text-primary">{rule.column}</div>
+                          <div className="text-xs text-text-tertiary">
                             {rule.type === 'numbered' ? 'Нумерованная замена' : 'Фиксированная замена'} → "{rule.replacement}"
                           </div>
                         </label>
@@ -477,7 +477,7 @@ export default function Anonymization() {
             {/* Пользовательские правила: добавляются вручную для любых колонок */}
             <div className="mb-6">
               <div className="flex justify-between items-center mb-3">
-                <h3 className="text-lg font-medium text-gray-900">
+                <h3 className="text-lg font-medium text-text-primary">
                   Дополнительные правила
                 </h3>
                 <Button
@@ -489,49 +489,49 @@ export default function Anonymization() {
                 </Button>
               </div>
               
-              <div className="space-y-4 border border-gray-200 rounded-lg p-4 bg-white">
+              <div className="space-y-4 border border-border-default rounded-lg p-4 bg-white">
                 {customRules.map((rule, index) => (
                   <div key={index} className="relative">
                     {customRules.length > 1 && (
                       <button
                         onClick={() => handleRemoveCustomRule(index)}
-                        className="absolute -right-2 -top-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 z-10"
+                        className="absolute -right-2 -top-2 bg-red text-white rounded-full p-1 hover:bg-red-transparent z-10"
                         aria-label="Удалить правило"
                       >
                         <X size={16} />
                       </button>
                     )}
                     
-                    <div className="p-3 border border-gray-200 rounded-2xl">
+                    <div className="p-3 border border-border-default rounded-2xl">
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div>
-                          <label className="block text-xs text-gray-500 mb-1">Колонка</label>
+                          <label className="block text-xs text-text-tertiary mb-1">Колонка</label>
                           <input
                             type="text"
                             value={rule.column}
                             onChange={(e) => handleCustomRuleChange(index, 'column', e.target.value)}
                             placeholder="Название колонки"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                            className="w-full px-3 py-2 border border-border-default rounded-lg text-sm text-text-primary bg-white focus:outline-none focus:ring-2 focus:ring-blue focus:border-transparent"
                           />
                         </div>
                         
                         <div>
-                          <label className="block text-xs text-gray-500 mb-1">Текст замены</label>
+                          <label className="block text-xs text-text-tertiary mb-1">Текст замены</label>
                           <input
                             type="text"
                             value={rule.replacement}
                             onChange={(e) => handleCustomRuleChange(index, 'replacement', e.target.value)}
                             placeholder="Текст для замены"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                            className="w-full px-3 py-2 border border-border-default rounded-lg text-sm text-text-primary bg-white focus:outline-none focus:ring-2 focus:ring-blue focus:border-transparent"
                           />
                         </div>
                         
                         <div>
-                          <label className="block text-xs text-gray-500 mb-1">Тип замены</label>
+                          <label className="block text-xs text-text-tertiary mb-1">Тип замены</label>
                           <select
                             value={rule.type}
                             onChange={(e) => handleCustomRuleChange(index, 'type', e.target.value as 'numbered' | 'fixed')}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                            className="w-full px-3 py-2 border border-border-default rounded-lg text-sm text-text-primary bg-white focus:outline-none focus:ring-2 focus:ring-blue focus:border-transparent"
                           >
                             <option value="numbered">Нумерованная</option>
                             <option value="fixed">Фиксированная</option>
@@ -549,7 +549,7 @@ export default function Anonymization() {
       
       {/* Кнопка запуска обезличивания (доступна после успешной нормализации) */}
       {uploadSuccess && (
-        <div className="mt-8 border-t pt-6">
+        <div className="mt-8 border-t border-border-default pt-6">
           <div className="max-w-lg mx-auto">
             <Button
               onClick={handleAnonymize}

@@ -70,13 +70,12 @@ export function SettingsForm({
 
   return (
     <div
-      className="bg-white rounded-2xl p-6 mt-8"
+      className="bg-white rounded-2xl p-6 mt-8 border border-border-default"
       style={{
-        border: '1px solid #BDBDCC',
         boxShadow: '2px 4px 8px rgba(0, 0, 0, 0.1), -2px 0 8px rgba(0, 0, 0, 0.05)'
       }}
     >
-      <h2 className="text-xl font-semibold text-gray-900 mb-6">{title}</h2>
+      <h2 className="text-xl font-semibold text-text-primary mb-6">{title}</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {fields.map((field) => {
@@ -101,8 +100,8 @@ export function SettingsForm({
 
       {/* TODO: фильтры пользователя*/}
       {showAdditionalFilters && (
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <p className="text-sm text-gray-600 text-center">
+        <div className="mb-6 p-4 bg-bg-default-light-field rounded-lg border border-border-default">
+          <p className="text-sm text-text-secondary text-center">
             Нет дополнительных фильтров
           </p>
         </div>
@@ -131,19 +130,18 @@ export function SettingsForm({
 
         {additionalFiltersButton && (
           <button 
-            className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
+            className="flex items-center px-4 py-2 text-sm font-medium text-text-primary bg-white border border-border-default rounded-full hover:bg-bg-default-light-field transition-colors"
             onClick={() => setShowAdditionalFilters(!showAdditionalFilters)}
           >
             <span>Дополнительные фильтры</span>
             {showAdditionalFilters ? (
-              <Eye className="h-4 w-4 ml-2" style={{ color: '#1F1F1F' }} />
+              <Eye className="h-4 w-4 ml-2 text-dark-default" />
             ) : (
-              <EyeOff className="h-4 w-4 ml-2" style={{ color: '#1F1F1F' }} />
+              <EyeOff className="h-4 w-4 ml-2 text-dark-default" />
             )}
           </button>
         )}
       </div>
     </div>
   );
-
 }

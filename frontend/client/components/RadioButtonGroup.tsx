@@ -13,7 +13,6 @@ interface RadioButtonGroupProps {
 }
 
 export function RadioButtonGroup({ options, value, onChange, name }: RadioButtonGroupProps) {
-  // Функция обрабатывает изменение выбранной опции
   const handleChange = (value: string) => {
     onChange?.(value);
   };
@@ -23,7 +22,7 @@ export function RadioButtonGroup({ options, value, onChange, name }: RadioButton
       {options.map((option) => (
         <div 
           key={option.id}
-          className="flex items-start space-x-3 p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer"
+          className="flex items-start space-x-3 p-4 bg-white rounded-lg border border-border-default hover:border-green transition-colors cursor-pointer"
           onClick={() => handleChange(option.value)}
         >
           <div className="flex items-center h-5">
@@ -34,13 +33,13 @@ export function RadioButtonGroup({ options, value, onChange, name }: RadioButton
               value={option.value}
               checked={value === option.value} 
               onChange={() => handleChange(option.value)}
-              className="h-4 w-4 border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer"
-              style={{ accentColor: '#1CC53C' }}
+              className="h-4 w-4 border-border-default text-green focus:ring-blue cursor-pointer"
+              style={{ accentColor: 'var(--green-default)' }}
             />
           </div>
           <label 
             htmlFor={option.id}
-            className="text-sm font-medium text-gray-900 cursor-pointer leading-5"
+            className="text-sm font-medium text-text-primary cursor-pointer leading-5"
           >
             {option.label}
           </label>

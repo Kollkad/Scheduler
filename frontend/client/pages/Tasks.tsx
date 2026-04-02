@@ -174,8 +174,8 @@ export default function Tasks() {
   return (
     <PageContainer>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Задачи сотрудников</h1>
-        <p className="text-gray-600">Выберите сотрудника для просмотра его задач</p>
+        <h1 className="text-2xl font-bold text-text-primary mb-2">Задачи сотрудников</h1>
+        <p className="text-text-secondary">Выберите сотрудника для просмотра его задач</p>
       </div>
 
       <SettingsForm
@@ -187,7 +187,7 @@ export default function Tasks() {
       />
 
       <div className="mt-4 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-gray-600">
+        <div className="flex items-center gap-2 text-text-secondary">
           {tasks.length > 0 && (
             <span>
               Найдено <span className="font-bold">{filteredCount}</span> задач для{" "}
@@ -216,13 +216,13 @@ export default function Tasks() {
 
       <div className="mt-6">
         {reportStatus === "idle" && (
-          <div className="text-gray-500 text-center py-6">
+          <div className="text-text-secondary text-center py-6">
             Выберите сотрудника и нажмите "Найти задачи"
           </div>
         )}
 
         {reportStatus === "loading" && (
-          <div className="text-gray-500 text-center py-6">Задачи формируются...</div>
+          <div className="text-text-secondary text-center py-6">Задачи формируются...</div>
         )}
 
         {reportStatus === "ready" && viewMode === "table" && (
@@ -246,7 +246,7 @@ export default function Tasks() {
         )}
 
         {reportStatus === "ready" && tasks.length === 0 && hasSelectedExecutor && (
-          <div className="text-gray-500 text-center py-6">Задачи не найдены</div>
+          <div className="text-text-secondary text-center py-6">Задачи не найдены</div>
         )}
       </div>
     </PageContainer>

@@ -17,8 +17,8 @@ interface CaseLifecycleTimelineProps {
 export function CaseLifecycleTimeline({ caseStage, className = '' }: CaseLifecycleTimelineProps) {
   if (caseStage === 'exceptions') {
     return (
-      <div className={`bg-gray-50 border border-gray-200 rounded-lg p-4 text-center ${className}`}>
-        <p className="text-gray-600 text-sm">Дело входит в ряд исключений из общих сроков</p>
+      <div className={`bg-bg-default-light-field border border-border-default rounded-lg p-4 text-center ${className}`}>
+        <p className="text-text-secondary text-sm">Дело входит в ряд исключений из общих сроков</p>
       </div>
     );
   }
@@ -32,11 +32,11 @@ export function CaseLifecycleTimeline({ caseStage, className = '' }: CaseLifecyc
         {/* Контейнер для линии и точек */}
         <div className="relative h-6">
           {/* Серая линия */}
-          <div className="absolute top-1/2 left-0 w-full h-3 bg-gray-200 rounded-full -translate-y-1/2" />
+          <div className="absolute top-1/2 left-0 w-full h-3 bg-bg-light-grey rounded-full -translate-y-1/2" />
           
           {/* Зеленая линия */}
           <div 
-            className="absolute top-1/2 left-0 h-3 bg-green-500 rounded-full -translate-y-1/2 transition-all duration-300"
+            className="absolute top-1/2 left-0 h-3 bg-green rounded-full -translate-y-1/2 transition-all duration-300"
             style={{ 
               width: `calc(${(currentIndex / (STAGES.length - 1)) * 100}%)`
             }}
@@ -56,7 +56,7 @@ export function CaseLifecycleTimeline({ caseStage, className = '' }: CaseLifecyc
                 >
                   <div
                     className={`w-5 h-5 rounded-full ${
-                      isActive ? 'bg-green-500' : 'bg-gray-300'
+                      isActive ? 'bg-green' : 'bg-bg-light-grey'
                     }`}
                   />
                 </div>
@@ -79,7 +79,7 @@ export function CaseLifecycleTimeline({ caseStage, className = '' }: CaseLifecyc
               >
                 <span
                   className={`text-xs whitespace-nowrap ${
-                    isActive ? 'text-gray-900 font-medium' : 'text-gray-400'
+                    isActive ? 'text-text-primary font-medium' : 'text-text-tertiary'
                   }`}
                 >
                   {stage.label}

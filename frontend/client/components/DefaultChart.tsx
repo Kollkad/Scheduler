@@ -70,7 +70,7 @@ export function DefaultChart({ data, onBarClick }: DefaultChartProps) {
             <div
               key={`label-${index}`}
               className={`flex items-center justify-end text-sm ${
-                hoveredBar === item.label ? 'font-bold text-green-500' : ''
+                hoveredBar === item.label ? 'font-bold text-green' : 'text-text-primary'
               }`}
               style={{
                 height: `${barHeight}px`,
@@ -86,7 +86,7 @@ export function DefaultChart({ data, onBarClick }: DefaultChartProps) {
           <div className="flex" style={{ height: `${barsAreaHeight}px` }}>
             {/* Ось Y */}
             <div 
-              className="bg-gray-800"
+              className="bg-dark"
               style={{
                 height: '100%',
                 width: '1px'
@@ -128,7 +128,7 @@ export function DefaultChart({ data, onBarClick }: DefaultChartProps) {
                           }}
                         />
                       )}
-                      <span className="text-sm font-bold text-black absolute right-1">
+                      <span className="text-sm font-bold text-dark absolute right-1">
                         {item.value}
                       </span>
                     </div>
@@ -140,7 +140,7 @@ export function DefaultChart({ data, onBarClick }: DefaultChartProps) {
 
           {/* Ось X */}
           <div 
-            className="border-t border-gray-800 relative"
+            className="border-t border-dark relative"
             style={{
               height: `${xAxisHeight}px`
             }}
@@ -154,8 +154,8 @@ export function DefaultChart({ data, onBarClick }: DefaultChartProps) {
                   transform: 'translateX(-50%)'
                 }}
               >
-                <div className="h-1 w-px bg-gray-800 mx-auto"></div>
-                <div className="text-sm text-gray-600 mt-0.5">
+                <div className="h-1 w-px bg-dark mx-auto"></div>
+                <div className="text-sm text-text-secondary mt-0.5">
                   {tick}
                 </div>
               </div>

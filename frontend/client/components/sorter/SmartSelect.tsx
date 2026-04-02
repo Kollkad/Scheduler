@@ -117,64 +117,61 @@ export function SmartSelect({
     <div className="relative" ref={dropdownRef}>
       <div 
         onClick={handleToggle}
-        className={`relative flex items-center bg-white rounded-xl px-3 py-2 cursor-pointer transition-colors ${
-          isSelected ? 'ring-2 ring-blue-400' : ''
+        className={`relative flex items-center bg-white rounded-xl px-3 py-2 cursor-pointer transition-colors border border-border-default ${
+          isSelected ? 'ring-2 ring-blue-transparent' : ''
         }`}
-        style={{
-          border: '1px solid #BDBDCC',
-          minHeight: '36px' // было 44px
-        }}
+        style={{ minHeight: '36px' }}
       >
-        <span className={`flex-1 text-left text-sm ${value ? 'text-gray-900' : 'text-gray-500'}`}>
+        <span className={`flex-1 text-left text-sm ${value ? 'text-text-primary' : 'text-text-secondary'}`}>
           {displayValue}
         </span>
         
         <div className="flex items-center space-x-2 ml-2">
           {isLoading && (
-            <Loader className="h-4 w-4 animate-spin" style={{ color: '#1F1F1F' }} />
+            <Loader className="h-4 w-4 animate-spin text-text-primary" />
           )}
           {hasSearch && !isLoading && (
-            <Search className="h-4 w-4" style={{ color: '#1F1F1F' }} />
+            <Search className="h-4 w-4 text-text-primary" />
           )}
           <ChevronDown
-            className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-            style={{ color: '#1F1F1F' }}
+            className={`h-4 w-4 transition-transform text-text-primary ${isOpen ? 'rotate-180' : ''}`}
           />
           <button
             type="button"
             onClick={handleClear}
-            className="p-0.5 hover:bg-gray-100 rounded"
+            className="p-0.5 hover:bg-bg-light-grey rounded"
           >
-            <X className="h-4 w-4" style={{ color: '#1F1F1F' }} />
+            <X className="h-4 w-4 text-text-primary" />
           </button>
         </div>
       </div>
 
       {isOpen && (
         <div 
-          className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border z-50 overflow-hidden"
-          style={{ border: '1px solid #BDBDCC' }}
+          className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border border-border-default z-50 overflow-hidden"
         >
+          {/* Поле поиска */}
           {hasSearch && (
-            <div className="p-2 border-b" style={{ borderColor: '#BDBDCC' }}> {/* было p-3 */}
+            <div className="p-2 border-b border-border-default">
               <div className="relative">
-                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" /> {/* было left-3 */}
+                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-text-tertiary" />
                 <input
                   ref={searchInputRef}
                   type="text"
                   placeholder="Поиск..."
                   value={searchTerm}
                   onChange={handleSearchChange}
-                  className="w-full pl-8 pr-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" // было pl-10, py-2
+                  className="w-full pl-8 pr-2 py-2 text-sm text-text-secondary border border-border-default rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-transparent focus:border-transparent"
                   onClick={(e) => e.stopPropagation()}
                 />
               </div>
             </div>
           )}
           
-          <div className="max-h-48 overflow-y-auto"> {/* было max-h-60 */}
+          {/* Список опций */}
+          <div className="max-h-48 overflow-y-auto">
             {isLoading ? (
-              <div className="px-3 py-2 text-sm text-gray-500 flex justify-center"> {/* было px-4 py-3 */}
+              <div className="px-3 py-2 text-sm text-text-secondary flex justify-center">
                 <Loader className="h-4 w-4 animate-spin" />
               </div>
             ) : filteredOptions.length > 0 ? (
@@ -182,15 +179,15 @@ export function SmartSelect({
                 <div
                   key={option.value}
                   onClick={() => handleOptionSelect(option.value)}
-                  className={`relative flex items-center px-3 py-3 text-sm cursor-pointer transition-colors ${
-                    index === highlightedIndex ? 'bg-blue-50' : 'hover:bg-gray-50'
-                  }`} // было px-4 py-3
+                  className={`relative flex items-center px-3 py-3 text-sm text-text-secondary cursor-pointer transition-colors ${
+                    index === highlightedIndex ? 'bg-blue-transparent' : 'hover:bg-bg-default-light-field'
+                  }`}
                 >
                   {option.label}
                 </div>
               ))
             ) : (
-              <div className="px-3 py-2 text-sm text-gray-500"> {/* было px-4 py-3 */}
+              <div className="px-3 py-2 text-sm text-text-tertiary">
                 Ничего не найдено
               </div>
             )}

@@ -81,7 +81,7 @@ export default function TaskDetail() {
             <PageContainer>
                 <div className="flex items-center justify-center h-64">
                     <Loader className="h-8 w-8 animate-spin text-blue-500" />
-                    <span className="ml-2 text-gray-600">Загрузка данных задачи...</span>
+                    <span className="ml-2 text-text-secondary">Загрузка данных задачи...</span>
                 </div>
             </PageContainer>
         );
@@ -93,11 +93,11 @@ export default function TaskDetail() {
             <PageContainer>
                 <div className="text-center py-8">
                     <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                    <h2 className="text-xl font-semibold text-gray-900 mb-2">Ошибка загрузки</h2>
-                    <p className="text-gray-600 mb-4">{error || 'Данные задачи не найдены'}</p>
+                    <h2 className="text-xl font-semibold text-text-primary mb-2">Ошибка загрузки</h2>
+                    <p className="text-text-secondary mb-4">{error || 'Данные задачи не найдены'}</p>
                     <button
                         onClick={() => navigate(-1)}
-                        className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-full hover:bg-gray-50"
+                        className="inline-flex items-center px-4 py-2 text-sm font-medium text-text-secondary bg-white border border-gray-300 rounded-full hover:bg-gray-50"
                     >
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         Вернуться назад
@@ -124,12 +124,12 @@ export default function TaskDetail() {
                 <div className="flex items-center gap-3">
                     {/* Статус выполнения задачи */}
                     <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${
-                        taskData.isCompleted ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        taskData.isCompleted ? 'bg-bg-light-green text-green-dark' : 'bg-red-light-transparent text-dark-default'
                     }`}>
                         {taskData.isCompleted ? (
-                            <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                            <CheckCircle className="h-5 w-5 text-green mr-2" />
                         ) : (
-                            <XCircle className="h-5 w-5 text-red-500 mr-2" />
+                            <XCircle className="h-5 w-5 text-red mr-2" />
                         )}
                         <span>{taskData.isCompleted ? "Выполнена" : "Не выполнена"}</span>
                     </div>
@@ -147,10 +147,10 @@ export default function TaskDetail() {
 
             {/* Заголовок задачи */}
             <div className="mb-8">
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-2xl font-bold text-text-primary">
                     Задача: {taskData.taskCode}
                 </h1>
-                <p className="text-gray-600 mt-1">{taskData.taskText}</p>
+                <p className="text-text-secondary mt-1">{taskData.taskText}</p>
             </div>
 
             {/* Основная информация о задаче */}
@@ -159,41 +159,41 @@ export default function TaskDetail() {
                     {/* Левая колонка - основная информация */}
                     <div className="space-y-4">
                         <div>
-                            <h3 className="text-sm font-medium text-gray-500">Код дела</h3>
-                            <p className="mt-1 text-sm text-gray-900">{taskData.caseCode}</p>
+                            <h3 className="text-sm font-medium text-text-primary">Код дела</h3>
+                            <p className="mt-1 text-sm text-text-primary">{taskData.caseCode}</p>
                         </div>
                         
                         <div>
-                            <h3 className="text-sm font-medium text-gray-500">Название проверки</h3>
-                            <p className="mt-1 text-sm text-gray-900">{taskData.failedCheck}</p>
+                            <h3 className="text-sm font-medium text-text-primary">Название проверки</h3>
+                            <p className="mt-1 text-sm text-text-primary">{taskData.failedCheck}</p>
                         </div>
                         
                         <div>
-                            <h3 className="text-sm font-medium text-gray-500">Этап дела</h3>
-                            <p className="mt-1 text-sm text-gray-900">{taskData.caseStage}</p>
+                            <h3 className="text-sm font-medium text-text-primary">Этап дела</h3>
+                            <p className="mt-1 text-sm text-text-primary">{taskData.caseStage}</p>
                         </div>
                         
                         <div>
-                            <h3 className="text-sm font-medium text-gray-500">Источник данных</h3>
-                            <p className="mt-1 text-sm text-gray-900 capitalize">{taskData.sourceType}</p>
+                            <h3 className="text-sm font-medium text-text-primary">Источник данных</h3>
+                            <p className="mt-1 text-sm text-text-primary capitalize">{taskData.sourceType}</p>
                         </div>
                     </div>
 
                     {/* Правая колонка - статусы и исполнитель */}
                     <div className="space-y-4">
                         <div>
-                            <h3 className="text-sm font-medium text-gray-500">Ответственный исполнитель</h3>
-                            <p className="mt-1 text-sm text-gray-900">{taskData.responsibleExecutor}</p>
+                            <h3 className="text-sm font-medium text-text-primary">Ответственный исполнитель</h3>
+                            <p className="mt-1 text-sm text-text-primary">{taskData.responsibleExecutor}</p>
                         </div>
                         
                         <div>
-                            <h3 className="text-sm font-medium text-gray-500">Статус мониторинга</h3>
-                            <p className="mt-1 text-sm text-gray-900">{taskData.monitoringStatus}</p>
+                            <h3 className="text-sm font-medium text-text-primary">Статус мониторинга</h3>
+                            <p className="mt-1 text-sm text-text-primary">{taskData.monitoringStatus}</p>
                         </div>
                         
                         <div>
-                            <h3 className="text-sm font-medium text-gray-500">Дата создания</h3>
-                            <p className="mt-1 text-sm text-gray-900">
+                            <h3 className="text-sm font-medium text-text-primary">Дата создания</h3>
+                            <p className="mt-1 text-sm text-text-primary">
                                 {new Date(taskData.createdDate).toLocaleDateString('ru-RU')}
                             </p>
                         </div>
@@ -201,9 +201,9 @@ export default function TaskDetail() {
                 </div>
 
                 {/* Причины постановки задачи */}
-                <div className="pt-6 border-t border-gray-200">
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Причины постановки задачи</h3>
-                    <p className="text-sm text-gray-700">
+                <div className="pt-6 border-t border-border-default">
+                    <h3 className="text-sm font-medium text-text-primary mb-2">Причины постановки задачи</h3>
+                    <p className="text-sm text-text-primary">
                         {taskData.reasonText || "Причина не указана"}
                     </p>
                 </div>

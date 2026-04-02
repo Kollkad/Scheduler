@@ -51,7 +51,7 @@ export function DocumentDetail() {
     return (
       <PageContainer>
         <div className="flex items-center justify-center h-64">
-          <Loader className="h-8 w-8 animate-spin" />
+          <Loader className="h-8 w-8 animate-spin text-blue" />
         </div>
       </PageContainer>
     );
@@ -60,7 +60,7 @@ export function DocumentDetail() {
   if (error || !documentData) {
     return (
       <PageContainer>
-        <div className="text-center text-red-600">
+        <div className="text-center text-red">
           {error || 'Данные документа не найдены'}
         </div>
       </PageContainer>

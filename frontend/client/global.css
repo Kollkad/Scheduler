@@ -1,37 +1,66 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-html {font-size: 12px;}
+
+html {
+  font-size: 12px;
+}
+
 @layer base {
   :root {
-    /* ===== Базовые цвета ===== */
-    --background: 0 0% 100%; /* #FFFFFF - основной фон */
-    --foreground: 215 14% 24%; /* #343B46 - основной текст и иконки */
-    
-    /* ===== Цвета текста ===== */
-    --text-primary: 215 14% 24%; /* #343B46 - основной текст */
-    --text-secondary: 220 14% 46%; /* #667285 - второй текст, подсказки */
-    --text-tertiary: 220 13% 65%; /* #9CA3AF - третий текст, светлые подсказки */
-    --text-inactive: 0 0% 12%; /* #1F1F1F - неактивный текст */
-    
-    /* ===== Цвета границ ===== */
-    --border-default: 240 11% 77%; /* #BDBDCC - стандартная граница элементов */
-    --border-green: 120 65% 42%; /* #158F2C - граница зеленых объектов (сайдбар и т.д.) */
-    
-    /* ===== Системные цвета ===== */
-    --green: 135 76% 44%; /* #1CC53C - основной зеленый (кнопки, активные вкладки) */
-    --green-sidebar-bg: 135 76% 44% / 0.2; /* фон сайдбара */
-    --green-sidebar-active: 135 76% 44% / 0.3; /* активная вкладка на сайдбаре */
-    --red: 14 100% 62%; /* #FF5E3E - основной системный красный (графики, предупреждения) */
-    --blue: 217 91% 60%; /* #3B82F6 - синий */
-    
-    /* ===== Состояния элементов ===== */
-    --input-focus-ring: 217 91% 60% / 0.5; /* rgba(59,130,246,0.5) - выделенная область, активное поле ввода */
-    --bg-disabled: 220 13% 65% / 0.05; /* rgba(156,163,175,0.05) - неактивный фон, подложка под недоступный текст */
-    --bg-status: 142 84% 93%; /* #DCFCE7 - фон статуса файлов */
-    
-    /* ===== Черный ===== */
-    --black: 0 0% 0%; /* #000000 - черный */
+    /* ===== GREEN - зеленые элементы интерфейса ===== */
+    --green-default: 131, 75%, 44%; /* #1CC53C */
+    --green-semi-dark: 130, 76%, 36%; /* #16A02D */
+    --green-dark: 131, 74%, 32%; /* #158F2C */
+
+    /* ===== BACKGROUNDS - фоны ===== */
+    --bg-green-transparent: 131, 75%, 44%, 0.25; /* #1CC53C 25% */
+    --bg-light-green: 141, 84%, 93%; /* #DCFCE7 */
+    --bg-default-light-field: 218, 11%, 65%, 0.05; /* #9CA3AF 5% */
+    --bg-light-grey: 240, 22%, 89%; /* #DEDEEA */
+    --bg-ultra-light-grey: 0, 0%, 98%, 0.8; /* #FBFBFB */
+    --bg-medium-gray: 218, 11%, 65%, 0.5; /* #9CA3AF 50% */
+    --bg-yellow: 53, 100%, 64%, 0.5; /* #FFE947 50% */
+
+    /* ===== BORDERS - границы элементов ===== */
+    --border-default: 240, 13%, 77%; /* #BDBDCC */
+    --border-green: 131, 74%, 32%; /* #158F2C */
+
+    /* ===== TEXT - текст ===== */
+    --text-primary: 217, 15%, 24%; /* #343B46 */
+    --text-secondary: 217, 13%, 46%; /* #667285 */
+    --text-tertiary: 218, 11%, 65%; /* #9CA3AF */
+
+    /* ===== DARK - темные цвета ===== */
+    --dark-default: 0, 0%, 12%; /* #1F1F1F */
+    --dark-default-transparent: 0, 0%, 12%, 0.9; /* #1F1F1F 90% */
+
+    /* ===== COLORFUL - цветные элементы ===== */
+    --red-default: 0, 84%, 60%; /* #EF4444 */
+    --red-transparent: 0, 84%, 60%, 0.9; /* #EF4444 90% */
+    --red-light-transparent: 0, 84%, 60%, 0.3; /* #EF4444 30% */
+    --blue-default: 217, 91%, 60%; /* #3B82F6 */
+    --blue-transparent: 217, 91%, 60%, 0.5; /* #3B82F6 50% */
+    --yellow-default: 53, 100%, 64%; /* #FFE947 */
+
+    /* ===== BASE - базовые цвета ===== */
+    --white: 0, 0%, 100%; /* #FFFFFF */
+    --black: 0, 0%, 0%; /* #000000 */
+
+    /* ===== RAINBOW COLORS ===== */
+    --diagram-gray: 0, 0%, 56%; /* #8e8e8e */
+    --diagram-orange: 27, 100%, 62%; /* #FFA73B */
+    --diagram-purple: 280, 100%, 62%; /* #D53DFF */
+    --diagram-red: 11, 100%, 62%; /* #FF5e3e */
+    --diagram-blue: 240, 100%, 62%; /* #3d3dff */
+    --diagram-cyan: 189, 82%, 69%; /* #6EDFF2 */
+    --diagram-pink: 328, 70%, 56%; /* #e65cb3 */
+    --diagram-violet: 270, 100%, 50%; /* #8b00ff */
+
+    /* ===== TABLE COLORS ===== */
+    --table-header-bg: 240, 33%, 92%; /* #E3E3F1 */
+    --table-row-even-bg: 240, 71%, 97%; /* #F3F3FD */
+    --table-hovered-row: 240, 60%, 98%;/* #F7F7FD */
   }
 }
 
@@ -40,6 +69,6 @@ html {font-size: 12px;}
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-white text-text-primary;
   }
 }

@@ -10,6 +10,7 @@ import { API_ENDPOINTS } from '@/services/api/endpoints';
 import { useState, useEffect } from 'react';
 import { lawsuitTermsConfig, orderTermsConfig, stageNameToLabel, documentsChecksToLabel } from '@/config/chartConfig';
 import { rainbowChartConfig } from '@/config/chartConfig';
+import { Button } from "@/components/ui/button";
 
 // Типы данных для различных источников дел
 interface RainbowCase {
@@ -199,32 +200,32 @@ export function FilteredCases() {
   if (loading) return (
     <PageContainer>
       <div className="flex justify-center items-center h-64">
-        <div className="text-gray-600">Загрузка данных...</div>
+        <div className="text-text-secondary">Загрузка данных...</div>
       </div>
     </PageContainer>
   );
 
   if (error) return (
     <PageContainer>
-      <div className="text-red-600 text-center">{error}</div>
+      <div className="text-red text-center">{error}</div>
     </PageContainer>
   );
 
   return (
     <PageContainer>
-      <div className="mb-6">
-        <button
-          onClick={() => navigate(-1)}
-          className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Вернуться назад
-        </button>
-      </div>
+      <Button
+        variant="grayOutline"
+        size="rounded"
+        onClick={() => navigate(-1)}
+        className="inline-flex items-center gap-2"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Вернуться назад
+      </Button>
 
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">{getCaption()}</h1>
-        <p className="text-gray-600">Найдено дел: {cases.length.toLocaleString()}</p>
+      <div className="mt-4 mb-8">
+        <h1 className="text-2xl font-bold text-text-primary mb-2">{getCaption()}</h1>
+        <p className="text-text-secondary">Найдено дел: {cases.length.toLocaleString()}</p>
       </div>
 
       <ReusableDataTable

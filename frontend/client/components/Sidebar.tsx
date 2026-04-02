@@ -42,9 +42,9 @@ export function Sidebar() {
 
   return (
     <div className="w-80 h-screen fixed left-0 top-0 p-4">
-      <div className="h-full rounded-3xl border border-border-green flex flex-col bg-green-sidebar">
+      <div className="h-full rounded-3xl border border-green-dark flex flex-col bg-bg-green-transparent">
         {/* Логотип */}
-        <div className="p-6 border-b" style={{ borderColor: 'rgba(21, 143, 44, 0.3)' }}>
+        <div className="p-6 border-b border-green-semi-dark">
           <div className="flex items-center space-x-3">
             <img src="/logo-icon.png" alt="Логотип" className="w-8 h-8 object-contain" />
             <span className="text-xl font-semibold text-green">Планировщик</span>
@@ -63,7 +63,7 @@ export function Sidebar() {
                   to={item.path}
                   className={cn(
                     "flex items-center px-4 py-3 text-sm font-medium transition-colors rounded-2xl",
-                    isActive ? "bg-green-active text-white" : "text-text-inactive hover:bg-white/20"
+                    isActive ? "bg-bg-green-transparent text-white" : "text-text-primary hover:bg-bg-green-transparent"
                   )}
                 >
                   <Icon className="mr-3 h-5 w-5" />
@@ -75,30 +75,30 @@ export function Sidebar() {
         </div>
 
         {/* Загруженные файлы */}
-        <div className="border-t p-4" style={{ borderColor: 'rgba(21, 143, 44, 0.3)' }}>
+        <div className="border-t border-green-semi-dark p-4">
           <div className="flex items-center mb-3">
             <FileText className="h-4 w-4 mr-2 text-green" />
-            <span className="text-sm font-medium text-text-inactive">Загруженные файлы:</span>
+            <span className="text-sm font-medium text-text-primary">Загруженные файлы:</span>
           </div>
 
           <div className={cn(
             "p-3 rounded-lg",
-            isReady ? "bg-green-100" : "bg-gray-100"
+            isReady ? "bg-bg-light-green" : "bg-bg-ultra-light-grey"
           )}>
             <div className="text-sm space-y-1">
               <div>
-                <span className="text-text-inactive">Детальный отчет:</span>{' '}
-                <span className={isFileLoaded('current_detailed_report') ? "text-green-700" : "text-gray-500"}>
+                <span className="text-text-primary">Детальный отчет:</span>{' '}
+                <span className={isFileLoaded('current_detailed_report') ? "text-green-dark" : "text-text-secondary"}>
                   {isFileLoaded('current_detailed_report') 
-                    ? formatDate(uploadedFiles?.files?.current_detailed_report?.file?.uploaded_at)
+                    ? getFileDate('current_detailed_report')
                     : 'не загружен'}
                 </span>
               </div>
               <div>
-                <span className="text-text-inactive">Отчет по документам:</span>{' '}
-                <span className={isFileLoaded('documents_report') ? "text-green-700" : "text-gray-500"}>
+                <span className="text-text-primary">Отчет по документам:</span>{' '}
+                <span className={isFileLoaded('documents_report') ? "text-green-dark" : "text-text-secondary"}>
                   {isFileLoaded('documents_report')
-                    ? formatDate(uploadedFiles?.files?.documents_report?.file?.uploaded_at)
+                    ? getFileDate('documents_report')
                     : 'не загружен'}
                 </span>
               </div>

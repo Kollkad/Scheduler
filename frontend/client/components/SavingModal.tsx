@@ -178,32 +178,31 @@ export function SavingModal({ isOpen, onClose }: SavingModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-bg-medium-gray flex items-center justify-center z-50 p-4">
       <div
         ref={modalRef}
-        className="bg-white rounded-2xl p-6 max-w-2xl w-full relative"
+        className="bg-white rounded-2xl p-6 max-w-2xl w-full relative border border-border-default"
         style={{
-          border: '1px solid #BDBDCC',
           boxShadow: '2px 4px 8px rgba(0, 0, 0, 0.1), -2px 0 8px rgba(0, 0, 0, 0.05)'
         }}
       >
         {/* Кнопка закрытия */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1 hover:bg-gray-100 rounded-full transition-colors"
+          className="absolute top-4 right-4 p-1 hover:bg-bg-light-grey rounded-full transition-colors"
           disabled={isSaving}
         >
-          <X className="h-5 w-5" style={{ color: '#1F1F1F' }} />
+          <X className="h-5 w-5 text-dark-default" />
         </button>
 
         {/* Заголовок */}
-        <h2 className="text-xl font-semibold text-gray-900 mb-6 pr-8">
+        <h2 className="text-xl font-semibold text-text-primary mb-6 pr-8">
           Выгрузка данных
         </h2>
 
         {/* Выбор типа данных */}
         <div className="space-y-4 mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-text-secondary mb-2">
             Выберите тип данных для выгрузки:
           </label>
           
@@ -218,10 +217,10 @@ export function SavingModal({ isOpen, onClose }: SavingModalProps) {
 
           {/* Описание и статус */}
           {selectedType && (
-            <div className="p-4 bg-gray-50 rounded-lg space-y-3">
+            <div className="p-4 bg-default-light-field rounded-lg space-y-3">
               <div>
-                <p className="text-sm font-medium text-gray-700 mb-1">Описание:</p>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm font-medium text-text-primary mb-1">Описание:</p>
+                <p className="text-sm text-text-primary">
                   {dataTypeDescriptions[selectedType]}
                 </p>
               </div>
@@ -229,12 +228,12 @@ export function SavingModal({ isOpen, onClose }: SavingModalProps) {
               {/* Статус доступности данных */}
               {statusInfo && (
                 <div>
-                  <p className="text-sm font-medium text-gray-700 mb-1">Статус данных:</p>
+                  <p className="text-sm font-medium text-text-primary mb-1">Статус данных:</p>
                   <div className="text-xs">
                     <span className={`inline-flex items-center px-3 py-1 rounded-full ${
                       statusInfo.loaded 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
+                        ? 'bg-bg-light-green text-green-dark' 
+                        : 'bg-bg-yellow text-dark-default'
                     }`}>
                       {statusInfo.loaded 
                         ? `✓ Данные доступны (${statusInfo.row_count || 0} записей)`
@@ -274,7 +273,7 @@ export function SavingModal({ isOpen, onClose }: SavingModalProps) {
         {/* Информация о недоступности */}
         {statusInfo && !statusInfo.loaded && (
           <div className="mt-3 text-center">
-            <p className="text-xs text-yellow-600">
+            <p className="text-xs text-text-primary">
               Выгрузка недоступна: данные не загружены
             </p>
           </div>

@@ -2,18 +2,6 @@
 import { featureFlags } from '@/config/featureFlags';
 import { TableConfig } from "@/components/tables/TableTypes";
 
-// Базовые настройки оформления для всех таблиц системы
-export const tableBaseConfig = {
-  colors: {
-    headerBackground: '#E3E3F1',
-    border: '#BDBDCC', 
-    text: '#171A1F',
-    alternateRowBackground: '#F3F3FD',
-    normalRowBackground: 'transparent'
-  },
-  defaultPageSize: 8
-};
-
 // Функция преобразует данные терминов из формата бэкенда в формат таблицы
 export const mapBackendDataTerms = (data: Record<string, any>[]) => {
   return data.map(row => ({

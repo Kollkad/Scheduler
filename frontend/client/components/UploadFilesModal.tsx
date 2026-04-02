@@ -211,25 +211,24 @@ export function UploadFilesModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-bg-medium-gray flex items-center justify-center z-50 p-4">
       <div
         ref={modalRef}
-        className="bg-white rounded-2xl p-6 max-w-2xl w-full relative"
+        className="bg-white rounded-2xl p-6 max-w-2xl w-full relative border border-border-default"
         style={{
-          border: '1px solid #BDBDCC',
           boxShadow: '2px 4px 8px rgba(0, 0, 0, 0.1), -2px 0 8px rgba(0, 0, 0, 0.05)'
         }}
       >
         {/* Кнопка закрытия */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1 hover:bg-gray-100 rounded-full transition-colors"
+          className="absolute top-4 right-4 p-1 hover:bg-bg-light-grey rounded-full transition-colors"
         >
-          <X className="h-5 w-5" style={{ color: '#1F1F1F' }} />
+          <X className="h-5 w-5 text-dark-default" />
         </button>
 
         {/* Заголовок */}
-        <h2 className="text-xl font-semibold text-gray-900 mb-6 pr-8">
+        <h2 className="text-xl font-semibold text-text-primary mb-6 pr-8">
           Загрузка файлов
         </h2>
 
@@ -239,19 +238,19 @@ export function UploadFilesModal({
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <div 
-                className={`flex-1 border-b border-gray-300 py-2 min-h-[40px] flex items-center overflow-hidden
+                className={`flex-1 border-b border-text-tertiary py-2 min-h-[40px] flex items-center overflow-hidden
                   ${!isUploaded('currentReport') ? 
-                    'cursor-pointer hover:border-green-500 transition-colors duration-200' : 
+                    'cursor-pointer hover:border-green transition-colors duration-200' : 
                     'cursor-default'}`}
                 onClick={!isUploaded('currentReport') ? () => triggerFileInput('currentReport') : undefined}
               >
                 {getDisplayName('currentReport') ? (
                   <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <div className="text-green-600 flex-shrink-0">✓</div>
-                    <span className="text-gray-900 truncate">{getDisplayName('currentReport')}</span>
+                    <div className="text-green flex-shrink-0">✓</div>
+                    <span className="text-dark-default truncate">{getDisplayName('currentReport')}</span>
                   </div>
                 ) : (
-                  <span className="text-gray-400">{getPlaceholder('currentReport')}</span>
+                  <span className="text-text-tertiary">{getPlaceholder('currentReport')}</span>
                 )}
               </div>
                             
@@ -291,7 +290,7 @@ export function UploadFilesModal({
               />
             </div>
             {localFiles.currentReport.error && (
-              <p className="text-red-500 text-sm">Ошибка: {localFiles.currentReport.error}</p>
+              <p className="text-red-default text-sm">Ошибка: {localFiles.currentReport.error}</p>
             )}
           </div>
 
@@ -299,19 +298,19 @@ export function UploadFilesModal({
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <div 
-                className={`flex-1 border-b border-gray-300 py-2 min-h-[40px] flex items-center overflow-hidden
+                className={`flex-1 border-b border-text-tertiary py-2 min-h-[40px] flex items-center overflow-hidden
                   ${!isUploaded('documentsReport') ? 
-                    'cursor-pointer hover:border-green-500 transition-colors duration-200' : 
+                    'cursor-pointer hover:border-green transition-colors duration-200' : 
                     'cursor-default'}`}
                 onClick={!isUploaded('documentsReport') ? () => triggerFileInput('documentsReport') : undefined}
               >
                 {getDisplayName('documentsReport') ? (
                   <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <div className="text-green-600 flex-shrink-0">✓</div>
-                    <span className="text-gray-900 truncate">{getDisplayName('documentsReport')}</span>
+                    <div className="text-green flex-shrink-0">✓</div>
+                    <span className="text-dark-default truncate">{getDisplayName('documentsReport')}</span>
                   </div>
                 ) : (
-                  <span className="text-gray-400">{getPlaceholder('documentsReport')}</span>
+                  <span className="text-text-tertiary">{getPlaceholder('documentsReport')}</span>
                 )}
               </div>
               
@@ -351,7 +350,7 @@ export function UploadFilesModal({
               />
             </div>
             {localFiles.documentsReport.error && (
-              <p className="text-red-500 text-sm">Ошибка: {localFiles.documentsReport.error}</p>
+              <p className="text-red-default text-sm">Ошибка: {localFiles.documentsReport.error}</p>
             )}
           </div>
 
@@ -360,19 +359,19 @@ export function UploadFilesModal({
             <div className="space-y-2">
               <div className="flex items-center gap-3">
                 <div 
-                  className={`flex-1 border-b border-gray-300 py-2 min-h-[40px] flex items-center overflow-hidden
+                  className={`flex-1 border-b border-text-tertiary py-2 min-h-[40px] flex items-center overflow-hidden
                     ${!isUploaded('previousReport') ? 
-                      'cursor-pointer hover:border-green-500 transition-colors duration-200' : 
+                      'cursor-pointer hover:border-green transition-colors duration-200' : 
                       'cursor-default'}`}
                   onClick={!isUploaded('previousReport') ? () => triggerFileInput('previousReport') : undefined}
                 >
                   {getDisplayName('previousReport') ? (
                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <div className="text-green-600 flex-shrink-0">✓</div>
-                      <span className="text-gray-900 truncate">{getDisplayName('previousReport')}</span>
+                      <div className="text-green flex-shrink-0">✓</div>
+                      <span className="text-dark-default truncate">{getDisplayName('previousReport')}</span>
                     </div>
                   ) : (
-                    <span className="text-gray-400">{getPlaceholder('previousReport')}</span>
+                    <span className="text-text-tertiary">{getPlaceholder('previousReport')}</span>
                   )}
                 </div>
                 
@@ -412,7 +411,7 @@ export function UploadFilesModal({
                 />
               </div>
               {localFiles.previousReport.error && (
-                <p className="text-red-500 text-sm">Ошибка: {localFiles.previousReport.error}</p>
+                <p className="text-red-default text-sm">Ошибка: {localFiles.previousReport.error}</p>
               )}
             </div>
           )}

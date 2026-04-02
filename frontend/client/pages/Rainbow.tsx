@@ -407,7 +407,7 @@ export default function Rainbow() {
 
         {reportStatus === "ready" && (
           <>
-            <div className="mb-4 p-3 bg-bg-disabled rounded-md">
+            <div className="mb-4 p-3 bg-bg-default-light-field rounded-md">
               <p className="text-sm text-text-secondary">
                 {diagramFiltered 
                   ? `Диаграмма отображает распределение по цветам для отфильтрованных дел (${total} шт.)`

@@ -291,8 +291,8 @@ export function TermsOfSupport() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-text-primary mb-2">Сроки сопровождения</h1>
         <p className="text-text-secondary">Всего дел: {currentTotalCases.toLocaleString()}</p>
-        {isAnalyzing && <p className="text-blue-500">Идет анализ...</p>}
-        {isLoading && <p className="text-blue-500">Загрузка данных...</p>}
+        {isAnalyzing && <p className="text-blue">Идет анализ...</p>}
+        {isLoading && <p className="text-blue">Загрузка данных...</p>}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">

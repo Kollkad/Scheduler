@@ -12,19 +12,19 @@ export function SystemOverview() {
       label: 'Введение',
       content: (
         <div className="space-y-6">
-          <h2 className="text-xl font-bold text-gray-900">Планировщик судебных дел</h2>
-          <p className="text-gray-700">
+          <h2 className="text-xl font-bold text-text-primary">Планировщик судебных дел</h2>
+          <p className="text-text-secondary">
             Данная система предназначена для комплексного анализа и отслеживания судебных дел 
             банка. Инструмент позволяет визуализировать данные в различных разрезах и оперативно 
             реагировать на изменения сроков сопровождения дел.
           </p>
           
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-            <h3 className="font-semibold text-blue-900 mb-2">Начало работы</h3>
-            <p className="text-blue-800 text-sm">
+          <div className="bg-bg-light-green p-4 rounded-lg border border-green-dark">
+            <h3 className="font-semibold text-green-dark mb-2">Начало работы</h3>
+            <p className="text-green-dark text-sm">
               Для начала работы с системой необходимо:
             </p>
-            <ol className="list-decimal list-inside ml-4 text-blue-800 text-sm space-y-1 mt-2">
+            <ol className="list-decimal list-inside ml-4 text-green-dark text-sm space-y-1 mt-2">
               <li>Нажать кнопку "Загрузить файлы" в верхней части интерфейса</li>
               <li>Загрузить два обязательных файла в формате Excel:
                 <ul className="list-disc list-inside ml-6">
@@ -35,16 +35,16 @@ export function SystemOverview() {
             </ol>
           </div>
 
-          <h3 className="font-semibold text-gray-900">Страницы системы:</h3>
-          <ul className="list-disc list-inside text-gray-700 space-y-2">
+          <h3 className="font-semibold text-text-primary">Страницы системы:</h3>
+          <ul className="list-disc list-inside text-text-secondary space-y-2">
             <li><span className="font-medium">Обзор системы</span> (текущая страница) - инструкция и описание возможностей</li>
             <li><span className="font-medium">Rainbow</span> - цветовая оценка сроков сопровождения дел</li>
             <li><span className="font-medium">Сроки сопровождения</span> - детальный анализ по этапам судебного процесса</li>
             <li><span className="font-medium">Задачи сотрудников</span> - выбрать задачи конкретного сотрудника по результатам анализа отчета</li>
           </ul>
 
-          <h3 className="font-semibold text-gray-900">Обязательные столбцы в детальном отчете:</h3>
-          <ul className="list-decimal list-inside text-gray-700 space-y-2">
+          <h3 className="font-semibold text-text-primary">Обязательные столбцы в детальном отчете:</h3>
+          <ul className="list-decimal list-inside text-text-secondary space-y-2">
             <p>Важные стобцы для очистки отчета:</p>
             <li>№ п/п - начальная точка выбора данных</li>
             <li>Итого - конечная точка</li>
@@ -75,8 +75,8 @@ export function SystemOverview() {
             <li>Дата передачи финального акта в БП</li>
             <li>Фактическая дата передачи ИД</li>
           </ul>
-          <h3 className="font-semibold text-gray-900">Обязательные столбцы в отчете по документам:</h3> 
-          <ul className="list-decimal list-inside text-gray-700 space-y-2">
+          <h3 className="font-semibold text-text-primary">Обязательные столбцы в отчете по документам:</h3> 
+          <ul className="list-decimal list-inside text-text-secondary space-y-2">
             <li>Код дела</li>
             <li>Документ</li>
             <li>Категория подразделения</li>
@@ -95,8 +95,8 @@ export function SystemOverview() {
       label: 'Rainbow',
       content: (
         <div className="space-y-6">
-          <h2 className="text-xl font-bold text-gray-900">Цветовая система оценки (Rainbow)</h2>
-          <p className="text-gray-700">
+          <h2 className="text-xl font-bold text-text-primary">Цветовая система оценки (Rainbow)</h2>
+          <p className="text-text-secondary">
             Rainbow - это визуальная система оценки сроков сопровождения дел, где каждый цвет соответствует 
             определенному состоянию дела. Система позволяет быстро оценить общую ситуацию 
             и выявить проблемные зоны.
@@ -104,9 +104,9 @@ export function SystemOverview() {
 
           <RainbowMeanings />
 
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-            <h3 className="font-semibold text-blue-900 mb-3">Возможности раздела Rainbow:</h3>
-            <ul className="list-disc list-inside text-blue-800 text-sm space-y-2">
+          <div className="bg-bg-light-green p-4 rounded-lg border border-green-dark">
+            <h3 className="font-semibold text-green-dark mb-3">Возможности раздела Rainbow:</h3>
+            <ul className="list-disc list-inside text-green-dark text-sm space-y-2">
               <li>Нажмите на любой цветной столбец диаграммы для просмотра дел соответствующего статуса</li>
               <li>Используйте форму фильтров для детальной настройки отчета</li>
               <li>Анализируйте распределение дел по цветам для выявления проблемных зон</li>
@@ -114,10 +114,10 @@ export function SystemOverview() {
             </ul>
           </div>
 
-          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-            <h3 className="font-semibold text-gray-900 mb-3">Условия определения цветов:</h3>
+          <div className="bg-white p-4 rounded-lg border border-border-default">
+            <h3 className="font-semibold text-text-primary mb-3">Условия определения цветов:</h3>
             
-            <div className="text-sm text-gray-700 mb-4">
+            <div className="text-sm text-text-secondary mb-4">
               <p className="font-medium mb-2">Общие условия:</p>
               <ul className="list-disc list-inside ml-4">
                 <li>Только дела с категорией "Иск от Банка"</li>
@@ -132,7 +132,7 @@ export function SystemOverview() {
                 <div className="w-4 h-4 bg-black rounded mr-3 mt-0.5 flex-shrink-0"></div>
                 <div>
                   <p className="font-medium text-sm">Ипотечные кредиты (ИК)</p>
-                  <p className="text-xs text-gray-600">Вид запроса содержит "залог"</p>
+                  <p className="text-xs text-text-secondary">Вид запроса содержит "залог"</p>
                 </div>
               </div>
 
@@ -140,7 +140,7 @@ export function SystemOverview() {
                 <div className="w-4 h-4 bg-gray-400 rounded mr-3 mt-0.5 flex-shrink-0"></div>
                 <div>
                   <p className="font-medium text-sm">Серый</p>
-                  <p className="text-xs text-gray-600">Статус дела = "Переоткрыто"</p>
+                  <p className="text-xs text-text-secondary">Статус дела = "Переоткрыто"</p>
                 </div>
               </div>
 
@@ -148,7 +148,7 @@ export function SystemOverview() {
                 <div className="w-4 h-4 bg-green-500 rounded mr-3 mt-0.5 flex-shrink-0"></div>
                 <div>
                   <p className="font-medium text-sm">Зеленый</p>
-                  <p className="text-xs text-gray-600">Статус дела = "Суд. акт вступил в законную силу" И заполнена "Фактическая дата передачи ИД"</p>
+                  <p className="text-xs text-text-secondary">Статус дела = "Суд. акт вступил в законную силу" И заполнена "Фактическая дата передачи ИД"</p>
                 </div>
               </div>
 
@@ -156,7 +156,7 @@ export function SystemOverview() {
                 <div className="w-4 h-4 bg-yellow-400 rounded mr-3 mt-0.5 flex-shrink-0"></div>
                 <div>
                   <p className="font-medium text-sm">Желтый</p>
-                  <p className="text-xs text-gray-600">Статус дела = "Условно закрыто" И заполнена "Фактическая дата передачи ИД"</p>
+                  <p className="text-xs text-text-secondary">Статус дела = "Условно закрыто" И заполнена "Фактическая дата передачи ИД"</p>
                 </div>
               </div>
 
@@ -164,7 +164,7 @@ export function SystemOverview() {
                 <div className="w-4 h-4 bg-orange-500 rounded mr-3 mt-0.5 flex-shrink-0"></div>
                 <div>
                   <p className="font-medium text-sm">Оранжевый</p>
-                  <p className="text-xs text-gray-600">Статус дела = "Суд. акт вступил в законную силу" И НЕ заполнена "Фактическая дата передачи ИД"</p>
+                  <p className="text-xs text-text-secondary">Статус дела = "Суд. акт вступил в законную силу" И НЕ заполнена "Фактическая дата передачи ИД"</p>
                 </div>
               </div>
 
@@ -172,7 +172,7 @@ export function SystemOverview() {
                 <div className="w-4 h-4 bg-blue-600 rounded mr-3 mt-0.5 flex-shrink-0"></div>
                 <div>
                   <p className="font-medium text-sm">Синий</p>
-                  <p className="text-xs text-gray-600">Способ судебной защиты = "Приказное производство" И "Дата последнего поступления запроса в ЮП" более 90 дней назад</p>
+                  <p className="text-xs text-text-secondary">Способ судебной защиты = "Приказное производство" И "Дата последнего поступления запроса в ЮП" более 90 дней назад</p>
                 </div>
               </div>
 
@@ -180,7 +180,7 @@ export function SystemOverview() {
                 <div className="w-4 h-4 bg-red-500 rounded mr-3 mt-0.5 flex-shrink-0"></div>
                 <div>
                   <p className="font-medium text-sm">Красный</p>
-                  <p className="text-xs text-gray-600">"Дата последнего поступления запроса в ЮП" ранее 2023 года</p>
+                  <p className="text-xs text-text-secondary">"Дата последнего поступления запроса в ЮП" ранее 2023 года</p>
                 </div>
               </div>
 
@@ -188,7 +188,7 @@ export function SystemOverview() {
                 <div className="w-4 h-4 bg-purple-500 rounded mr-3 mt-0.5 flex-shrink-0"></div>
                 <div>
                   <p className="font-medium text-sm">Лиловый</p>
-                  <p className="text-xs text-gray-600">Способ судебной защиты = "Исковое производство" И "Дата последнего поступления запроса в ЮП" более 120 дней назад</p>
+                  <p className="text-xs text-text-secondary">Способ судебной защиты = "Исковое производство" И "Дата последнего поступления запроса в ЮП" более 120 дней назад</p>
                 </div>
               </div>
 
@@ -196,7 +196,7 @@ export function SystemOverview() {
                 <div className="w-4 h-4 bg-white border border-gray-300 rounded mr-3 mt-0.5 flex-shrink-0"></div>
                 <div>
                   <p className="font-medium text-sm">Белый</p>
-                  <p className="text-xs text-gray-600">Все остальные дела, не подходящие под вышеперечисленные условия</p>
+                  <p className="text-xs text-text-secondary">Все остальные дела, не подходящие под вышеперечисленные условия</p>
                 </div>
               </div>
             </div>
@@ -209,22 +209,22 @@ export function SystemOverview() {
       label: 'Сроки сопровождения',
       content: (
         <div className="space-y-6">
-          <h2 className="text-xl font-bold text-gray-900">Сроки сопровождения</h2>
-          <p className="text-gray-700">
+          <h2 className="text-xl font-bold text-text-primary">Сроки сопровождения</h2>
+          <p className="text-text-secondary">
             Данный раздел предоставляет детальную информацию о движении дел по этапам 
             судебного процесса с проверкой соблюдения сроков на каждом этапе.
           </p>
 
           <TermsOfSupportMeanings />
 
-          <h3 className="font-semibold text-gray-900">Выбор способа судебной защиты:</h3>
-          <p className="text-gray-700 text-sm">
+          <h3 className="font-semibold text-text-primary">Выбор способа судебной защиты:</h3>
+          <p className="text-text-secondary text-sm">
             В верхней части страницы расположены переключатели между типами производств
           </p>
 
           {/* Исковое производство */}
-          <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-            <h3 className="font-semibold text-gray-900 mb-4 text-lg">Исковое производство</h3>
+          <div className="bg-white p-6 rounded-lg border border-border-default shadow-sm">
+            <h3 className="font-semibold text-text-primary mb-4 text-lg">Исковое производство</h3>
             
             <div className="space-y-4">
               <StageAccordion 
@@ -294,8 +294,8 @@ export function SystemOverview() {
           </div>
 
           {/* Приказное производство */}
-          <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-            <h3 className="font-semibold text-gray-900 mb-4 text-lg">Приказное производство</h3>
+          <div className="bg-white p-6 rounded-lg border border-border-default shadow-sm">
+            <h3 className="font-semibold text-text-primary mb-4 text-lg">Приказное производство</h3>
             
             <div className="space-y-4">
               <StageAccordion 
@@ -346,9 +346,9 @@ export function SystemOverview() {
               />
             </div>
 
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <h4 className="font-semibold text-gray-900 mb-2">Особенности приказного производства:</h4>
-              <ul className="list-disc list-inside text-gray-700 text-sm space-y-1">
+            <div className="mt-6 p-4 bg-bg-default-light-field rounded-lg">
+              <h4 className="font-semibold text-text-primary mb-2">Особенности приказного производства:</h4>
+              <ul className="list-disc list-inside text-text-secondary text-sm space-y-1">
                 <li>Упрощенная процедура без судебных заседаний</li>
                 <li>Сокращенные сроки рассмотрения по сравнению с исковым производством</li>
                 <li>Основной результат - получение судебного приказа</li>
@@ -357,9 +357,9 @@ export function SystemOverview() {
             </div>
           </div>
 
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-            <h4 className="font-semibold text-blue-900 mb-2">Принцип работы системы:</h4>
-            <ul className="list-disc list-inside text-blue-800 text-sm space-y-1">
+          <div className="bg-bg-light-green p-4 rounded-lg border border-green-dark">
+            <h4 className="font-semibold text-green-dark mb-2">Принцип работы системы:</h4>
+            <ul className="list-disc list-inside text-green-dark text-sm space-y-1">
               <li>Каждое дело автоматически определяется в соответствующий этап</li>
               <li>На каждом этапе выполняются проверки соблюдения сроков</li>
               <li>Результаты проверок объединяются в комбинированные статусы</li>
@@ -375,15 +375,15 @@ export function SystemOverview() {
       label: 'Сравнение периодов',
       content: (
         <div className="space-y-6">
-          <h2 className="text-xl font-bold text-gray-900">Сравнение периодов</h2>
-          <p className="text-gray-700">
+          <h2 className="text-xl font-bold text-text-primary">Сравнение периодов</h2>
+          <p className="text-text-secondary">
             Данный раздел позволяет анализировать динамику показателей между текущим 
             и предыдущим отчетным периодом.
           </p>
 
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-            <h3 className="font-semibold text-blue-900 mb-2">Возможности раздела:</h3>
-            <ul className="list-disc list-inside text-blue-800 text-sm space-y-2">
+          <div className="bg-bg-light-green p-4 rounded-lg border border-green-dark">
+            <h3 className="font-semibold text-green-dark mb-2">Возможности раздела:</h3>
+            <ul className="list-disc list-inside text-green-dark text-sm space-y-2">
               <li>Сравнение количества дел по цветам между периодами</li>
               <li>Анализ динамики сроков сопровождения</li>
               <li>Отслеживание изменений в эффективности работы</li>
@@ -391,8 +391,8 @@ export function SystemOverview() {
             </ul>
           </div>
 
-          <h3 className="font-semibold text-gray-900">Как работает сравнение:</h3>
-          <ol className="list-decimal list-inside text-gray-700 space-y-2">
+          <h3 className="font-semibold text-text-primary">Как работает сравнение:</h3>
+          <ol className="list-decimal list-inside text-text-secondary space-y-2">
             <li>Загрузите текущий отчетный период</li>
             <li>Загрузите отчет за предыдущий период (опционально)</li>
             <li>Система автоматически сопоставит данные по идентификаторам дел</li>
@@ -406,24 +406,24 @@ export function SystemOverview() {
   label: 'Задачи сотрудника',
   content: (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold text-gray-900">Задачи сотрудника</h2>
-      <p className="text-gray-700">
+      <h2 className="text-xl font-bold text-text-primary">Задачи сотрудника</h2>
+      <p className="text-text-secondary">
         Система анализирует данные судебных дел и формирует задачи для сотрудников 
         на основе проверки соблюдения процессуальных сроков. Выберите сотрудника из списка для просмотра его задач
         и нажмите кнопку "Найти задачи". Вы увидите таблицу всех задач, назначенных выбранному сотруднику
       </p>
 
-      <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-        <h3 className="font-semibold text-gray-900 mb-4">Принцип работы системы задач</h3>
+      <div className="bg-white p-6 rounded-lg border border-border-default shadow-sm">
+        <h3 className="font-semibold text-text-primary mb-4">Принцип работы системы задач</h3>
         
         <div className="space-y-4">
           <div className="flex items-start">
-            <div className="w-8 h-8 bg-blue-100 rounded-full mr-4 mt-0.5 flex items-center justify-center flex-shrink-0">
-              <span className="text-sm font-bold text-blue-800">1</span>
+            <div className="w-8 h-8 bg-bg-green-transparent rounded-full mr-4 mt-0.5 flex items-center justify-center flex-shrink-0">
+              <span className="text-sm font-bold text-green-dark">1</span>
             </div>
             <div>
-              <h4 className="font-semibold text-gray-900">Анализ данных</h4>
-              <p className="text-gray-700 text-sm mt-1">
+              <h4 className="font-semibold text-text-primary">Анализ данных</h4>
+              <p className="text-text-secondary text-sm mt-1">
                 Система анализирует данные из детального отчета и отчета по документам, 
                 определяет этапы дел и проверяет соблюдение сроков
               </p>
@@ -431,12 +431,12 @@ export function SystemOverview() {
           </div>
 
           <div className="flex items-start">
-            <div className="w-8 h-8 bg-green-100 rounded-full mr-4 mt-0.5 flex items-center justify-center flex-shrink-0">
-              <span className="text-sm font-bold text-green-800">2</span>
+            <div className="w-8 h-8 bg-bg-green-transparent rounded-full mr-4 mt-0.5 flex items-center justify-center flex-shrink-0">
+              <span className="text-sm font-bold text-green-dark">2</span>
             </div>
             <div>
-              <h4 className="font-semibold text-gray-900">Формирование задач</h4>
-              <p className="text-gray-700 text-sm mt-1">
+              <h4 className="font-semibold text-text-primary">Формирование задач</h4>
+              <p className="text-text-secondary text-sm mt-1">
                 На основе проваленных проверок система создает задачи с конкретными формулировками 
                 и привязывает их к ответственным исполнителям
               </p>
@@ -444,12 +444,12 @@ export function SystemOverview() {
           </div>
 
           <div className="flex items-start">
-            <div className="w-8 h-8 bg-purple-100 rounded-full mr-4 mt-0.5 flex items-center justify-center flex-shrink-0">
-              <span className="text-sm font-bold text-purple-800">3</span>
+            <div className="w-8 h-8 bg-bg-green-transparent rounded-full mr-4 mt-0.5 flex items-center justify-center flex-shrink-0">
+              <span className="text-sm font-bold text-green-dark">3</span>
             </div>
             <div>
-              <h4 className="font-semibold text-gray-900">Группировка по исполнителям</h4>
-              <p className="text-gray-700 text-sm mt-1">
+              <h4 className="font-semibold text-text-primary">Группировка по исполнителям</h4>
+              <p className="text-text-secondary text-sm mt-1">
                 Задачи можно сгруппировать по ответственным исполнителям, 
                 что позволяет каждому сотруднику видеть только свои задачи
               </p>
@@ -459,57 +459,57 @@ export function SystemOverview() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-          <h4 className="font-semibold text-gray-900 mb-3">Типы задач</h4>
-          <ul className="space-y-2 text-sm text-gray-700">
+        <div className="bg-white p-4 rounded-lg border border-border-default shadow-sm">
+          <h4 className="font-semibold text-text-primary mb-3">Типы задач</h4>
+          <ul className="space-y-2 text-sm text-text-secondary">
             <li className="flex items-start">
-              <span className="text-blue-600 mr-2">•</span>
+              <span className="text-green mr-2">•</span>
               <span>Задачи искового производства</span>
             </li>
             <li className="flex items-start">
-              <span className="text-green-600 mr-2">•</span>
+              <span className="text-green mr-2">•</span>
               <span>Задачи приказного производства</span>
             </li>
             <li className="flex items-start">
-              <span className="text-purple-600 mr-2">•</span>
+              <span className="text-green mr-2">•</span>
               <span>Задачи по работе с документами</span>
             </li>
             <li className="flex items-start">
-              <span className="text-orange-600 mr-2">•</span>
+              <span className="text-green mr-2">•</span>
               <span>Доп. задачи по контролю сроков</span>
             </li>
           </ul>
         </div>
 
-        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-          <h4 className="font-semibold text-gray-900 mb-3">Источники данных</h4>
-          <ul className="space-y-2 text-sm text-gray-700">
+        <div className="bg-white p-4 rounded-lg border border-border-default shadow-sm">
+          <h4 className="font-semibold text-text-primary mb-3">Источники данных</h4>
+          <ul className="space-y-2 text-sm text-text-secondary">
             <li className="flex items-start">
-              <span className="text-gray-600 mr-2">•</span>
+              <span className="text-text-secondary mr-2">•</span>
               <span>Детальный отчет по судебной работе</span>
             </li>
             <li className="flex items-start">
-              <span className="text-gray-600 mr-2">•</span>
+              <span className="text-text-secondary mr-2">•</span>
               <span>Отчет по полученным и переданным документам</span>
             </li>
             <li className="flex items-start">
-              <span className="text-gray-600 mr-2">•</span>
+              <span className="text-text-secondary mr-2">•</span>
               <span>Данные мониторинга этапов производства</span>
             </li>
           </ul>
         </div>
       </div>
 
-      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-        <h4 className="font-semibold text-gray-900 mb-2">Формат задачи</h4>
-        <div className="text-sm text-gray-700 space-y-2">
+      <div className="bg-white p-4 rounded-lg border border-border-default">
+        <h4 className="font-semibold text-text-primary mb-2">Формат задачи</h4>
+        <div className="text-sm text-text-secondary space-y-2">
           <p>Каждая задача содержит:</p>
           <ul className="list-disc list-inside ml-4 space-y-1">
             <li><strong>Уникальный код задачи</strong> - идентификатор в системе</li>
             <li><strong>Тип задачи</strong> - категория (исковое, приказное, документы)</li>
             <li><strong>Код дела</strong> - привязка к конкретному судебному делу</li>
             <li><strong>Текст задачи</strong> - конкретное действие для выполнения</li>
-            <li><strong>Причина</strong> - обоснование формирования задачи</li>
+            <li><strong>Причина постановки</strong> - обоснование формирования задачи</li>
           </ul>
         </div>
       </div>
@@ -521,8 +521,8 @@ export function SystemOverview() {
   return (
     <PageContainer>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Планировщик судебных дел</h1>
-        <p className="text-gray-600">Инструкция по работе с системой мониторинга судебных дел</p>
+        <h1 className="text-2xl font-bold text-text-primary">Планировщик судебных дел</h1>
+        <p className="text-text-secondary">Инструкция по работе с системой мониторинга судебных дел</p>
       </div>
 
       <TabsContainer tabs={tabs} defaultTab="introduction" />
@@ -533,14 +533,14 @@ const StageAccordion = ({ title, description, checks }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="border border-gray-200 rounded-lg">
+    <div className="border border-border-default rounded-lg">
       <button
-        className="w-full px-4 py-3 text-left flex justify-between items-center hover:bg-gray-50 transition-colors"
+        className="w-full px-4 py-3 text-left flex justify-between items-center hover:bg-bg-default-light-field transition-colors"
         onClick={() => setIsOpen(!isOpen)}
       >
         <div>
-          <h4 className="font-semibold text-gray-900">{title}</h4>
-          <p className="text-sm text-gray-600 mt-1">{description}</p>
+          <h4 className="font-semibold text-text-primary">{title}</h4>
+          <p className="text-sm text-text-secondary mt-1">{description}</p>
         </div>
         <svg 
           className={`w-5 h-5 text-gray-500 transform transition-transform ${isOpen ? 'rotate-180' : ''}`}
@@ -554,7 +554,7 @@ const StageAccordion = ({ title, description, checks }) => {
       
       {isOpen && (
         <div className="px-4 pb-3">
-          <ul className="list-disc list-inside text-sm text-gray-700 space-y-2 mt-2">
+          <ul className="list-disc list-inside text-sm text-text-secondary space-y-2 mt-2">
             {checks.map((check, index) => (
               <li key={index}>{check}</li>
             ))}

@@ -175,8 +175,8 @@ export function SortButton({
         ref={buttonRef}
         onClick={handleButtonClick}
         className={`
-          ml-2 p-1 rounded hover:bg-gray-100 transition-colors
-          ${isActive ? 'text-blue-500' : 'text-gray-500'}
+          ml-2 p-1 rounded hover:bg-bg-light-grey transition-colors
+          ${isActive ? 'text-blue' : 'text-text-primary'}
         `}
         title="Сортировка и фильтрация"
       >
@@ -194,49 +194,49 @@ export function SortButton({
               zIndex: 9999,
               minWidth: 320
             }}
-            className="bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden w-[36rem]"
+            className="bg-white border border-border-default rounded-xl shadow-lg overflow-hidden w-[36rem]"
           >
             <div className="flex">
-              <div className="flex-1 p-4 border-r border-gray-200">
-                <h3 className="text-sm font-medium text-gray-700 mb-3">Фильтрация</h3>
+              <div className="flex-1 p-4 border-r border-border-default">
+                <h3 className="text-sm font-medium text-text-primary mb-3">Фильтрация</h3>
 
                 <div className="relative mb-3">
-                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-text-tertiary" />
                   <input
                     type="text"
                     placeholder="Поиск..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-8 pr-8 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+                    className="w-full pl-8 pr-8 py-2 text-sm border border-border-default rounded-lg focus:outline-none focus:ring-2 focus:ring-blue focus:border-transparent text-text-primary bg-white"
                   />
                   {searchTerm && (
                     <button
                       onClick={handleClearSearch}
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 p-0.5 hover:bg-gray-100 rounded"
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 p-0.5 hover:bg-bg-light-grey rounded"
                     >
-                      <X className="h-3 w-3 text-gray-400" />
+                      <X className="h-3 w-3 text-text-tertiary" />
                     </button>
                   )}
                 </div>
 
-                <div className="max-h-48 overflow-y-auto mb-4 border border-gray-200 rounded-lg">
+                <div className="max-h-48 overflow-y-auto mb-4 border border-border-default rounded-lg">
                   {filteredOptions.length > 0 ? (
                     filteredOptions.map((option) => (
                       <label
                         key={option.value}
-                        className="flex items-center px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 transition-colors"
+                        className="flex items-center px-3 py-2 text-sm cursor-pointer hover:bg-bg-default-light-field transition-colors"
                       >
                         <input
                           type="checkbox"
                           checked={localSelectedValues.includes(option.value)}
                           onChange={() => handleFilterToggle(option.value)}
-                          className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 mr-3"
+                          className="h-4 w-4 text-blue rounded border-border-default focus:ring-blue mr-3"
                         />
-                        <span className="flex-1">{option.label}</span>
+                        <span className="flex-1 text-text-primary">{option.label}</span>
                       </label>
                     ))
                   ) : (
-                    <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                    <div className="px-3 py-2 text-sm text-text-tertiary text-center">
                       Ничего не найдено
                     </div>
                   )}
@@ -253,18 +253,18 @@ export function SortButton({
               </div>
 
               <div className="w-1/3 p-4">
-                <h3 className="text-sm font-medium text-gray-700 mb-3">Сортировка</h3>
+                <h3 className="text-sm font-medium text-text-primary mb-3">Сортировка</h3>
                 <div className="space-y-1">
                   {sortOptions.map((option) => (
                     <button
                       key={option.value}
                       onClick={() => handleSortClick(option.value)}
                       className={`
-                        block w-full px-3 py-2 text-left text-sm hover:bg-gray-50 rounded transition-colors
+                        block w-full px-3 py-2 text-left text-sm hover:bg-bg-default-light-field rounded transition-colors
                         ${
                           isActive && currentDirection === option.value
-                            ? 'bg-blue-50 text-blue-600 font-medium'
-                            : 'text-gray-700'
+                            ? 'bg-blue-light text-blue font-medium'
+                            : 'text-text-primary'
                         }
                       `}
                     >
@@ -274,7 +274,7 @@ export function SortButton({
                   {isActive && (
                     <button
                       onClick={() => handleSortClick(null)}
-                      className="block w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors border-t border-gray-100 mt-2 pt-2"
+                      className="block w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-bg-default-light-field rounded transition-colors border-t border-border-default mt-2 pt-2"
                     >
                       ✕ Сбросить
                     </button>

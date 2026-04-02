@@ -48,13 +48,13 @@ export function NotificationModal({
 
   // Текст уведомления для копирования
   const messageText = `Уважаемый(ая) ${employeeName},
-дело ${caseCode} (${caseStatus}) требует вашего внимания.
+    дело ${caseCode} (${caseStatus}) требует вашего внимания.
 
-Текущий статус наблюдения:
-🔹 ${observationStatus}
-🔹 Причина: ${getObservationCriteria(observationStatus)}
+    Текущий статус наблюдения:
+    🔹 ${observationStatus}
+    🔹 Причина: ${getObservationCriteria(observationStatus)}
 
-${getRecommendedAction(observationStatus)}`;
+    ${getRecommendedAction(observationStatus)}`;
 
   // Функция копирует текст в буфер обмена с использованием разных методов
   const handleCopy = async () => {
@@ -130,31 +130,30 @@ ${getRecommendedAction(observationStatus)}`;
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-bg-medium-gray flex items-center justify-center z-50 p-4">
       <div 
         ref={modalRef}
-        className="bg-white rounded-2xl p-6 max-w-2xl w-full relative"
+        className="bg-white rounded-2xl p-6 max-w-2xl w-full relative border border-border-default"
         style={{
-          border: '1px solid #BDBDCC',
           boxShadow: '2px 4px 8px rgba(0, 0, 0, 0.1), -2px 0 8px rgba(0, 0, 0, 0.05)'
         }}
       >
         {/* Кнопка закрытия */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1 hover:bg-gray-100 rounded-full transition-colors"
+          className="absolute top-4 right-4 p-1 hover:bg-bg-light-grey rounded-full transition-colors"
         >
-          <X className="h-5 w-5" style={{ color: '#1F1F1F' }} />
+          <X className="h-5 w-5 text-dark-default" />
         </button>
 
         {/* Заголовок */}
-        <h2 className="text-xl font-semibold text-gray-900 mb-6 pr-8">
+        <h2 className="text-xl font-semibold text-text-primary mb-6 pr-8">
           Уведомление сотруднику
         </h2>
 
         {/* Содержимое сообщения */}
-        <div className="bg-gray-50 rounded-lg p-6 mb-6">
-          <pre className="whitespace-pre-wrap text-sm text-gray-900 font-sans leading-relaxed">
+        <div className="bg-bg-default-light-field rounded-lg p-6 mb-6">
+          <pre className="whitespace-pre-wrap text-sm text-text-primary font-sans leading-relaxed">
             {messageText}
           </pre>
         </div>
@@ -163,8 +162,7 @@ ${getRecommendedAction(observationStatus)}`;
         <div className="flex justify-end">
           <button
             onClick={handleCopy}
-            className="inline-flex items-center px-6 py-2 text-sm font-medium text-white rounded-full transition-colors"
-            style={{ backgroundColor: '#1CC53C' }}
+            className="inline-flex items-center px-6 py-2 text-sm font-medium text-white bg-green rounded-full hover:bg-green-semi-dark transition-colors"
           >
             <Copy className="h-4 w-4 mr-2" />
             Копировать
@@ -174,7 +172,7 @@ ${getRecommendedAction(observationStatus)}`;
         {/* Сообщение об успешном копировании */}
         {showCopySuccess && (
           <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded-lg text-sm">
+            <div className="bg-bg-light-green border border-green text-green-dark px-4 py-2 rounded-lg text-sm">
               Текст успешно скопирован!
             </div>
           </div>

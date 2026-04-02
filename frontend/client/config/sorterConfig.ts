@@ -48,6 +48,4 @@ export const getSorterConfig = (page: keyof typeof sorterConfig) => {
   return sorterConfig[page];
 };
 
-
-// Тип для удобства использования
 export type SorterPage = keyof typeof sorterConfig;

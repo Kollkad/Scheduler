@@ -6,6 +6,6 @@ export interface FeatureFlags {
 
 // Временная конфигурация для тестирования
 export const featureFlags: FeatureFlags = {
-  hasPreviousReport: false, // Меняем на true/false для тестирования
-  enableComparison: false   // Отключаем функционал сравнения
+  hasPreviousReport: false, // Меняется на true/false для тестирования
+  enableComparison: false   // Отключает функционал сравнения
 };

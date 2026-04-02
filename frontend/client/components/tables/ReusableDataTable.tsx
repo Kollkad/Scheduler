@@ -102,13 +102,13 @@ export function ReusableDataTable({
     return value;
   };
 
-  const getRowBackgroundColor = (index: number) => index % 2 === 0 ? 'white' : '#F3F3FD';
+  const getRowBackgroundColor = (index: number) => index % 2 === 0 ? 'bg-white' : 'bg-table-row-even-bg';
 
   if (isLoading) {
     return (
       <div className={`mt-6 overflow-x-auto ${className}`}>
         <div className="flex justify-center items-center h-48">
-          <div className="text-gray-600 text-xs">{loadingMessage}</div>
+          <div className="text-text-secondary text-xs">{loadingMessage}</div>
         </div>
       </div>
     );
@@ -116,19 +116,14 @@ export function ReusableDataTable({
 
   return (
     <div className={`mt-6 overflow-x-auto ${className}`}>
-      <table 
-        className="w-full text-xs table-fixed"
-        style={{ border: '1px solid #BDBDCC', borderCollapse: 'collapse' }}
-      >
+      <table className="w-full text-xs border border-border-default border-collapse">
         <thead>
-          <tr style={{ backgroundColor: '#E3E3F1' }}>
+          <tr className="bg-table-header-bg">
             {columns.map((column) => (
               <th 
                 key={column.key}
-                className="px-3 py-2 text-left font-medium"
+                className="px-3 py-2 text-left font-medium text-text-primary border border-border-default"
                 style={{ 
-                  color: '#171A1F',
-                  border: '1px solid #BDBDCC',
                   fontSize: '11px',
                   width: column.width || 'auto',
                   textAlign: column.align || 'left'
@@ -156,16 +151,13 @@ export function ReusableDataTable({
             <tr
               key={index}
               onClick={() => onRowClick?.(row, index)}
-              className={onRowClick ? "cursor-pointer hover:bg-blue-50" : ""}
-              style={{ backgroundColor: getRowBackgroundColor(index) }}
+              className={`${onRowClick ? "cursor-pointer hover:bg-table-hovered-row" : ""} ${getRowBackgroundColor(index)}`}
             >
               {columns.map((column) => (
                 <td 
                   key={column.key}
-                  className="px-3 py-2"
+                  className="px-3 py-2 text-text-primary border border-border-default"
                   style={{ 
-                    color: '#171A1F',
-                    border: '1px solid #BDBDCC',
                     fontSize: '11px',
                     textAlign: column.align || 'left'
                   }}
