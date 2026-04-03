@@ -1,4 +1,5 @@
 // services/case/caseService.ts
+
 import { apiClient } from '@/services/api/client';
 import { API_ENDPOINTS } from '@/services/api/endpoints';
 
@@ -7,24 +8,41 @@ export interface CaseField {
   label: string;
   value: any;
   type: 'text' | 'number' | 'date' | 'boolean' | 'currency';
+  isEmpty?: boolean;
 }
 
 export interface CaseDetails {
   success: boolean;
   caseCode: string;
   data: Record<string, any>;
-  fieldGroups: Record<string, CaseField[]>;
+  fieldGroups: {
+    general: CaseField[];
+    dates: CaseField[];
+    financial: CaseField[];
+    court: CaseField[];
+    other: CaseField[];
+  };
   totalFields: number;
   foundInColumn?: string;
   caseStage?: string;
+  rainbowColor?: string | null;
 }
 
 export interface DocumentDetails {
   success: boolean;
+  documentCode: string;
   caseCode: string;
   documentType: string;
   department: string;
-  document: Record<string, any>;
+  data: Record<string, any>;
+  fieldGroups: {
+    general: CaseField[];
+    dates: CaseField[];
+    financial: CaseField[];
+    court: CaseField[];
+    other: CaseField[];
+  };
+  totalFields: number;
   message: string;
 }
 

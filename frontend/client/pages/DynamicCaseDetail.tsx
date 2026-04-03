@@ -1,15 +1,14 @@
-// src/components/DynamicCaseDetail.tsx
+// frontend/client/components/DynamicCaseDetail.tsx
 
 import { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader } from "lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, Loader, Search, X } from "lucide-react";
 import { PageContainer } from "@/components/PageContainer";
 import { TabsContainer } from "@/components/TabsContainer";
 import { FieldGroup } from "@/components/FieldGroup";
-import { CaseService, CaseDetails } from "@/services/case/caseService";
+import { CaseService, CaseDetails, CaseField } from "@/services/case/caseService";
 import { Button } from "@/components/ui/button";
 import { CaseLifecycleTimeline } from "@/components/ui/CaseLifecycleTimeline";
-import { formatDate } from "@/utils/dateFormat";
 
 export function DynamicCaseDetail() {
   const navigate = useNavigate();
@@ -17,6 +16,7 @@ export function DynamicCaseDetail() {
   const [caseData, setCaseData] = useState<CaseDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     if (caseCode) {
@@ -28,18 +28,10 @@ export function DynamicCaseDetail() {
   const loadCaseData = async (code: string) => {
     try {
       setLoading(true);
-      console.log('Загрузка данных для дела:', code);
       const data = await CaseService.getCaseDetails(code);
-      console.log('Данные получены:', data);
       
-      // Проверка выполняется для обеспечения корректности полученных данных
       if (data && data.success) {
-        // Форматирование дат во всех полях перед сохранением
-        const formattedFieldGroups = formatDatesInFieldGroups(data.fieldGroups);
-        setCaseData({
-          ...data,
-          fieldGroups: formattedFieldGroups
-        });
+        setCaseData(data);
       } else {
         throw new Error('Данные не найдены или некорректны');
       }
@@ -52,25 +44,137 @@ export function DynamicCaseDetail() {
     }
   };
 
-  // Рекурсивная функция форматирует даты во всех полях групп
-  const formatDatesInFieldGroups = (fieldGroups: Record<string, any[]>): Record<string, any[]> => {
-    const result: Record<string, any[]> = {};
+
+  // Получение ответственного исполнителя из general полей
+  const getResponsibleExecutor = (): string => {
+    if (!caseData?.fieldGroups?.general) return '';
+    const executorField = caseData.fieldGroups.general.find(
+      (f) => f.label.includes('Ответственный') || f.label.includes('исполнитель')
+    );
+    return executorField?.value || 'Не указан';
+  };
+
+  // Получение цвета радуги
+  const getRainbowColor = (): string => {
+    return caseData?.rainbowColor || '';
+  };
+
+  // Фильтрация полей для группы "Прочее" по поисковому запросу
+  const getFilteredOtherFields = (): CaseField[] => {
+    if (!caseData?.fieldGroups?.other) return [];
+    if (!searchTerm.trim()) return caseData.fieldGroups.other;
     
-    Object.entries(fieldGroups).forEach(([groupName, fields]) => {
-      result[groupName] = fields.map(field => {
-        // Проверка, является ли значение поля датой
-        if (typeof field.value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(field.value)) {
-          return {
-            ...field,
-            value: formatDate(field.value),
-            type: 'date'
-          };
-        }
-        return field;
+    return caseData.fieldGroups.other.filter((field) =>
+      field.label.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  };
+
+  // Формирование вкладок для отображения
+  const getTabs = () => {
+    const tabs = [];
+    const filteredOtherFields = getFilteredOtherFields();
+    
+    if (caseData?.fieldGroups?.general && caseData.fieldGroups.general.length > 0) {
+      tabs.push({
+        id: 'general',
+        label: 'Общая информация',
+        content: (
+          <FieldGroup
+            fields={caseData.fieldGroups.general}
+            columns={2}
+            showAlertIcon={true}
+          />
+        )
       });
-    });
+    }
     
-    return result;
+    if (caseData?.fieldGroups?.dates && caseData.fieldGroups.dates.length > 0) {
+      tabs.push({
+        id: 'dates',
+        label: 'Даты и сроки',
+        content: (
+          <FieldGroup
+            fields={caseData.fieldGroups.dates}
+            columns={2}
+            showAlertIcon={false}
+          />
+        )
+      });
+    }
+    
+    if (caseData?.fieldGroups?.financial && caseData.fieldGroups.financial.length > 0) {
+      tabs.push({
+        id: 'financial',
+        label: 'Финансовые данные',
+        content: (
+          <FieldGroup
+            fields={caseData.fieldGroups.financial}
+            columns={2}
+            showAlertIcon={false}
+          />
+        )
+      });
+    }
+    
+    if (caseData?.fieldGroups?.court && caseData.fieldGroups.court.length > 0) {
+      tabs.push({
+        id: 'court',
+        label: 'Судебные данные',
+        content: (
+          <FieldGroup
+            fields={caseData.fieldGroups.court}
+            columns={2}
+            showAlertIcon={false}
+          />
+        )
+      });
+    }
+    
+    if (filteredOtherFields.length > 0 || (caseData?.fieldGroups?.other && caseData.fieldGroups.other.length > 0)) {
+      tabs.push({
+        id: 'other',
+        label: 'Прочее',
+        content: (
+          <div>
+            {/* Поле поиска для группы "Прочее" - половина ширины */}
+            <div className="relative mb-4 max-w-[50%]">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-tertiary h-4 w-4" />
+              <input
+                type="text"
+                placeholder="Поиск по полям..."
+                className="w-full pl-10 pr-10 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue focus:border-transparent text-text-primary bg-white"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <X 
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-text-tertiary h-4 w-4 cursor-pointer hover:text-text-primary"
+                  onClick={() => setSearchTerm('')}
+                />
+              )}
+            </div>
+            
+            {/* Сообщение об отсутствии результатов */}
+            {filteredOtherFields.length === 0 && (
+              <div className="text-center text-text-secondary py-8">
+                Поля не найдены
+              </div>
+            )}
+            
+            {/* Группа полей с отфильтрованными данными */}
+            {filteredOtherFields.length > 0 && (
+              <FieldGroup
+                fields={filteredOtherFields}
+                columns={2}
+                showAlertIcon={false}
+              />
+            )}
+          </div>
+        )
+      });
+    }
+    
+    return tabs;
   };
 
   if (loading) {
@@ -86,31 +190,20 @@ export function DynamicCaseDetail() {
   if (error || !caseData) {
     return (
       <PageContainer>
-        <div className="text-center text-red">
+        <div className="text-center text-red py-8">
           {error || 'Данные не найдены'}
         </div>
       </PageContainer>
     );
   }
 
-  // Отладочная информация о структуре данных полей
-  console.log('Структура fieldGroups:', caseData.fieldGroups);
-
-  // Формирование вкладок из сгруппированных полей для навигации по данным дела
-  const tabs = Object.entries(caseData.fieldGroups).map(([groupName, fields]) => ({
-    id: groupName,
-    label: getGroupLabel(groupName),
-    content: (
-      <FieldGroup
-        fields={fields}
-        columns={2}
-      />
-    )
-  }));
+  const tabs = getTabs();
+  const responsibleExecutor = getResponsibleExecutor();
+  const rainbowColor = getRainbowColor();
 
   return (
     <PageContainer>
-      {/* Блок навигации и отображения общего количества полей */}
+      {/* Кнопка назад */}
       <div className="flex items-center justify-between mb-6">
         <Button 
           variant="grayOutline"
@@ -127,26 +220,35 @@ export function DynamicCaseDetail() {
         </div>
       </div>
 
-      {/* Заголовок с основной информацией о деле */}
-      <div className="mb-8">
+      {/* Заголовок дела */}
+      <div className="mb-4">
         <h1 className="text-2xl font-bold text-text-primary">
           Дело: {caseData.caseCode}
         </h1>
-        {caseData.foundInColumn && (
-          <p className="text-sm text-text-secondary mt-1">
-            Найдено в колонке: {caseData.foundInColumn}
+      </div>
+
+      {/* Подзаголовки */}
+      <div className="mb-6 space-y-1">
+        {responsibleExecutor && (
+          <p className="text-base text-text-primary">
+            Ответственный исполнитель: {responsibleExecutor}
+          </p>
+        )}
+        {rainbowColor && (
+          <p className="text-base text-text-primary">
+            Цвет в радуге: {rainbowColor}
           </p>
         )}
       </div>
 
-      {/* Таймлайн жизненного цикла дела */}
+      {/* Жизненная линия дела */}
       {caseData.caseStage && (
         <div className="mb-8">
           <CaseLifecycleTimeline caseStage={caseData.caseStage} />
         </div>
       )}
 
-      {/* Динамические вкладки для отображения сгруппированных данных дела */}
+      {/* Вкладки с группами полей */}
       {tabs.length > 0 ? (
         <TabsContainer tabs={tabs} defaultTab={tabs[0]?.id || 'general'} />
       ) : (
@@ -156,18 +258,6 @@ export function DynamicCaseDetail() {
       )}
     </PageContainer>
   );
-}
-
-// Функция возвращает читаемые названия для групп полей дела
-function getGroupLabel(groupKey: string): string {
-  const labels: Record<string, string> = {
-    'general': 'Общая информация',
-    'court': 'Судебные данные',
-    'financial': 'Финансовые данные',
-    'dates': 'Даты и сроки',
-    'other': 'Прочие данные'
-  };
-  return labels[groupKey] || groupKey;
 }
 
 export default DynamicCaseDetail;

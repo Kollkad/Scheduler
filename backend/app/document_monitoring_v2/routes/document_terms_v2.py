@@ -17,11 +17,19 @@ from fastapi import APIRouter, HTTPException, Query
 import pandas as pd
 from datetime import datetime
 
+from backend.app.common.config.column_names import COLUMNS
 from backend.app.data_management.modules.data_manager import data_manager
 from backend.app.document_monitoring_v2.modules.document_stage_checks_v2 import (
     analyze_documents,
     save_document_monitoring_status,
 )
+from backend.app.common.modules.field_grouping import (
+    safe_convert_value,
+    detect_field_type,
+    group_fields_by_category,
+    is_empty_value
+)
+from backend.app.document_monitoring_v2.config.special_fields_document import SPECIAL_FIELDS_DOCUMENT
 
 router = APIRouter(prefix="/api/documents", tags=["document_monitoring_v2"])
 
@@ -327,22 +335,30 @@ async def get_document_details(
         department: str = Query(..., description="Категория подразделения")
 ):
     """
-    Предоставляет детальную информацию о конкретном документе.
-    Использует только предварительно рассчитанные данные.
+    Получение детальной информации для страницы документа с группировкой полей.
 
     Args:
-        case_code (str): Код дела для поиска
-        document_type (str): Тип документа для поиска
-        department (str): Категория подразделения для поиска
+        case_code (str): Код дела для поиска документа
+        document_type (str): Тип документа (Исполнительный лист, Решение суда, Судебный приказ)
+        department (str): Категория подразделения
 
     Returns:
         dict: Детальная информация о документе в формате:
             {
                 "success": bool,
-                "caseCode": str,
-                "documentType": str,
-                "department": str,
-                "document": dict,
+                "documentCode": str,                    # Составной идентификатор
+                "caseCode": str,                        # Код дела
+                "documentType": str,                    # Тип документа
+                "department": str,                      # Категория подразделения
+                "data": dict,                           # Все поля документа
+                "fieldGroups": {                        # Сгруппированные поля
+                    "general": list,                    # Общая информация
+                    "dates": list,                      # Даты и сроки
+                    "financial": list,                  # Финансовые данные
+                    "court": list,                      # Судебные данные
+                    "other": list                       # Прочее
+                },
+                "totalFields": int,                     # Общее количество полей
                 "message": str
             }
 
@@ -351,9 +367,6 @@ async def get_document_details(
         HTTPException: 500 при ошибке получения данных
     """
     try:
-        from backend.app.common.config.column_names import COLUMNS
-
-        # Получение предварительно рассчитанных данных
         processed_docs = data_manager.get_processed_data("documents_processed")
         original_docs = data_manager.get_documents_data()
 
@@ -366,7 +379,7 @@ async def get_document_details(
         if original_docs is None or original_docs.empty:
             raise HTTPException(status_code=404, detail="Данные документов не загружены")
 
-        # Поиск документа в обработанных данных
+        # Поиск в обработанных данных
         processed_mask = (
                 (processed_docs["caseCode"] == case_code) &
                 (processed_docs["document"] == document_type) &
@@ -375,9 +388,12 @@ async def get_document_details(
         processed_doc = processed_docs[processed_mask]
 
         if processed_doc.empty:
-            raise HTTPException(status_code=404, detail="Документ не найден")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Документ не найден: дело={case_code}, тип={document_type}, подразделение={department}"
+            )
 
-        # Поиск соответствующей записи в исходных данных
+        # Поиск в исходных данных
         original_mask = (
                 (original_docs[COLUMNS["DOCUMENT_CASE_CODE"]] == case_code) &
                 (original_docs[COLUMNS["DOCUMENT_TYPE"]] == document_type) &
@@ -385,23 +401,36 @@ async def get_document_details(
         )
         original_doc = original_docs[original_mask]
 
-        # Объединение данных из обработанных и исходных записей
+        # Объединение данных
         processed_dict = processed_doc.iloc[0].to_dict()
         original_dict = original_doc.iloc[0].to_dict() if not original_doc.empty else {}
-
         merged_document = {**original_dict, **processed_dict}
-        doc_cleaned = {k: ("" if pd.isna(v) else v) for k, v in merged_document.items()}
+
+        # Безопасное преобразование значений
+        safe_document = {}
+        for key, value in merged_document.items():
+            safe_document[key] = safe_convert_value(value)
+
+        # Группировка полей по категориям
+        field_groups = group_fields_by_category(safe_document, SPECIAL_FIELDS_DOCUMENT)
+
+        # Составной идентификатор документа
+        document_code = f"{case_code}_{document_type}_{department}"
 
         return {
             "success": True,
+            "documentCode": document_code,
             "caseCode": case_code,
             "documentType": document_type,
             "department": department,
-            "document": doc_cleaned,
+            "data": safe_document,
+            "fieldGroups": field_groups,
+            "totalFields": len(safe_document),
             "message": "Данные документа получены"
         }
 
     except HTTPException:
         raise
     except Exception as e:
+        print(f"Ошибка получения документа: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка получения документа: {str(e)}")

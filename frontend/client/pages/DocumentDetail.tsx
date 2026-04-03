@@ -1,14 +1,13 @@
-// src/components/DocumentDetail.tsx
+// frontend/client/components/DocumentDetail.tsx
 
 import { useState, useEffect } from "react";
-import { useSearchParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader } from "lucide-react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, Loader, Search, X } from "lucide-react";
 import { PageContainer } from "@/components/PageContainer";
 import { TabsContainer } from "@/components/TabsContainer";
 import { FieldGroup } from "@/components/FieldGroup";
 import { CaseService, DocumentDetails } from "@/services/case/caseService";
 import { Button } from "@/components/ui/button";
-import { formatDate } from "@/utils/dateFormat";
 
 export function DocumentDetail() {
   const navigate = useNavigate();
@@ -16,6 +15,7 @@ export function DocumentDetail() {
   const [documentData, setDocumentData] = useState<DocumentDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const caseCode = searchParams.get('caseCode');
   const documentType = searchParams.get('documentType');
@@ -31,9 +31,7 @@ export function DocumentDetail() {
   const loadDocumentData = async (code: string, type: string, dept: string) => {
     try {
       setLoading(true);
-      console.log('Загрузка данных для документа:', { code, type, dept });
       const data = await CaseService.getDocumentDetails(code, type, dept);
-      console.log('Данные документа получены:', data);
       
       if (data && data.success) {
         setDocumentData(data);
@@ -49,6 +47,138 @@ export function DocumentDetail() {
     }
   };
 
+  // Получение ответственного исполнителя из general полей
+  const getResponsibleExecutor = (): string => {
+    if (!documentData?.fieldGroups?.general) return '';
+    const executorField = documentData.fieldGroups.general.find(
+      (f) => f.label.includes('Ответственный') || f.label.includes('исполнитель')
+    );
+    return executorField?.value || 'Не указан';
+  };
+
+  // Фильтрация полей для группы "Прочее" по поисковому запросу
+  const getFilteredOtherFields = () => {
+    if (!documentData?.fieldGroups?.other) return [];
+    if (!searchTerm.trim()) return documentData.fieldGroups.other;
+    
+    return documentData.fieldGroups.other.filter((field) =>
+      field.label.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  };
+
+  // Формирование вкладок для отображения
+  const getTabs = () => {
+    const tabs = [];
+    const filteredOtherFields = getFilteredOtherFields();
+    
+    // Общая информация
+    if (documentData?.fieldGroups?.general && documentData.fieldGroups.general.length > 0) {
+      tabs.push({
+        id: 'general',
+        label: 'Общая информация',
+        content: (
+          <FieldGroup
+            fields={documentData.fieldGroups.general}
+            columns={2}
+            showAlertIcon={true}
+          />
+        )
+      });
+    }
+    
+    // Даты и сроки
+    if (documentData?.fieldGroups?.dates && documentData.fieldGroups.dates.length > 0) {
+      tabs.push({
+        id: 'dates',
+        label: 'Даты и сроки',
+        content: (
+          <FieldGroup
+            fields={documentData.fieldGroups.dates}
+            columns={2}
+            showAlertIcon={false}
+          />
+        )
+      });
+    }
+    
+    // Финансовые данные
+    if (documentData?.fieldGroups?.financial && documentData.fieldGroups.financial.length > 0) {
+      tabs.push({
+        id: 'financial',
+        label: 'Финансовые данные',
+        content: (
+          <FieldGroup
+            fields={documentData.fieldGroups.financial}
+            columns={2}
+            showAlertIcon={false}
+          />
+        )
+      });
+    }
+    
+    // Судебные данные
+    if (documentData?.fieldGroups?.court && documentData.fieldGroups.court.length > 0) {
+      tabs.push({
+        id: 'court',
+        label: 'Судебные данные',
+        content: (
+          <FieldGroup
+            fields={documentData.fieldGroups.court}
+            columns={2}
+            showAlertIcon={false}
+          />
+        )
+      });
+    }
+    
+    // Прочее с поиском
+    if (filteredOtherFields.length > 0 || (documentData?.fieldGroups?.other && documentData.fieldGroups.other.length > 0)) {
+      tabs.push({
+        id: 'other',
+        label: 'Прочее',
+        content: (
+          <div>
+            {/* Поле поиска для группы "Прочее" - половина ширины */}
+            <div className="relative mb-4 max-w-[50%]">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-tertiary h-4 w-4" />
+              <input
+                type="text"
+                placeholder="Поиск по полям..."
+                className="w-full pl-10 pr-10 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue focus:border-transparent text-text-primary bg-white"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <X 
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-text-tertiary h-4 w-4 cursor-pointer hover:text-text-primary"
+                  onClick={() => setSearchTerm('')}
+                />
+              )}
+            </div>
+            
+            {/* Сообщение об отсутствии результатов */}
+            {filteredOtherFields.length === 0 && (
+              <div className="text-center text-text-secondary py-8">
+                Поля не найдены
+              </div>
+            )}
+            
+            {/* Группа полей с отфильтрованными данными */}
+            {filteredOtherFields.length > 0 && (
+              <FieldGroup
+                fields={filteredOtherFields}
+                columns={2}
+                showAlertIcon={false}
+              />
+            )}
+          </div>
+        )
+      });
+    }
+    
+    return tabs;
+  };
+
   if (loading) {
     return (
       <PageContainer>
@@ -62,31 +192,19 @@ export function DocumentDetail() {
   if (error || !documentData) {
     return (
       <PageContainer>
-        <div className="text-center text-red">
+        <div className="text-center text-red py-8">
           {error || 'Данные документа не найдены'}
         </div>
       </PageContainer>
     );
   }
 
-  // Создание групп полей для организации данных документа
-  const fieldGroups = createDocumentFieldGroups(documentData.document);
-
-  // Формирование вкладок из сгруппированных полей для отображения
-  const tabs = Object.entries(fieldGroups).map(([groupName, fields]) => ({
-    id: groupName,
-    label: getDocumentGroupLabel(groupName),
-    content: (
-      <FieldGroup
-        fields={fields}
-        columns={2}
-      />
-    )
-  }));
+  const tabs = getTabs();
+  const responsibleExecutor = getResponsibleExecutor();
 
   return (
     <PageContainer>
-      {/* Блок навигации и информации о количестве полей */}
+      {/* Кнопка назад */}
       <div className="flex items-center justify-between mb-6">
         <Button 
           variant="grayOutline"
@@ -99,21 +217,34 @@ export function DocumentDetail() {
         </Button>
         
         <div className="text-sm text-text-secondary">
-          Всего полей: {Object.keys(documentData.document).length}
+          Всего полей: {documentData.totalFields}
         </div>
       </div>
 
-      {/* Заголовок с основной информацией о документе */}
-      <div className="mb-8">
+      {/* Заголовок документа */}
+      <div className="mb-4">
         <h1 className="text-2xl font-bold text-text-primary">
           Документ: {documentData.documentType}
         </h1>
-        <p className="text-sm text-text-secondary mt-1">
+      </div>
+
+      {/* Строка с кодом дела и подразделением */}
+      <div className="mb-2">
+        <p className="text-base text-text-primary">
           Код дела: {documentData.caseCode} • Подразделение: {documentData.department}
         </p>
       </div>
 
-      {/* Контейнер с вкладками для отображения сгруппированных данных */}
+      {/* Ответственный исполнитель */}
+      {responsibleExecutor && (
+        <div className="mb-6">
+          <p className="text-base text-text-primary">
+            Ответственный исполнитель: {responsibleExecutor}
+          </p>
+        </div>
+      )}
+
+      {/* Вкладки с группами полей */}
       {tabs.length > 0 ? (
         <TabsContainer tabs={tabs} defaultTab={tabs[0]?.id || 'general'} />
       ) : (
@@ -123,67 +254,6 @@ export function DocumentDetail() {
       )}
     </PageContainer>
   );
-}
-
-// Функция группирует поля документа по категориям для структурированного отображения
-function createDocumentFieldGroups(document: Record<string, any>) {
-  const groups: Record<string, any[]> = {
-    'general': [],
-    'dates': [],
-    'status': [],
-    'other': []
-  };
-
-  // Цикл перебирает все поля документа и распределяет их по соответствующим группам
-  Object.entries(document).forEach(([key, value]) => {
-    // Форматирование значения, если это дата
-    let formattedValue = value;
-    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
-      formattedValue = formatDate(value);
-    }
-    
-    const field = {
-      id: key,
-      label: key,
-      value: formattedValue,
-      type: getFieldType(value)
-    };
-
-    // Распределение полей по группам на основе ключевых слов в названиях
-    if (key.toLowerCase().includes('date') || key.toLowerCase().includes('дата')) {
-      groups.dates.push(field);
-    } else if (key.toLowerCase().includes('status') || key.toLowerCase().includes('статус')) {
-      groups.status.push(field);
-    } else if (['caseCode', 'document', 'department', 'requestCode'].includes(key)) {
-      groups.general.push(field);
-    } else {
-      groups.other.push(field);
-    }
-  });
-
-  // Фильтрация удаляет пустые группы для чистого отображения
-  return Object.fromEntries(
-    Object.entries(groups).filter(([_, fields]) => fields.length > 0)
-  );
-}
-
-// Функция определяет тип значения поля для корректного отображения
-function getFieldType(value: any): 'text' | 'number' | 'date' | 'boolean' | 'currency' {
-  if (typeof value === 'boolean') return 'boolean';
-  if (typeof value === 'number') return 'number';
-  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) return 'date';
-  return 'text';
-}
-
-// Функция возвращает читаемые названия для групп полей документа
-function getDocumentGroupLabel(groupKey: string): string {
-  const labels: Record<string, string> = {
-    'general': 'Общая информация',
-    'dates': 'Даты и сроки',
-    'status': 'Статусы мониторинга',
-    'other': 'Прочие данные'
-  };
-  return labels[groupKey] || groupKey;
 }
 
 export default DocumentDetail;

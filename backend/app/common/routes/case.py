@@ -1,4 +1,5 @@
-#backend/app/common/routes/case.py
+# backend/app/common/routes/case.py
+
 """
 Модуль для работы с данными судебных дел.
 
@@ -16,6 +17,13 @@ from fastapi import APIRouter, HTTPException
 from typing import Dict, Any, List
 import pandas as pd
 from backend.app.common.config.column_names import COLUMNS, VALUES
+from backend.app.common.modules.field_grouping import (
+    safe_convert_value,
+    detect_field_type,
+    group_fields_by_category,
+    is_empty_value
+)
+from backend.app.common.config.special_fields_case import SPECIAL_FIELDS
 from backend.app.data_management.modules.data_manager import data_manager
 
 router = APIRouter(prefix="/api/case", tags=["case"])
@@ -36,16 +44,13 @@ async def get_case_details(case_code: str):
             "data": dict,
             "fieldGroups": dict,
             "totalFields": int,
-            "foundInColumn": str
-            "caseStage":str
+            "foundInColumn": str,
+            "caseStage": str,
+            "rainbowColor": str
         }
-
-    Raises:
-        HTTPException: 404 если данные не загружены или дело не найдено
-        HTTPException: 500 при внутренней ошибке сервера
     """
     try:
-        # 1. Получаем данные дела из cleaned_data
+        # 1. Получение данных дела из cleaned_data
         df = data_manager.get_detailed_data()
         if df is None or df.empty:
             raise HTTPException(status_code=404, detail="Данные не загружены")
@@ -79,33 +84,17 @@ async def get_case_details(case_code: str):
         for key, value in case_data.items():
             safe_case_data[key] = safe_convert_value(value)
 
-        # 2. Определяется тип производства и берется caseStage
-        caseStage = None
+        # 2. Определение цвета в радуге из detailed_colored
+        rainbow_color = get_rainbow_color(case_code)
 
-        method_of_protection = safe_case_data.get(COLUMNS["METHOD_OF_PROTECTION"])
+        # 3. Определение caseStage
+        case_stage = get_case_stage(case_code, safe_case_data)
 
-        if method_of_protection:
-            # Исковое производство
-            if method_of_protection == "Исковое производство":
-                lawsuit_df = data_manager.get_processed_data("lawsuit_staged")
-                if lawsuit_df is not None and not lawsuit_df.empty:
-                    mask = lawsuit_df["caseCode"] == case_code
-                    if mask.any():
-                        caseStage = lawsuit_df.loc[mask, "caseStage"].iloc[0]
+        # Добавление caseStage в данные дела
+        safe_case_data["caseStage"] = case_stage
 
-            # Приказное производство
-            elif method_of_protection == "Приказное производство":
-                order_df = data_manager.get_processed_data("order_staged")
-                if order_df is not None and not order_df.empty:
-                    mask = order_df["caseCode"] == case_code
-                    if mask.any():
-                        caseStage = order_df.loc[mask, "caseStage"].iloc[0]
-
-        # Добавляется monitoringStatus в данные дела
-        safe_case_data["caseStage"] = caseStage
-
-        # 3. Группировка полей по категориям
-        field_groups = group_fields_by_category(safe_case_data)
+        # 4. Группировка полей по категориям
+        field_groups = group_fields_by_category(safe_case_data, SPECIAL_FIELDS)
 
         return {
             "success": True,
@@ -114,7 +103,8 @@ async def get_case_details(case_code: str):
             "fieldGroups": field_groups,
             "totalFields": len(safe_case_data),
             "foundInColumn": found_column,
-            "caseStage": caseStage
+            "caseStage": case_stage,
+            "rainbowColor": rainbow_color
         }
 
     except HTTPException:
@@ -143,148 +133,65 @@ def safe_compare(value, target):
         return False
 
 
-def safe_convert_value(value):
-    """
-    Безопасное преобразование значения в корректный тип данных.
+def get_rainbow_color(case_code: str) -> str:
+    try:
+        derived_df = data_manager.get_derived_data("detailed")
+        if derived_df is None or derived_df.empty:
+            return None
 
-    Args:
-        value: Исходное значение
+        case_col = COLUMNS["CASE_CODE"]
+        if case_col not in derived_df.columns:
+            return None
 
-    Returns:
-        Преобразованное значение в корректном типе
-    """
-    # Проверка NA значений должна быть первой и самой строгой
-    if pd.isna(value):
+        mask = derived_df[case_col] == case_code
+        if not mask.any():
+            return None
+
+        color_col = None
+        if 'currentPeriodColor' in derived_df.columns:
+            color_col = 'currentPeriodColor'
+        elif 'Цвет (текущий период)' in derived_df.columns:
+            color_col = 'Цвет (текущий период)'
+        else:
+            return None
+
+        color_value = derived_df.loc[mask, color_col].iloc[0]
+        return color_value if pd.notna(color_value) else None
+    except Exception as e:
+        print(f"Ошибка получения цвета радуги: {e}")
         return None
 
-    # Если значение уже нормальное - возвращаем его
-    try:
-        # Для дат и временных меток
-        if isinstance(value, (pd.Timestamp, datetime.date)):
-            return value.isoformat()
-        # Для чисел
-        elif isinstance(value, (int, float)):
-            return float(value)
-        # Для булевых
-        elif isinstance(value, bool):
-            return value
-        # Для строк - убираем лишние пробелы
-        elif isinstance(value, str):
-            cleaned = value.strip()
-            return cleaned if cleaned else None
-        # Все остальное в строку
-        else:
-            # Если значение уже имеет нормальный тип, возвращаем как есть
-            return value
-    except:
-        # В случае ошибки возвращаем оригинальное значение
-        return value
 
-
-def group_fields_by_category(data: Dict[str, Any]) -> Dict[str, List[Dict]]:
+def get_case_stage(case_code: str, case_data: Dict[str, Any]) -> str:
     """
-    Автоматическая группировка полей по категориям на основе названий.
+    Определение этапа дела на основе способа защиты.
 
     Args:
-        data (Dict[str, Any]): Словарь с данными дела
+        case_code (str): Код дела
+        case_data (dict): Данные дела
 
     Returns:
-        Dict[str, List[Dict]]: Сгруппированные поля по категориям
+        str: Название этапа или None
     """
-    groups = {
-        "general": [],
-        "court": [],
-        "financial": [],
-        "dates": [],
-        "other": []
-    }
+    method_of_protection = case_data.get(COLUMNS["METHOD_OF_PROTECTION"])
 
-    # Обработка каждого поля в данных с категоризацией по ключевым словам
-    for key, value in data.items():
-        try:
-            field_info = {
-                "id": key,
-                "label": key,
-                "value": value,
-                "type": detect_field_type(value)
-            }
+    if not method_of_protection:
+        return None
 
-            # Автоматическая категоризация по названию поля
-            key_lower = key.lower()
+    # Исковое производство
+    if method_of_protection == VALUES["CLAIM_PROCEEDINGS"]:
+        lawsuit_df = data_manager.get_processed_data("lawsuit_staged")
+        if lawsuit_df is not None and not lawsuit_df.empty:
+            mask = lawsuit_df["caseCode"] == case_code
+            if mask.any():
+                return lawsuit_df.loc[mask, "caseStage"].iloc[0]
 
-            if any(word in key_lower for word in ['дата', 'date', 'срок', 'time']):
-                groups["dates"].append(field_info)
-            elif any(word in key_lower for word in ['суд', 'court', 'заседание', 'инстанция', 'жалоба']):
-                groups["court"].append(field_info)
-            elif any(word in key_lower for word in ['сумма', 'деньги', 'валюта', 'финанс', 'price', 'cost']):
-                groups["financial"].append(field_info)
-            elif any(word in key_lower for word in ['код', 'номер', 'статус', 'исполнитель', 'ответствен']):
-                groups["general"].append(field_info)
-            else:
-                groups["other"].append(field_info)
+    # Приказное производство
+    elif method_of_protection == VALUES["ORDER_PRODUCTION"]:
+        order_df = data_manager.get_processed_data("order_staged")
+        if order_df is not None and not order_df.empty:
+            mask = order_df["caseCode"] == case_code
+            if mask.any():
+                return order_df.loc[mask, "caseStage"].iloc[0]
 
-        except Exception as e:
-            print(f"Ошибка при обработке поля {key}: {e}")
-            continue
-
-    # Удаление пустых групп для чистого результата
-    return {k: v for k, v in groups.items() if v}
-
-
-def detect_field_type(value: Any) -> str:
-    """
-    Автоматическое определение типа поля на основе значения.
-
-    Args:
-        value (Any): Значение для анализа
-
-    Returns:
-        str: Тип поля ('text', 'number', 'boolean', 'date', 'currency')
-    """
-    # Пустые значения
-    if value is None or value == "":
-        return 'text'
-
-    # Уже безопасно преобразованные значения
-    try:
-        # Проверка на число
-        if isinstance(value, (int, float)):
-            return 'number'
-
-        # Проверка на булево значение
-        if isinstance(value, bool):
-            return 'boolean'
-
-        # Для строк
-        if isinstance(value, str):
-            value_lower = value.lower().strip()
-
-            if not value_lower:  # Проверка пустой строки
-                return 'text'
-
-            # Булевы значения в строке
-            if value_lower in ['true', 'false', 'да', 'нет', 'yes', 'no']:
-                return 'boolean'
-
-            # Числовые значения в строке
-            if re.match(r'^-?\d+\.?\d*$', value_lower):
-                return 'number'
-
-            # Даты в строке
-            date_patterns = [
-                r'\d{2}\.\d{2}\.\d{4}',
-                r'\d{4}-\d{2}-\d{2}',
-                r'\d{2}/\d{2}/\d{4}'
-            ]
-            for pattern in date_patterns:
-                if re.match(pattern, value_lower):
-                    return 'date'
-
-            # Валютные значения
-            if any(word in value_lower for word in ['руб', 'usd', 'eur', '₽', '$', '€', 'р.']):
-                return 'currency'
-
-        return 'text'
-
-    except Exception:
-        return 'text'
+    return None
