@@ -13,17 +13,8 @@ import { apiClient } from "@/services/api/client";
 import { CompactTaskList } from "@/components/CompactTaskList";
 import { savingService, SaveDataType } from "@/services/saving/SavingService";
 import { useTableFiltersWithUrl } from "@/hooks/useTableFiltersWithUrl";
-
-type TaskItem = {
-  taskCode: string;
-  failedCheck: string;
-  caseCode: string;
-  responsibleExecutor: string;
-  caseStage: string;
-  taskText: string;
-  monitoringStatus: string;
-  isCompleted?: boolean;
-};
+import { TaskItem, TasksListResponse } from "@/services/api/taskTypes";
+import { TaskCardList } from "@/components/TaskCardList";
 
 export default function Tasks() {
   const navigate = useNavigate();
@@ -35,7 +26,7 @@ export default function Tasks() {
   const [isLoading, setIsLoading] = useState(false);
   const [filteredCount, setFilteredCount] = useState<number>(0);
   const [reportStatus, setReportStatus] = useState<"idle" | "loading" | "ready">("idle");
-  const [viewMode, setViewMode] = useState<"table" | "compact">("table");
+  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
 
   const { sortConfig, filterConfig, onSortChange, onFilterChange } = useTableFiltersWithUrl({
     tableKey: 'tasks'
@@ -58,6 +49,7 @@ export default function Tasks() {
     }
   };
 
+  // Настройка полей формы: используется только фильтр по исполнителю
   const formFields = sorterConfig.rainbow.fields
     .filter((f) => f.id === "responsibleExecutor")
     .map((f) => ({ ...f, options: [] }));
@@ -66,6 +58,7 @@ export default function Tasks() {
     setFilters(newFilters);
   };
 
+  // Функция выполняет запрос задач с фильтрацией по столбцу и значению
   const handleFindTasks = async () => {
     const executor = filters["responsibleExecutor"];
     if (!executor) return;
@@ -74,14 +67,12 @@ export default function Tasks() {
     setReportStatus("loading");
 
     try {
-      const url = `${API_ENDPOINTS.TASKS_LIST}?responsibleExecutor=${encodeURIComponent(
-        executor
-      )}`;
-      const response = await apiClient.get<{
-        success: boolean;
-        tasks: TaskItem[];
-        filteredCount?: number;
-      }>(url);
+      // Использование нового эндпоинта с filters
+      const filtersParam = {
+        responsibleExecutor: executor
+      };
+      const url = `${API_ENDPOINTS.TASKS_LIST}?filters=${encodeURIComponent(JSON.stringify(filtersParam))}`;
+      const response = await apiClient.get<TasksListResponse>(url);
 
       if (response?.success) {
         const mappedTasks = mapBackendDataTasks(response.tasks || []);
@@ -105,6 +96,7 @@ export default function Tasks() {
     }
   };
 
+  // Функция сохраняет задачи в Excel через эндпоинт с параметром исполнителя
   const handleSaveTasks = async () => {
     if (!selectedExecutor || tasks.length === 0) return;
 
@@ -134,6 +126,7 @@ export default function Tasks() {
     }
   };
 
+  // Кнопки управления формой поиска
   const formButtons = [
     {
       type: "secondary" as const,
@@ -153,6 +146,7 @@ export default function Tasks() {
     }
   ];
 
+  // Восстановление состояния из URL и sessionStorage при загрузке страницы
   useEffect(() => {
     const executorFromUrl = searchParams.get("executor");
     if (executorFromUrl) {
@@ -208,11 +202,11 @@ export default function Tasks() {
             Таблица
           </Button>
           <Button
-            variant={viewMode === "compact" ? "green" : "grayOutline"}
+            variant={viewMode === "cards" ? "green" : "grayOutline"}
             size="rounded"
-            onClick={() => setViewMode("compact")}
+            onClick={() => setViewMode("cards")}
           >
-            Компактный вид
+            Карточки
           </Button>
         </div>
       </div>
@@ -241,15 +235,8 @@ export default function Tasks() {
           />
         )}
 
-        {reportStatus === "ready" && viewMode === "compact" && (
-          <CompactTaskList
-            tasks={tasks}
-            onTaskClick={handleTaskClick}
-            isLoading={isLoading}
-            emptyMessage={
-              hasSelectedExecutor ? "Задачи не найдены" : "Выберите сотрудника"
-            }
-          />
+        {reportStatus === "ready" && viewMode === "cards" && (
+          <TaskCardList tasks={tasks} />
         )}
 
         {reportStatus === "ready" && tasks.length === 0 && hasSelectedExecutor && (

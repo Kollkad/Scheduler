@@ -91,7 +91,7 @@ export const AnalysisProvider: React.FC<AnalysisProviderProps> = ({ children }) 
       const status = await apiClient.getFilesStatus();
       
       if (!featureFlags.enableComparison) {
-        // Удаляем previous_detailed_report из files
+        // Цдаление previous_detailed_report из files
         const { previous_detailed_report, ...filesWithoutComparison } = status.files;
         setUploadedFiles({
           files: filesWithoutComparison,
@@ -151,11 +151,11 @@ export const AnalysisProvider: React.FC<AnalysisProviderProps> = ({ children }) 
       clearChartsCache();
       
       try {
-        console.log('Сбрасываем предыдущие данные анализа...');
+        console.log('Сброс предыдущих данных анализа...');
         await apiClient.post(API_ENDPOINTS.RESET_ANALYSIS);
         console.log('Сброс данных выполнен');
       } catch (resetError) {
-        console.warn('Не удалось сбросить данные, продолжаем анализ:', resetError);
+        console.warn('Не удалось сбросить данные, будет продолжен анализ:', resetError);
       }
 
       console.log('Запуск всех анализов');
@@ -183,7 +183,7 @@ export const AnalysisProvider: React.FC<AnalysisProviderProps> = ({ children }) 
       for (const { type, name, weight } of analysisSequence) {
         setProgress({ currentTask: name, progress: currentProgress, totalTasks: analysisSequence.length });
         
-        // Выполняем анализ
+        // Выполняется анализ
         const result = await analysisService.runSingleAnalysis(type);
 
         // Обновление статуса выполнения

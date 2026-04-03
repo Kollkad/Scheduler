@@ -1,4 +1,4 @@
-// src/utils/dataTransform.ts
+// client/utils/dataTransform.ts
 import { 
   ChartItemConfig, 
   ChartGroupConfig, 
@@ -23,7 +23,7 @@ export const transformRainbowData = (
     while (adjustedValues.length < config.length) adjustedValues.push(0);
     adjustedValues.length = config.length;
 
-    // Используем переданные метки цветов или дефолтные из конфига
+    // Используются переданные метки цветов или дефолтные из конфига
     return config.map((item, index) => ({
       name: item.name,
       label: colorLabels?.[index] || item.label || item.name,
@@ -32,7 +32,7 @@ export const transformRainbowData = (
     }));
   }
 
-  // Если все в порядке, используем переданные метки или дефолтные
+  // Если все в порядке, ставятся переданные метки или дефолтные
   return config.map((item, index) => ({
     name: item.name,
     label: colorLabels?.[index] || item.label || item.name,
@@ -47,7 +47,7 @@ export const transformTermsData = (
   config: ChartGroupConfig[]
 ) => {
   return config.map((groupConfig) => {
-    // Ищем данные по русскому названию через обновленный маппинг проверок
+    // Поиск данных по русскому названию через обновленный маппинг проверок
     const backendGroup = backendData.find(group => 
       stageNameToLabel[group.group_name] === groupConfig.title
     );

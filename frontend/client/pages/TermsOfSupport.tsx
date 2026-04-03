@@ -272,7 +272,7 @@ export function TermsOfSupport() {
       if (isAnalyzing) return;
       console.log('Обновление данных сроков после анализа');
       
-      // force=true - игнорируем кэш
+      // force=true - игнор кэша
       await Promise.allSettled([
         loadLawsuitChartData(true),
         loadOrderChartData(true),

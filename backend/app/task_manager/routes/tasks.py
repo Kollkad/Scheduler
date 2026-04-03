@@ -5,10 +5,12 @@
 Предоставляет API endpoints для расчета, получения, сохранения
 и управления задачами различных типов производств.
 """
+import json
 
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional, List, Dict, Any
 import pandas as pd
+import math
 
 from backend.app.data_management.modules.data_manager import data_manager
 from backend.app.task_manager.modules.task_analyzer import task_analyzer
@@ -87,22 +89,36 @@ async def calculate_tasks(executor: Optional[str] = Query(None,
 
 @router.get("/list")
 async def get_tasks_list(
-        responsibleExecutor: Optional[str] = Query(None,
-                                                   description="Ответственный исполнитель")
+    filters: str = Query(..., description="JSON строка с фильтрами, например: {\"responsibleExecutor\": \"ФИО1\", \"transferCode\": \"CP-123\"}")
 ):
     """
-    Получение списка задач с фильтрами.
+    Получение списка задач с фильтрацией по одному или нескольким столбцам.
 
     Args:
-        responsibleExecutor (str, optional): Фильтр по ответственному исполнителю
+        filters (str): JSON строка с фильтрами, где ключ - название столбца, значение - значение для фильтрации
 
     Returns:
         dict: Список задач с метаданными
 
     Raises:
-        HTTPException: Возникает при ошибках получения данных
+        HTTPException: Возникает при ошибках получения данных или некорректном JSON
     """
     try:
+        # Парсинг JSON строки фильтров
+        try:
+            filters_dict = json.loads(filters)
+        except json.JSONDecodeError as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Некорректный JSON в параметре filters: {str(e)}"
+            )
+
+        if not isinstance(filters_dict, dict):
+            raise HTTPException(
+                status_code=400,
+                detail="Параметр filters должен содержать JSON объект"
+            )
+
         # Получение кэшированных данных задач
         tasks_df = data_manager.get_processed_data("tasks")
 
@@ -112,36 +128,48 @@ async def get_tasks_list(
                 "tasks": [],
                 "totalTasks": 0,
                 "filteredCount": 0,
+                "filters": filters_dict,
                 "message": "Нет рассчитанных задач. Выполните /calculate сначала."
             }
 
+        # Проверка существования указанных столбцов в данных
+        for column in filters_dict.keys():
+            if column not in tasks_df.columns:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Столбец '{column}' не найден в данных задач. Доступные столбцы: {list(tasks_df.columns)}"
+                )
+
         all_tasks = tasks_df.to_dict('records')
+
+        # Фильтрация задач по всем указанным столбцам и значениям (AND)
         filtered_tasks = all_tasks
+        for column, value in filters_dict.items():
+            filtered_tasks = [
+                task for task in filtered_tasks
+                if str(task.get(column, "")).strip() == value
+            ]
 
-        # Применение фильтра по исполнителю
-        if responsibleExecutor:
-            filtered_tasks = [task for task in filtered_tasks if
-                              str(task.get("responsibleExecutor", "")).strip() == responsibleExecutor]
-
+        # Очистка значений от NaN и Infinity для JSON-сериализации
         def clean_json_value(value):
-            import math
             if isinstance(value, float):
                 if math.isnan(value) or math.isinf(value):
                     return None
             return value
 
-        # ДОБАВЬ ЭТУ СТРОКУ - очистка значений перед возвратом
         filtered_tasks = [{k: clean_json_value(v) for k, v in task.items()} for task in filtered_tasks]
 
         return {
             "success": True,
             "totalTasks": len(all_tasks),
             "filteredCount": len(filtered_tasks),
+            "filters": filters_dict,
             "tasks": filtered_tasks,
-            "message": f"Найдено {len(filtered_tasks)} задач" +
-                       (f" для исполнителя {responsibleExecutor}" if responsibleExecutor else "")
+            "message": f"Найдено {len(filtered_tasks)} задач по фильтрам: {filters_dict}"
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"❌ Ошибка получения задач: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка получения задач: {str(e)}")

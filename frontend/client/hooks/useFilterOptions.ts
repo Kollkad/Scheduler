@@ -22,8 +22,8 @@ export const useFilterOptions = () => {
 
     try {
       const filterOptions = await FilterService.getFilterOptions(columns);
-      cachedOptions = filterOptions; // сохраняем в кэш
-      localStorage.setItem('filterOptions', JSON.stringify(filterOptions)); // сохраняем для перезагрузки
+      cachedOptions = filterOptions;
+      localStorage.setItem('filterOptions', JSON.stringify(filterOptions));
       setOptions(filterOptions);
       return filterOptions;
     } catch (err) {

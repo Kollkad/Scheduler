@@ -1,5 +1,4 @@
-// DefaultChart.tsx
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useLayoutEffect, useRef } from 'react';
 import { calculateBarHeights, generateTicks } from '@/utils/chartUtils';
 
 interface DefaultChartProps {
@@ -9,6 +8,39 @@ interface DefaultChartProps {
 
 export function DefaultChart({ data, onBarClick }: DefaultChartProps) {
   const [hoveredBar, setHoveredBar] = useState<string | null>(null);
+  const [labelWidth, setLabelWidth] = useState(96);
+  const measureRef = useRef<HTMLDivElement>(null);
+
+  // Измерение самого длинного текста
+  useLayoutEffect(() => {
+    if (!measureRef.current) return;
+    
+    // Временный контейнер для измерения
+    const container = measureRef.current;
+    container.style.width = 'auto';
+    container.style.position = 'absolute';
+    container.style.visibility = 'hidden';
+    container.style.top = '-9999px';
+    document.body.appendChild(container);
+    
+    let maxWidth = 0;
+    data.forEach(item => {
+      const span = document.createElement('span');
+      span.className = 'text-sm';
+      span.style.whiteSpace = 'nowrap';
+      span.textContent = item.label;
+      container.appendChild(span);
+      const width = span.offsetWidth;
+      if (width > maxWidth) maxWidth = width;
+      container.removeChild(span);
+    });
+    
+    document.body.removeChild(container);
+    
+    // Ограничение ширины от 64 до 192px
+    const newWidth = Math.min(Math.max(maxWidth + 16, 64), 192);
+    setLabelWidth(newWidth);
+  }, [data]);
 
   const { maxValue, tickStep } = useMemo(() => {
     const maxVal = Math.max(...data.map(item => item.value), 1);
@@ -47,7 +79,7 @@ export function DefaultChart({ data, onBarClick }: DefaultChartProps) {
     return `#${rHex}${gHex}${bHex}`;
   };
 
-  const { barHeight, barGap, barsAreaHeight, xAxisHeight, totalChartHeight } = 
+  const { barHeight, barGap, barsAreaHeight, xAxisHeight } = 
     calculateBarHeights(data.length);
   
   const xTicks = generateTicks(maxValue, tickStep);
@@ -64,12 +96,19 @@ export function DefaultChart({ data, onBarClick }: DefaultChartProps) {
 
   return (
     <div className="w-full max-w-[800px] mx-auto p-4 bg-white rounded-md shadow-sm pb-12">
+      {/* Невидимый элемент для измерения */}
+      <div ref={measureRef} className="fixed top-0 left-0 invisible" aria-hidden="true" />
+      
       <div className="flex">
-        <div className="w-24 flex flex-col pr-2">
+        {/* Левая колонка с подписями - динамическая ширина */}
+        <div 
+          className="flex flex-col pr-2 flex-shrink-0"
+          style={{ width: `${labelWidth}px` }}
+        >
           {data.map((item, index) => (
             <div
               key={`label-${index}`}
-              className={`flex items-center justify-end text-sm ${
+              className={`flex items-center justify-end text-sm text-right ${
                 hoveredBar === item.label ? 'font-bold text-green' : 'text-text-primary'
               }`}
               style={{
@@ -82,7 +121,7 @@ export function DefaultChart({ data, onBarClick }: DefaultChartProps) {
           ))}
         </div>
 
-        <div className="flex-grow">
+        <div className="flex-grow min-w-0">
           <div className="flex" style={{ height: `${barsAreaHeight}px` }}>
             {/* Ось Y */}
             <div 
@@ -94,7 +133,7 @@ export function DefaultChart({ data, onBarClick }: DefaultChartProps) {
             ></div>
             
             {/* Область столбцов */}
-            <div className="flex-grow flex flex-col ">
+            <div className="flex-grow flex flex-col min-w-0">
               {data.map((item, index) => {
                 const width = calculateWidth(item.value);
                 const isHovered = hoveredBar === item.label;

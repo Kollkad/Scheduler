@@ -74,7 +74,7 @@ export function ProgressBarModal({ isOpen, onClose }: ProgressBarModalProps) {
         {/* Прогресс-бар */}
         <div className="mb-4">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-text-secondary">
+            <span className="text-sm font-medium text-text-primary">
               Общий прогресс
             </span>
             <span className="text-sm text-text-tertiary">

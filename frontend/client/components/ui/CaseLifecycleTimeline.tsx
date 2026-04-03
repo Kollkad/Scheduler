@@ -1,20 +1,30 @@
 import React from 'react';
 
-const STAGES = [
+const LAWSUIT_STAGES = [
   { key: 'firstStatusChanged', label: 'Подготовка документов' },
-    { key: 'courtReaction', label: 'Ожидание реакции суда' },
+  { key: 'courtReaction', label: 'Ожидание реакции суда' },
   { key: 'underConsideration', label: 'На рассмотрении' },
   { key: 'decisionMade', label: 'Решение вынесено' },
   { key: 'executionDocumentReceived', label: 'ИД получен' },
   { key: 'closed', label: 'Закрыто' }
 ] as const;
 
+const COURT_ORDER_STAGES = [
+  { key: 'firstStatusChanged', label: 'Подготовка документов' },
+  { key: 'courtReaction', label: 'Ожидание реакции суда' },
+  { key: 'executionDocumentReceived', label: 'ИД получен' },
+  { key: 'closed', label: 'Закрыто' }
+] as const;
+
+type ProductionType = 'lawsuit' | 'courtOrder';
+
 interface CaseLifecycleTimelineProps {
   caseStage: string;
+  productionType?: ProductionType;
   className?: string;
 }
 
-export function CaseLifecycleTimeline({ caseStage, className = '' }: CaseLifecycleTimelineProps) {
+export function CaseLifecycleTimeline({ caseStage, productionType = 'lawsuit', className = '' }: CaseLifecycleTimelineProps) {
   if (caseStage === 'exceptions') {
     return (
       <div className={`bg-bg-default-light-field border border-border-default rounded-lg p-4 text-center ${className}`}>
@@ -23,6 +33,7 @@ export function CaseLifecycleTimeline({ caseStage, className = '' }: CaseLifecyc
     );
   }
 
+  const STAGES = productionType === 'courtOrder' ? COURT_ORDER_STAGES : LAWSUIT_STAGES;
   const currentIndex = STAGES.findIndex(stage => stage.key === caseStage);
   if (currentIndex === -1) return null;
 

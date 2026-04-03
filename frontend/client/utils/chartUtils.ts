@@ -1,3 +1,4 @@
+//frontend\client\utils\chartUtils.ts
 export const calculateBarHeights = (
   dataLength: number, 
   barHeight: number = 28, 

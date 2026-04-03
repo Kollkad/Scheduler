@@ -9,6 +9,10 @@ import { FieldGroup } from "@/components/FieldGroup";
 import { CaseService, CaseDetails, CaseField } from "@/services/case/caseService";
 import { Button } from "@/components/ui/button";
 import { CaseLifecycleTimeline } from "@/components/ui/CaseLifecycleTimeline";
+import { TaskCardList } from "@/components/TaskCardList";
+import { apiClient } from "@/services/api/client";
+import { API_ENDPOINTS } from "@/services/api/endpoints";
+import { Task } from "@/services/api/taskTypes";
 
 export function DynamicCaseDetail() {
   const navigate = useNavigate();
@@ -18,9 +22,13 @@ export function DynamicCaseDetail() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
+  const [relatedTasks, setRelatedTasks] = useState<Task[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
+
   useEffect(() => {
     if (caseCode) {
       loadCaseData(caseCode);
+      loadRelatedTasks(caseCode);
     }
   }, [caseCode]);
 
@@ -67,6 +75,48 @@ export function DynamicCaseDetail() {
     return caseData.fieldGroups.other.filter((field) =>
       field.label.toLowerCase().includes(searchTerm.toLowerCase())
     );
+  };
+
+  // Функция загружает задачи, связанные с текущим делом
+  const loadRelatedTasks = async (code: string) => {
+    try {
+      setTasksLoading(true);
+      const filters = {
+        caseCode: code
+      };
+      const response = await apiClient.get<{ 
+        success: boolean; 
+        tasks: Task[];
+        filteredCount: number;
+      }>(`${API_ENDPOINTS.TASKS_LIST}?filters=${encodeURIComponent(JSON.stringify(filters))}`);
+      
+      if (response?.success && response.tasks) {
+        setRelatedTasks(response.tasks);
+      }
+    } catch (err) {
+      console.error('Ошибка загрузки связанных задач:', err);
+      setRelatedTasks([]);
+    } finally {
+      setTasksLoading(false);
+    }
+  };
+
+  // Определение типа производства по данным дела
+  const getProductionType = (): 'lawsuit' | 'courtOrder' => {
+    // Проверка типа дела по полям в general или other
+    if (!caseData?.fieldGroups?.general) return 'lawsuit';
+    
+    const productionTypeField = caseData.fieldGroups.general.find(
+      (f) => f.label === 'Способ судебной защиты'
+    );
+    
+    const productionTypeValue = productionTypeField?.value?.toLowerCase() || '';
+    
+    if (productionTypeValue.includes('приказ') || productionTypeValue.includes('court order')) {
+      return 'courtOrder';
+    }
+    
+    return 'lawsuit';
   };
 
   // Формирование вкладок для отображения
@@ -244,7 +294,10 @@ export function DynamicCaseDetail() {
       {/* Жизненная линия дела */}
       {caseData.caseStage && (
         <div className="mb-8">
-          <CaseLifecycleTimeline caseStage={caseData.caseStage} />
+          <CaseLifecycleTimeline 
+            caseStage={caseData.caseStage} 
+            productionType={getProductionType()}
+          />
         </div>
       )}
 
@@ -256,6 +309,20 @@ export function DynamicCaseDetail() {
           Нет данных для отображения
         </div>
       )}
+      
+      {/* Блок связанных задач */}
+      <div className="mt-10">
+        <h2 className="text-lg font-semibold text-text-primary mb-4">
+          Связанные задачи
+        </h2>
+        {tasksLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader className="h-6 w-6 animate-spin text-blue" />
+          </div>
+        ) : (
+          <TaskCardList tasks={relatedTasks} />
+        )}
+      </div>
     </PageContainer>
   );
 }

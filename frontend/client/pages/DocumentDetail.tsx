@@ -8,6 +8,10 @@ import { TabsContainer } from "@/components/TabsContainer";
 import { FieldGroup } from "@/components/FieldGroup";
 import { CaseService, DocumentDetails } from "@/services/case/caseService";
 import { Button } from "@/components/ui/button";
+import { Task } from "@/services/api/taskTypes";
+import { apiClient } from "@/services/api/client";
+import { API_ENDPOINTS } from "@/services/api/endpoints";
+import { TaskCardList } from "@/components/TaskCardList";
 
 export function DocumentDetail() {
   const navigate = useNavigate();
@@ -16,6 +20,9 @@ export function DocumentDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+
+  const [relatedTasks, setRelatedTasks] = useState<Task[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
 
   const caseCode = searchParams.get('caseCode');
   const documentType = searchParams.get('documentType');
@@ -26,6 +33,12 @@ export function DocumentDetail() {
       loadDocumentData(caseCode, documentType, department);
     }
   }, [caseCode, documentType, department]);
+
+  useEffect(() => {
+    if (documentData) {
+      loadRelatedTasks();
+    }
+  }, [documentData]);
 
   // Функция загружает данные документа по указанным параметрам
   const loadDocumentData = async (code: string, type: string, dept: string) => {
@@ -64,6 +77,37 @@ export function DocumentDetail() {
     return documentData.fieldGroups.other.filter((field) =>
       field.label.toLowerCase().includes(searchTerm.toLowerCase())
     );
+  };
+
+  // Функция загружает задачи, связанные с текущим документом по трем параметрам
+  const loadRelatedTasks = async () => {
+    if (!documentData) return;
+    
+    const filters = {
+      documentType: documentData.documentType,
+      department: documentData.department,
+      caseCode: documentData.caseCode
+    };
+    
+    try {
+      setTasksLoading(true);
+      const response = await apiClient.get<{ 
+        success: boolean; 
+        tasks: Task[];
+        filteredCount: number;
+      }>(`${API_ENDPOINTS.TASKS_LIST}?filters=${encodeURIComponent(JSON.stringify(filters))}`);
+      
+      if (response?.success && response.tasks) {
+        setRelatedTasks(response.tasks);
+      } else {
+        setRelatedTasks([]);
+      }
+    } catch (err) {
+      console.error('Ошибка загрузки связанных задач:', err);
+      setRelatedTasks([]);
+    } finally {
+      setTasksLoading(false);
+    }
   };
 
   // Формирование вкладок для отображения
@@ -252,6 +296,20 @@ export function DocumentDetail() {
           Нет данных для отображения
         </div>
       )}
+      
+      {/* Блок связанных задач */}
+      <div className="mt-10">
+        <h2 className="text-lg font-semibold text-text-primary mb-4">
+          Связанные задачи
+        </h2>
+        {tasksLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader className="h-6 w-6 animate-spin text-blue" />
+          </div>
+        ) : (
+          <TaskCardList tasks={relatedTasks} />
+        )}
+      </div>
     </PageContainer>
   );
 }
