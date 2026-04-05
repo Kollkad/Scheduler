@@ -61,6 +61,7 @@ DEFAULT_VALUE_FORMATTERS = {
     COLUMNS["MONITORING_STATUS"]: format_monitoring_status,
     COLUMNS["CASE_STAGE"]: lambda x: CASE_STAGE_MAPPING.get(x, x) if pd.notna(x) else "Не указан",
     COLUMNS["SOURCE_TYPE"]: format_source_type,
+    COLUMNS["COMPLETION_STATUS"]: lambda x: "Выполнено" if x == True else "Не выполнено" if x == False else "—"
 }
 
 def generate_filename(report_type: str) -> str:
@@ -260,12 +261,14 @@ def rename_columns_to_russian(dataframe, data_type, value_formatters=None):
             "requestCode": COLUMNS["DOCUMENT_REQUEST_CODE"],
         },
         "documents": {
+            "transferCode": COLUMNS["TRANSFER_CODE"],
             "requestCode": COLUMNS["DOCUMENT_REQUEST_CODE"],
             "caseCode": COLUMNS["CASE_CODE"],
             "document": COLUMNS["DOCUMENT_TYPE"],
             "department": COLUMNS["DEPARTMENT_CATEGORY"],
             "responseEssence": COLUMNS["ESSENSE_OF_THE_ANSWER"],
             "monitoringStatus": COLUMNS["MONITORING_STATUS"],
+            "completionStatus": COLUMNS["COMPLETION_STATUS"],
         }
     }
 

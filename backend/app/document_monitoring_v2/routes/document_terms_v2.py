@@ -215,15 +215,17 @@ async def analyze_document_charts():
 @router.get("/filter_documents")
 async def filter_documents(
         status: str = Query(..., description="Статус мониторинга для фильтрации (timely/overdue/no_data)"),
-        documentType: str = Query(None, description="Тип документа (executionDocument, courtDecision, courtOrder)")
+        documentType: str = Query(None, description="Тип документа (executionDocument, courtDecision, courtOrder)"),
+        completionStatus: bool = Query(None, description="Статус завершенности (true/false)")
 ):
     """
-    Фильтрует документы по статусу мониторинга и типу документа.
+    Фильтрует документы по статусу мониторинга, типу документа и статусу завершенности.
     Использует только предварительно рассчитанные данные.
 
     Args:
         status (str): Статус для фильтрации (timely/overdue/no_data)
         documentType (str, optional): Тип документа для фильтрации
+        completionStatus (bool, optional): Статус завершенности для фильтрации
 
     Returns:
         dict: Результат фильтрации в формате:
@@ -232,6 +234,7 @@ async def filter_documents(
                 "count": int,
                 "status": str,
                 "documentType": str,
+                "completionStatus": bool,
                 "documents": list
             }
 
@@ -252,6 +255,10 @@ async def filter_documents(
         # Фильтрация по статусу мониторинга
         filtered = processed_df[processed_df["monitoringStatus"] == status]
 
+        # Дополнительная фильтрация по статусу завершенности
+        if completionStatus is not None:
+            filtered = filtered[filtered["completionStatus"] == completionStatus]
+
         # Дополнительная фильтрация по типу документа при указании
         if documentType:
             document_types_map = {
@@ -266,14 +273,18 @@ async def filter_documents(
         filtered = filtered.fillna("").replace([float('inf'), -float('inf')], 0)
 
         # Выбор релевантных колонок для возврата
-        columns_to_return = ["requestCode", "caseCode", "document", "department", "responseEssence", "monitoringStatus"]
-        filtered = filtered[columns_to_return]
+        columns_to_return = ["transferCode", "requestCode", "caseCode", "responsibleExecutor",  "document", "department",
+                            "responseEssence", "monitoringStatus", "completionStatus"]
+        # Проверка наличия колонок в DataFrame
+        existing_columns = [col for col in columns_to_return if col in filtered.columns]
+        filtered = filtered[existing_columns]
 
         return {
             "success": True,
             "count": len(filtered),
             "status": status,
             "documentType": documentType,
+            "completionStatus": completionStatus,
             "documents": filtered.to_dict(orient="records")
         }
 
@@ -286,7 +297,7 @@ async def filter_documents(
 @router.get("/document_statuses")
 async def get_document_statuses():
     """
-    Предоставляет статистику распределения документов по статусам мониторинга.
+    Предоставляет статистику распределения документов по статусам мониторинга и завершенности.
     Использует только предварительно рассчитанные данные.
 
     Returns:
@@ -295,6 +306,7 @@ async def get_document_statuses():
                 "success": bool,
                 "total_documents": int,
                 "status_distribution": dict,
+                "completion_distribution": dict,
                 "message": str
             }
 
@@ -312,13 +324,19 @@ async def get_document_statuses():
                 detail="Анализ документов не выполнен. Сначала вызовите /api/documents/analyze"
             )
 
-        # Подсчет распределения документов по статусам
+        # Подсчет распределения документов по статусам мониторинга
         status_counts = processed_df["monitoringStatus"].value_counts().to_dict()
+
+        # Подсчет распределения документов по статусам завершенности
+        completion_counts = processed_df["completionStatus"].value_counts().to_dict()
+        # Преобразование ключей bool в строки для JSON-сериализации
+        completion_counts_str = {str(k): v for k, v in completion_counts.items()}
 
         return {
             "success": True,
             "totalDocuments": len(processed_df),
             "statusDistribution": status_counts,
+            "completionDistribution": completion_counts_str,
             "message": f"Проанализировано {len(processed_df)} документов"
         }
 
@@ -330,100 +348,97 @@ async def get_document_statuses():
 
 @router.get("/document")
 async def get_document_details(
-        case_code: str = Query(..., description="Код дела документа"),
-        document_type: str = Query(..., description="Тип документа"),
-        department: str = Query(..., description="Категория подразделения")
+        transferCode: str = Query(..., description="Код передачи документа")
 ):
     """
-    Получение детальной информации для страницы документа с группировкой полей.
+    Получение детальной информации для страницы документа по коду передачи.
 
     Args:
-        case_code (str): Код дела для поиска документа
-        document_type (str): Тип документа (Исполнительный лист, Решение суда, Судебный приказ)
-        department (str): Категория подразделения
+        transferCode (str): Уникальный код передачи документа (первичный ключ)
 
     Returns:
-        dict: Детальная информация о документе в формате:
-            {
-                "success": bool,
-                "documentCode": str,                    # Составной идентификатор
-                "caseCode": str,                        # Код дела
-                "documentType": str,                    # Тип документа
-                "department": str,                      # Категория подразделения
-                "data": dict,                           # Все поля документа
-                "fieldGroups": {                        # Сгруппированные поля
-                    "general": list,                    # Общая информация
-                    "dates": list,                      # Даты и сроки
-                    "financial": list,                  # Финансовые данные
-                    "court": list,                      # Судебные данные
-                    "other": list                       # Прочее
-                },
-                "totalFields": int,                     # Общее количество полей
-                "message": str
-            }
+        dict: Детальная информация о документе:
+            - success (bool): Статус выполнения запроса
+            - transferCode (str): Код передачи
+            - caseCode (str): Код дела
+            - documentType (str): Тип документа
+            - department (str): Категория подразделения
+            - fieldGroups (dict): Сгруппированные поля по категориям
+            - totalFields (int): Общее количество полей
+            - message (str): Сообщение о результате
 
     Raises:
-        HTTPException: 404 если документ не найден или анализ не выполнен
-        HTTPException: 500 при ошибке получения данных
+        HTTPException: 404 если документ не найден или данные не загружены
+        HTTPException: 500 при ошибке обработки данных
     """
     try:
-        processed_docs = data_manager.get_processed_data("documents_processed")
+        # Загрузка исходных данных документов из Excel
         original_docs = data_manager.get_documents_data()
 
-        if processed_docs is None or processed_docs.empty:
-            raise HTTPException(
-                status_code=404,
-                detail="Анализ документов не выполнен. Сначала вызовите /api/documents/analyze"
-            )
-
+        # Проверка: загружены ли данные
         if original_docs is None or original_docs.empty:
             raise HTTPException(status_code=404, detail="Данные документов не загружены")
 
-        # Поиск в обработанных данных
-        processed_mask = (
-                (processed_docs["caseCode"] == case_code) &
-                (processed_docs["document"] == document_type) &
-                (processed_docs["department"] == department)
-        )
-        processed_doc = processed_docs[processed_mask]
+        # Название колонки с кодом передачи в исходном файле
+        transfer_col = COLUMNS["TRANSFER_CODE"]
 
-        if processed_doc.empty:
+        # Проверка: существует ли колонка с кодом передачи в данных
+        if transfer_col not in original_docs.columns:
             raise HTTPException(
-                status_code=404,
-                detail=f"Документ не найден: дело={case_code}, тип={document_type}, подразделение={department}"
+                status_code=500,
+                detail=f"Колонка '{transfer_col}' не найдена в данных документов"
             )
 
-        # Поиск в исходных данных
-        original_mask = (
-                (original_docs[COLUMNS["DOCUMENT_CASE_CODE"]] == case_code) &
-                (original_docs[COLUMNS["DOCUMENT_TYPE"]] == document_type) &
-                (original_docs[COLUMNS["DEPARTMENT_CATEGORY"]] == department)
-        )
-        original_doc = original_docs[original_mask]
+        # Поиск строки с нужным кодом передачи (точное совпадение, обрезаем пробелы)
+        mask = original_docs[transfer_col].astype(str).str.strip() == transferCode
+        doc = original_docs[mask]
 
-        # Объединение данных
-        processed_dict = processed_doc.iloc[0].to_dict()
-        original_dict = original_doc.iloc[0].to_dict() if not original_doc.empty else {}
-        merged_document = {**original_dict, **processed_dict}
+        # Проверка: найден ли документ
+        if doc.empty:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Документ с кодом передачи '{transferCode}' не найден"
+            )
 
-        # Безопасное преобразование значений
+        # Преобразование строки в словарь
+        doc_dict = doc.iloc[0].to_dict()
+
+        # Очистка значений от NaN, Infinity и других несериализуемых типов
         safe_document = {}
-        for key, value in merged_document.items():
+        for key, value in doc_dict.items():
             safe_document[key] = safe_convert_value(value)
 
-        # Группировка полей по категориям
+        # Получение обработанных данных для добавления статусов мониторинга
+        processed_df = data_manager.get_processed_data("documents_processed")
+
+        if processed_df is not None and not processed_df.empty:
+            # Поиск записи в processed_df по transferCode
+            if "transferCode" in processed_df.columns:
+                status_mask = processed_df["transferCode"].astype(str).str.strip() == transferCode
+                status_row = processed_df[status_mask]
+
+                if not status_row.empty:
+                    # Добавляем monitoringStatus и completionStatus в документ
+                    monitoring_status = status_row.iloc[0].get("monitoringStatus")
+                    completion_status = status_row.iloc[0].get("completionStatus")
+
+                    if monitoring_status is not None:
+                        safe_document["monitoringStatus"] = safe_convert_value(monitoring_status)
+                    if completion_status is not None:
+                        if hasattr(completion_status, 'item'):
+                            completion_status = completion_status.item()
+                        safe_document["completionStatus"] = bool(completion_status)
+
+        # Группировка полей по категориям (general, dates, financial, court, other)
         field_groups = group_fields_by_category(safe_document, SPECIAL_FIELDS_DOCUMENT)
 
-        # Составной идентификатор документа
-        document_code = f"{case_code}_{document_type}_{department}"
-
+        # Формирование ответа без дублирующего поля data
         return {
             "success": True,
-            "documentCode": document_code,
-            "caseCode": case_code,
-            "documentType": document_type,
-            "department": department,
-            "data": safe_document,
+            "transferCode": transferCode,
+            "caseCode": safe_document.get(COLUMNS["DOCUMENT_CASE_CODE"], ""),
+            "documentType": safe_document.get(COLUMNS["DOCUMENT_TYPE"], ""),
+            "department": safe_document.get(COLUMNS["DEPARTMENT_CATEGORY"], ""),
             "fieldGroups": field_groups,
             "totalFields": len(safe_document),
             "message": "Данные документа получены"
@@ -434,3 +449,4 @@ async def get_document_details(
     except Exception as e:
         print(f"Ошибка получения документа: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка получения документа: {str(e)}")
+

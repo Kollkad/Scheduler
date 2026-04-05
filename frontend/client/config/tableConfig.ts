@@ -1,4 +1,3 @@
-// frontend/client/config/tableConfig.ts
 import { featureFlags } from '@/config/featureFlags';
 import { TableConfig } from "@/components/tables/TableTypes";
 
@@ -12,19 +11,20 @@ export const mapBackendDataTerms = (data: Record<string, any>[]) => {
     caseStatus: row.caseStatus || '',
     filingDate: row.filingDate || '',
     courtReviewingCase: row.courtReviewingCase || '',
-    department: row.department || ''
+    department: row.department || '',
+    documentType: row.documentType || ''
   }));
 };
 
 // Функция преобразует данные документов из формата бэкенда в формат таблицы
 export const mapBackendDataDocuments = (data: Record<string, any>[]) => {
   return data.map(row => ({
-    requestCode: row.requestCode || '',
+    transferCode: row.transferCode || '',
+    responsibleExecutor: row.responsibleExecutor || '',
     caseCode: row.caseCode || '',
     documentType: row.document || '',
     department: row.department || '',
-    responseEssence: row.responseEssence || '',
-    monitoringStatus: row.monitoringStatus || ''
+    monitoringStatus: formatMonitoringStatus(row.monitoringStatus || '')
   }));
 };
 
@@ -55,71 +55,46 @@ export const formatMonitoringStatus = (statusString: string): string => {
 // Конфигурация колонок для таблицы Rainbow
 export const rainbowTableConfig = {
   columns: [
-    { key: 'caseCode', title: 'Код дела', width: '120px' },
-    { key: 'responsibleExecutor', title: 'Ответственный исполнитель', width: '200px' },
-    { key: 'gosb', title: 'ГОСБ', width: '120px' },
-    { key: 'currentPeriodColor', title: 'Цвет (тек. период)', width: '120px' },
+    { key: 'caseCode', title: 'Код дела', width: '150px', sortable: true },
+    { key: 'responsibleExecutor', title: 'Ответственный исполнитель', width: '200px', sortable: true },
+    { key: 'gosb', title: 'ГОСБ', width: '120px', sortable: true },
+    { key: 'currentPeriodColor', title: 'Цвет (тек. период)', width: '120px', sortable: true },
     ...(featureFlags.hasPreviousReport ? [
-      { key: 'previousPeriodColor', title: 'Цвет (пред. период)', width: '120px' }
+      { key: 'previousPeriodColor', title: 'Цвет (пред. период)', width: '120px', sortable: true }
     ] : []),
-    { key: 'courtProtectionMethod', title: 'Способ судебной защиты', width: '180px' },
-    { key: 'courtReviewingCase', title: 'Суд, рассматривающий дело', width: '150px' }
+    { key: 'caseStatus', title: 'Статус дела', width: '150px', sortable: true },
+    { key: 'courtProtectionMethod', title: 'Способ судебной защиты', width: '180px', sortable: true },
+    { key: 'courtReviewingCase', title: 'Суд, рассматривающий дело', width: '150px', sortable: true }
   ]
 };
 
-// Конфигурация колонок для таблицы фильтрованных дел
+// Конфигурация колонок для таблицы фильтрованных дел (Rainbow)
 export const filteredCasesTableConfig = {
-  columns: [
-    { key: 'caseCode', title: 'Код дела', width: '120px' },
-    { key: 'responsibleExecutor', title: 'Ответственный исполнитель', width: '200px' },
-    { key: 'gosb', title: 'ГОСБ', width: '120px' },
-    { key: 'currentPeriodColor', title: 'Цвет (тек. период)', width: '120px' },
-    { key: 'caseStatus', title: 'Статус дела', width: '150px' },
-    { key: 'courtProtectionMethod', title: 'Способ судебной защиты', width: '180px' },
-    { key: 'courtReviewingCase', title: 'Суд, рассматривающий дело', width: '150px' }
-  ]
+  columns: rainbowTableConfig.columns
 };
 
-// Конфигурация колонок для таблиц терминов по типам процессов
+// Конфигурация колонок для таблиц терминов (единая для искового и приказного)
 export const termsTableConfig = {
-  lawsuit: {
-    columns: [
-      { key: 'caseCode', title: 'Код дела' },
-      { key: 'responsibleExecutor', title: 'Ответственный исполнитель' },
-      { key: 'courtProtectionMethod', title: 'Способ судебной защиты' },
-      { key: 'caseCategory', title: 'Категория дела' },
-      { key: 'caseStatus', title: 'Статус дела' },
-      { key: 'filingDate', title: 'Дата подачи иска' },
-      { key: 'courtReviewingCase', title: 'Суд, рассматривающий дело' }
-    ]
-  },
-  order: {
-    columns: [
-      { key: 'caseCode', title: 'Код дела' },
-      { key: 'responsibleExecutor', title: 'Ответственный исполнитель' },
-      { key: 'courtProtectionMethod', title: 'Способ судебной защиты' },
-      { key: 'caseCategory', title: 'Категория дела' },
-      { key: 'caseStatus', title: 'Статус дела' },
-      { key: 'filingDate', title: 'Дата подачи заявления' },
-      { key: 'courtReviewingCase', title: 'Суд, рассматривающий дело' },
-      { key: 'department', title: 'Категория подразделения' },
-      { key: 'documentType', title: 'Документ' },
-      { key: 'receiptDate', title: 'Дата поступления документа' },
-      { key: 'transferDate', title: 'Дата передачи документа' }
-    ]
-  }
+  columns: [
+    { key: 'caseCode', title: 'Код дела', sortable: true },
+    { key: 'responsibleExecutor', title: 'Ответственный исполнитель', sortable: true },
+    { key: 'courtProtectionMethod', title: 'Способ судебной защиты', sortable: true },
+    { key: 'caseStatus', title: 'Статус дела', sortable: true },
+    { key: 'filingDate', title: 'Дата подачи иска', sortable: true },
+    { key: 'courtReviewingCase', title: 'Суд, рассматривающий дело', sortable: true }
+  ]
 };
 
 // Конфигурация колонок для таблицы задач
 export const tasksTableConfig: TableConfig = {
   columns: [
-    { key: "taskCode", title: "Код задачи", width: "120px" },
-    { key: "caseCode", title: "Код дела", width: "120px" },  
-    { key: "responsibleExecutor", title: "Ответственный исполнитель", width: "200px" },
-    { key: "caseStage", title: "Этап дела", width: "180px" },
-    { key: "failedCheck", title: "Название проверки", width: "120px" },
-    { key: "monitoringStatus", title: "Статус проверки", width: "150px" },
-    { key: "taskText", title: "Текст задачи", width: "300px" },
+    { key: "taskCode", title: "Код задачи", width: "150px", sortable: true },
+    { key: "caseCode", title: "Код дела", width: "150px", sortable: true },  
+    { key: "responsibleExecutor", title: "Ответственный исполнитель", width: "200px", sortable: true },
+    { key: "caseStage", title: "Этап дела", width: "180px", sortable: true },
+    { key: "failedCheck", title: "Название проверки", width: "120px", sortable: true },
+    { key: "monitoringStatus", title: "Статус проверки", width: "150px", sortable: true },
+    { key: "taskText", title: "Текст задачи", width: "300px", sortable: true },
   ],
   pageSize: 20,
 };
@@ -145,38 +120,19 @@ export const monitoringStatusMapping: Record<string, string> = {
 // Конфигурация колонок для таблиц этапов и документов
 export const stageTableConfig = {
   lawsuit: {
-    columns: [
-      { key: 'caseCode', title: 'Код дела', width: '170px' },
-      { key: 'responsibleExecutor', title: 'Ответственный исполнитель', width: '200px' },
-      { key: 'courtProtectionMethod', title: 'Способ судебной защиты', width: '150px' },
-      { key: 'gosb', title: 'ГОСБ', width: '120px' },
-      { key: 'caseStage', title: 'Этап дела', width: '150px' },
-      { key: 'monitoringStatus', title: 'Статус мониторинга', width: '150px' },
-      { key: 'caseStatus', title: 'Статус дела', width: '150px' },
-      { key: 'filingDate', title: 'Дата подачи', width: '120px' },
-      { key: 'courtReviewingCase', title: 'Суд', width: '180px' }
-    ]
+    columns: termsTableConfig.columns
   },
   order: {
-    columns: [
-      { key: 'caseCode', title: 'Код дела', width: '170px' },
-      { key: 'responsibleExecutor', title: 'Ответственный исполнитель', width: '200px' },
-      { key: 'gosb', title: 'ГОСБ', width: '120px' },
-      { key: 'caseStage', title: 'Этап дела', width: '150px' },
-      { key: 'monitoringStatus', title: 'Статус мониторинга', width: '150px' },
-      { key: 'caseStatus', title: 'Статус дела', width: '150px' },
-      { key: 'filingDate', title: 'Дата подачи заявления', width: '140px' },
-      { key: 'court', title: 'Суд', width: '180px' }
-    ]
+    columns: termsTableConfig.columns
   },
   documents: {
     columns: [
-      { key: 'requestCode', title: 'Код запроса', width: '170px' },
-      { key: 'caseCode', title: 'Код дела', width: '150px' },
-      { key: 'documentType', title: 'Тип документа', width: '180px' },
-      { key: 'department', title: 'Подразделение', width: '180px' },
-      { key: 'responseEssence', title: 'Суть ответа', width: '250px' },
-      { key: 'monitoringStatus', title: 'Статус мониторинга', width: '150px' }
+      { key: 'transferCode', title: 'Код передачи', width: '170px', sortable: true },
+      { key: 'responsibleExecutor', title: 'Ответственный исполнитель', width: '200px', sortable: true },
+      { key: 'caseCode', title: 'Код дела', width: '150px', sortable: true },
+      { key: 'documentType', title: 'Тип документа', width: '180px', sortable: true },
+      { key: 'department', title: 'Подразделение', width: '180px', sortable: true },
+      { key: 'monitoringStatus', title: 'Статус мониторинга', width: '150px', sortable: true }
     ]
   }
 };

@@ -28,7 +28,7 @@ def analyze_documents(documents_df: pd.DataFrame) -> pd.DataFrame:
     Процесс анализа включает:
     1. Фильтрацию документов-исключений
     2. Группировку по ключевым полям (код дела, тип документа, подразделение)
-    3. Оценку статуса своевременности для каждой группы
+    3. Оценку статуса своевременности и завершенности для каждой группы
     4. Формирование результата с сохранением структуры колонок
 
     Args:
@@ -36,12 +36,15 @@ def analyze_documents(documents_df: pd.DataFrame) -> pd.DataFrame:
 
     Returns:
         pd.DataFrame: Результат анализа со следующими колонками:
+            - transferCode: Код передачи документа
             - requestCode: Код запроса документа
             - caseCode: Код дела
+            - responsibleExecutor: Ответственный исполнитель
             - document: Тип документа
             - department: Подразделение
             - responseEssence: Суть ответа
             - monitoringStatus: Статус мониторинга (timely/overdue/no_data)
+            - completionStatus: Статус завершенности (True/False)
     """
     today = datetime.now().date()
 
@@ -50,7 +53,9 @@ def analyze_documents(documents_df: pd.DataFrame) -> pd.DataFrame:
         filtered_df = filter_exceptions_documents(documents_df)
         if filtered_df.empty:
             return pd.DataFrame(
-                columns=["requestCode", "caseCode", "document", "department", "responseEssence", "monitoringStatus"])
+                columns=["transferCode", "requestCode", "caseCode", "responsibleExecutor",
+                         "document", "department", "responseEssence", "monitoringStatus", "completionStatus"]
+            )
 
         # Формирование списка колонок для группировки
         grouping_columns = []
@@ -68,19 +73,27 @@ def analyze_documents(documents_df: pd.DataFrame) -> pd.DataFrame:
         if not grouping_columns:
             # Обработка без группировки с использованием apply для производительности
             result_df = filtered_df.copy()
-            result_df["monitoringStatus"] = result_df.apply(
+
+            # Применение функции оценки к каждой строке
+            evaluation_results = result_df.apply(
                 lambda row: evaluate_document_row(row, today),
                 axis=1
             )
 
+            # Разделение результатов на monitoringStatus и completionStatus
+            result_df["monitoringStatus"] = evaluation_results.apply(lambda x: x[0])
+            result_df["completionStatus"] = evaluation_results.apply(lambda x: x[1])
+
             return pd.DataFrame({
                 "transferCode": result_df.get(COLUMNS["TRANSFER_CODE"], "unknown"),
-                "requestCode": result_df.get("DOCUMENT_REQUEST_CODE", result_df.index.astype(str)),
-                "caseCode": result_df.get("DOCUMENT_CASE_CODE", result_df.get("Код дела", "unknown")),
-                "document": result_df.get("DOCUMENT_TYPE", result_df.get("Документ", "unknown")),
-                "department": result_df.get("DEPARTMENT_CATEGORY", result_df.get("Категория подразделения", "unknown")),
-                "responseEssence": result_df.get("ESSENSE_OF_THE_ANSWER", result_df.get("Суть ответа", "unknown")),
-                "monitoringStatus": result_df["monitoringStatus"]
+                "requestCode": result_df.get(COLUMNS["DOCUMENT_REQUEST_CODE"], result_df.index.astype(str)),
+                "caseCode": result_df.get(COLUMNS["DOCUMENT_CASE_CODE"], result_df.get("Код дела", "unknown")),
+                "responsibleExecutor": result_df.get(COLUMNS["RESPONSIBLE_EXECUTOR"], ""),
+                "document": result_df.get(COLUMNS["DOCUMENT_TYPE"], result_df.get("Документ", "unknown")),
+                "department": result_df.get(COLUMNS["DEPARTMENT_CATEGORY"], result_df.get("Категория подразделения", "unknown")),
+                "responseEssence": result_df.get(COLUMNS["ESSENSE_OF_THE_ANSWER"], result_df.get("Суть ответа", "unknown")),
+                "monitoringStatus": result_df["monitoringStatus"],
+                "completionStatus": result_df["completionStatus"]
             })
         else:
             # Обработка с группировкой по ключевым полям
@@ -100,18 +113,20 @@ def analyze_documents(documents_df: pd.DataFrame) -> pd.DataFrame:
                 if latest_document.empty:
                     return []
 
-                # Оценка статуса своевременности
-                status = evaluate_document_row(latest_document, today)
+                # Оценка статуса своевременности и завершенности
+                monitoring_status, completion_status = evaluate_document_row(latest_document, today)
 
                 # Формирование результата с сохранением структуры колонок
                 return [{
                     "transferCode": latest_document.get(COLUMNS["TRANSFER_CODE"], "unknown"),
                     "requestCode": latest_document.get(COLUMNS["DOCUMENT_REQUEST_CODE"], "unknown"),
                     "caseCode": latest_document.get(COLUMNS["DOCUMENT_CASE_CODE"], "unknown"),
+                    "responsibleExecutor": latest_document.get(COLUMNS["RESPONSIBLE_EXECUTOR"], ""),
                     "document": latest_document.get(COLUMNS["DOCUMENT_TYPE"], "unknown"),
                     "department": latest_document.get(COLUMNS["DEPARTMENT_CATEGORY"], "unknown"),
                     "responseEssence": latest_document.get(COLUMNS["ESSENSE_OF_THE_ANSWER"], "unknown"),
-                    "monitoringStatus": status
+                    "monitoringStatus": monitoring_status,
+                    "completionStatus": completion_status
                 }]
 
             # Обработка всех групп документов
@@ -123,7 +138,8 @@ def analyze_documents(documents_df: pd.DataFrame) -> pd.DataFrame:
 
     except Exception as e:
         print(f"❌ Ошибка анализа документов: {e}")
-        return pd.DataFrame(columns=["requestCode", "caseCode", "document", "department", "monitoringStatus"])
+        return pd.DataFrame(columns=["transferCode", "requestCode", "caseCode", "responsibleExecutor",
+                                     "document", "department", "responseEssence", "monitoringStatus", "completionStatus"])
 
 
 def save_document_monitoring_status(df: pd.DataFrame, base_dir: str = "backend/app/data") -> str:

@@ -24,15 +24,16 @@ export function DocumentDetail() {
   const [relatedTasks, setRelatedTasks] = useState<Task[]>([]);
   const [tasksLoading, setTasksLoading] = useState(false);
 
-  const caseCode = searchParams.get('caseCode');
-  const documentType = searchParams.get('documentType');
-  const department = searchParams.get('department');
+  const transferCode = searchParams.get('transferCode');
 
   useEffect(() => {
-    if (caseCode && documentType && department) {
-      loadDocumentData(caseCode, documentType, department);
+    if (transferCode) {
+      loadDocumentData(transferCode);
+    } else {
+      setError('Код передачи не указан');
+      setLoading(false);
     }
-  }, [caseCode, documentType, department]);
+  }, [transferCode]);
 
   useEffect(() => {
     if (documentData) {
@@ -40,11 +41,11 @@ export function DocumentDetail() {
     }
   }, [documentData]);
 
-  // Функция загружает данные документа по указанным параметрам
-  const loadDocumentData = async (code: string, type: string, dept: string) => {
+  // Функция загружает данные документа по коду передачи
+  const loadDocumentData = async (code: string) => {
     try {
       setLoading(true);
-      const data = await CaseService.getDocumentDetails(code, type, dept);
+      const data = await CaseService.getDocumentDetails(code);
       
       if (data && data.success) {
         setDocumentData(data);
@@ -79,14 +80,12 @@ export function DocumentDetail() {
     );
   };
 
-  // Функция загружает задачи, связанные с текущим документом по трем параметрам
+  // Функция загружает задачи, связанные с текущим документом по transferCode
   const loadRelatedTasks = async () => {
     if (!documentData) return;
     
     const filters = {
-      documentType: documentData.documentType,
-      department: documentData.department,
-      caseCode: documentData.caseCode
+      transferCode: documentData.transferCode
     };
     
     try {
@@ -182,7 +181,6 @@ export function DocumentDetail() {
         label: 'Прочее',
         content: (
           <div>
-            {/* Поле поиска для группы "Прочее" - половина ширины */}
             <div className="relative mb-4 max-w-[50%]">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-tertiary h-4 w-4" />
               <input
@@ -200,14 +198,12 @@ export function DocumentDetail() {
               )}
             </div>
             
-            {/* Сообщение об отсутствии результатов */}
             {filteredOtherFields.length === 0 && (
               <div className="text-center text-text-secondary py-8">
                 Поля не найдены
               </div>
             )}
             
-            {/* Группа полей с отфильтрованными данными */}
             {filteredOtherFields.length > 0 && (
               <FieldGroup
                 fields={filteredOtherFields}
@@ -248,7 +244,6 @@ export function DocumentDetail() {
 
   return (
     <PageContainer>
-      {/* Кнопка назад */}
       <div className="flex items-center justify-between mb-6">
         <Button 
           variant="grayOutline"
@@ -265,21 +260,18 @@ export function DocumentDetail() {
         </div>
       </div>
 
-      {/* Заголовок документа */}
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-text-primary">
           Документ: {documentData.documentType}
         </h1>
       </div>
 
-      {/* Строка с кодом дела и подразделением */}
       <div className="mb-2">
         <p className="text-base text-text-primary">
           Код дела: {documentData.caseCode} • Подразделение: {documentData.department}
         </p>
       </div>
 
-      {/* Ответственный исполнитель */}
       {responsibleExecutor && (
         <div className="mb-6">
           <p className="text-base text-text-primary">
@@ -288,7 +280,6 @@ export function DocumentDetail() {
         </div>
       )}
 
-      {/* Вкладки с группами полей */}
       {tabs.length > 0 ? (
         <TabsContainer tabs={tabs} defaultTab={tabs[0]?.id || 'general'} />
       ) : (
@@ -297,7 +288,6 @@ export function DocumentDetail() {
         </div>
       )}
       
-      {/* Блок связанных задач */}
       <div className="mt-10">
         <h2 className="text-lg font-semibold text-text-primary mb-4">
           Связанные задачи

@@ -22,6 +22,12 @@ export function FieldGroup({ title, fields, columns = 2, showAlertIcon = false }
   const getDisplayValue = (field: Field): string => {
     if (field.isEmpty) return '—';
     
+    if (field.id === 'completionStatus' || field.label === 'Статус исполнения') {
+      if (field.value === true) return 'Выполнено';
+      if (field.value === false) return 'Не выполнено';
+      return '—';
+    }
+
     switch (field.type) {
       case 'boolean':
         return field.value === true ? 'Да' : 'Нет';

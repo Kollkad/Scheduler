@@ -1,4 +1,4 @@
-// services/case/caseService.ts
+// client/services/case/caseService.ts
 
 import { apiClient } from '@/services/api/client';
 import { API_ENDPOINTS } from '@/services/api/endpoints';
@@ -30,11 +30,10 @@ export interface CaseDetails {
 
 export interface DocumentDetails {
   success: boolean;
-  documentCode: string;
+  transferCode: string;
   caseCode: string;
   documentType: string;
   department: string;
-  data: Record<string, any>;
   fieldGroups: {
     general: CaseField[];
     dates: CaseField[];
@@ -60,15 +59,11 @@ export class CaseService {
     }
   }
 
-  // Метод получает детальную информацию о документе по коду дела, типу документа и подразделению
-  static async getDocumentDetails(
-    caseCode: string, 
-    documentType: string, 
-    department: string
-  ): Promise<DocumentDetails> {
+  // Метод получает детальную информацию о документе по коду передачи
+  static async getDocumentDetails(transferCode: string): Promise<DocumentDetails> {
     try {
       const response = await apiClient.get<DocumentDetails>(
-        `${API_ENDPOINTS.DOCUMENT_DETAILS}?case_code=${encodeURIComponent(caseCode)}&document_type=${encodeURIComponent(documentType)}&department=${encodeURIComponent(department)}`
+        `${API_ENDPOINTS.DOCUMENT_DETAILS}?transferCode=${encodeURIComponent(transferCode)}`
       );
       return response;
     } catch (error) {

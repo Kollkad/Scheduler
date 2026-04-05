@@ -1,15 +1,12 @@
-// src/components/FilteredCases.tsx
-
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { PageContainer } from "@/components/PageContainer";
 import { ReusableDataTable } from "@/components/tables/ReusableDataTable";
-import { mapBackendDataTerms, mapBackendDataDocuments } from "@/config/tableConfig";
-import { featureFlags } from '@/config/featureFlags';
+import { mapBackendDataTerms, mapBackendDataDocuments, getTableConfig } from "@/config/tableConfig";
 import { apiClient } from '@/services/api/client'; 
 import { API_ENDPOINTS } from '@/services/api/endpoints'; 
 import { useState, useEffect, useMemo } from 'react';
-import { lawsuitTermsConfig, orderTermsConfig, stageNameToLabel, documentsChecksToLabel } from '@/config/chartConfig';
+import { documentsChecksToLabel } from '@/config/chartConfig';
 import { rainbowChartConfig } from '@/config/chartConfig';
 import { Button } from "@/components/ui/button";
 import { useTableFiltersWithUrl } from "@/hooks/useTableFiltersWithUrl";
@@ -34,16 +31,16 @@ interface TermsCase {
   filingDate: string;
   courtReviewingCase: string;
   department?: string;
+  documentType?: string;
 }
 
 interface DocumentCase {
-  requestCode?: string;
+  transferCode: string;
+  responsibleExecutor: string;
   caseCode: string;
   documentType: string;
+  department: string;
   monitoringStatus: string;
-  receiptDate?: string;
-  transferDate?: string;
-  department?: string;
 }
 
 interface RainbowCasesResponse { success: boolean; cases: RainbowCase[]; message: string; }
@@ -155,7 +152,6 @@ export function FilteredCases() {
     const entries = Object.entries(additionalFilters);
     if (entries.length === 0) return '';
     
-    // Получение русских названий полей
     const getFieldLabel = (key: string): string => {
       const labels: Record<string, string> = {
         courtProtectionMethod: 'Способ судебной защиты',
@@ -182,14 +178,16 @@ export function FilteredCases() {
     }
     if (source === 'terms' && process && stage && status) {
       const processName = process === 'lawsuit' ? 'искового' : 'приказного';
-      const readableStage = stageNameToLabel[stage] || stage;
-
-      const config = process === 'lawsuit' ? lawsuitTermsConfig : orderTermsConfig;
-      let readableStatus = status;
-      for (const group of config) {
-        const statusItem = group.items.find(item => item.name === status);
-        if (statusItem) { readableStatus = statusItem.label; break; }
+      let readableStage = stage;
+      if (stage === 'documents_transferred') {
+        readableStage = 'Передача документов';
       }
+      
+      let readableStatus = status;
+      if (status === 'timely') readableStatus = 'В срок';
+      else if (status === 'overdue') readableStatus = 'Просрочено';
+      else if (status === 'no_data') readableStatus = 'Нет данных';
+      
       return `Дела ${processName} производства: ${readableStage} (${readableStatus})${getAdditionalFiltersString()}`;
     }
     if (source === 'documents') {
@@ -204,50 +202,35 @@ export function FilteredCases() {
     return "Фильтрованные дела";
   };
 
+  // Получение колонок из конфига
   const getTableColumns = () => {
+    // Rainbow
     if (source === 'rainbow') {
-      return [
-        { key: 'caseCode', title: 'Код дела', sortable: true },
-        { key: 'responsibleExecutor', title: 'Ответственный исполнитель', sortable: true },
-        { key: 'gosb', title: 'ГОСБ', sortable: true },
-        { key: 'currentPeriodColor', title: 'Цвет (тек. период)', sortable: true },
-        ...(featureFlags.hasPreviousReport ? [{ key: 'previousPeriodColor', title: 'Цвет (пред. период)', sortable: true }] : []),
-        { key: 'caseStatus', title: 'Статус дела', sortable: true },
-        { key: 'courtProtectionMethod', title: 'Способ судебной защиты', sortable: true },
-        { key: 'courtReviewingCase', title: 'Суд, рассматривающий дело', sortable: true }
-      ];
+      return getTableConfig('rainbow').columns;
     }
 
+    // Documents
     if (source === 'documents') {
-      return [
-        { key: 'requestCode', title: 'Код запроса', width: '150px', sortable: true },
-        { key: 'caseCode', title: 'Код дела', width: '150px', sortable: true },
-        { key: 'documentType', title: 'Тип документа', width: '180px', sortable: true },
-        { key: 'department', title: 'Подразделение', width: '180px', sortable: true },
-        { key: 'responseEssence', title: 'Суть ответа', width: '250px', sortable: true },
-        { key: 'monitoringStatus', title: 'Статус мониторинга', width: '150px', sortable: true }
-      ];
+      return getTableConfig('stageCases', 'documents').columns;
     }
 
-    let baseColumns = [
-      { key: 'caseCode', title: 'Код дела', sortable: true },
-      { key: 'responsibleExecutor', title: 'Ответственный исполнитель', sortable: true },
-      { key: 'courtProtectionMethod', title: 'Способ судебной защиты', sortable: true },
-      { key: 'caseStatus', title: 'Статус дела', sortable: true },
-      { key: 'courtReviewingCase', title: 'Суд, рассматривающий дело', sortable: true }
-    ];
-
-    if (stage === 'documents_transferred') {
-      baseColumns.push(
-        { key: 'department', title: 'Категория подразделения', sortable: true },
-        { key: 'documentType', title: 'Документ', sortable: true },
-        { key: 'receiptDate', title: 'Дата поступления документа', sortable: true },
-        { key: 'transferDate', title: 'Дата передачи документа', sortable: true }
-      );
-    } else {
-      baseColumns.push({ key: 'filingDate', title: 'Дата подачи иска/заявления', sortable: true });
+    // Terms (lawsuit / order)
+    if (source === 'terms') {
+      const baseColumns = [...getTableConfig('stageCases', 'lawsuit').columns];
+      
+      // Для documents_transferred добавляем documentType и department
+      if (stage === 'documents_transferred') {
+        return [
+          ...baseColumns,
+          { key: 'documentType', title: 'Тип документа', sortable: true },
+          { key: 'department', title: 'Категория подразделения', sortable: true }
+        ];
+      }
+      
+      return baseColumns;
     }
-    return baseColumns;
+
+    return [];
   };
   
   if (loading) return (
@@ -294,8 +277,8 @@ export function FilteredCases() {
         filterConfig={filterConfig}
         onFilterChange={onFilterChange}
         onRowClick={(row) => {
-          if (source === 'documents' && row.caseCode && row.documentType && row.department) {
-            navigate(`/document?caseCode=${encodeURIComponent(row.caseCode)}&documentType=${encodeURIComponent(row.documentType)}&department=${encodeURIComponent(row.department)}`);
+          if (source === 'documents' && row.transferCode) {
+            navigate(`/document?transferCode=${encodeURIComponent(row.transferCode)}`);
           }
           else if (row.caseCode) {
             navigate(`/case/${row.caseCode}`);
