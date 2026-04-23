@@ -23,6 +23,11 @@ const BASE_SEGMENTS: ChartItemConfig[] = [
   { name: "upcoming_deadline", label: "Дело будет просрочено", color: "#FFA73B" },
   { name: "no_data", label: "Нет данных", color: "#8e8e8e" }
 ];
+export const DEFAULT_SEGMENTS: ChartItemConfig[] = [
+  { name: "timely", label: "В срок", color: "#41A457" },
+  { name: "overdue", label: "Просрочено", color: "#FF5e3e" },
+  { name: "no_data", label: "Нет данных", color: "#8e8e8e" }
+];
 
 // Специальные сегменты для исключений (разные цвета)
 const EXCEPTIONS_SEGMENTS: ChartItemConfig[] = [
@@ -70,126 +75,52 @@ export const documentsChecksToLabel: Record<string, string> = {
   "courtOrder": "Судебный приказ"
 };
 
-// ================= ИСКОВОЕ ПРОИЗВОДСТВО V2 =================
-export const lawsuitTermsV2Config: ChartGroupConfig[] = [
-  {
-    title: "Исключения",
-    items: EXCEPTIONS_SEGMENTS
-  },
-  {
-    title: "1.1 Смена статуса подготовки (14кд)",
-    items: BASE_SEGMENTS
-  },
-  {
-    title: "2.1 Реакция суда (7рд)",
-    items: BASE_SEGMENTS
-  },
-  {
-    title: "3.1 Назначение заседания (3рд)",
-    items: BASE_SEGMENTS
-  },
-  {
-    title: "3.2 Интервал между заседаниями (2рд)",
-    items: BASE_SEGMENTS
-  },
-  {
-    title: "3.3 Рассмотрение дела (60кд)",
-    items: BASE_SEGMENTS
-  },
-  {
-    title: "4.1 Вынесение решения (45кд)",
-    items: BASE_SEGMENTS
-  },
-  {
-    title: "4.2 Получение решения (3кд)",
-    items: BASE_SEGMENTS
-  },
-  {
-    title: "4.3 Передача решения (1кд)",
-    items: BASE_SEGMENTS
-  },
-  {
-    title: "5.1 ИД получен (14кд)",
-    items: BASE_SEGMENTS
-  },
-  {
-    title: "6.1 Закрытие дела (125кд)",
-    items: BASE_SEGMENTS
-  }
+// ================= ИСКОВОЕ ПРОИЗВОДСТВО =================
+export const lawsuitTermsConfig: ChartGroupConfig[] = [
+  { title: "Исключения", items: EXCEPTIONS_SEGMENTS },
+  { title: "1.1 Смена статуса подготовки (14кд)", items: BASE_SEGMENTS },
+  { title: "2.1 Реакция суда (7рд)", items: BASE_SEGMENTS },
+  { title: "3.1 Назначение заседания (3рд)", items: BASE_SEGMENTS },
+  { title: "3.2 Интервал между заседаниями (2рд)", items: BASE_SEGMENTS },
+  { title: "3.3 Рассмотрение дела (60кд)", items: BASE_SEGMENTS },
+  { title: "4.1 Вынесение решения (45кд)", items: BASE_SEGMENTS },
+  { title: "4.2 Получение решения (3кд)", items: BASE_SEGMENTS },
+  { title: "4.3 Передача решения (1кд)", items: BASE_SEGMENTS },
+  { title: "5.1 ИД получен (14кд)", items: BASE_SEGMENTS },
+  { title: "6.1 Закрытие дела (125кд)", items: BASE_SEGMENTS },
 ];
 
-// ================= ПРИКАЗНОЕ ПРОИЗВОДСТВО V2 =================
-export const orderTermsV2Config: ChartGroupConfig[] = [
-  {
-    title: "Исключения",
-    items: EXCEPTIONS_SEGMENTS
-  },
-  {
-    title: "1.1 Смена статуса подготовки (14кд)",
-    items: BASE_SEGMENTS
-  },
-  {
-    title: "2.1 Реакция суда (60кд)",
-    items: BASE_SEGMENTS
-  },
-  {
-    title: "3.1 ИД получен (14кд)",
-    items: BASE_SEGMENTS
-  },
-  {
-    title: "4.1 Закрытие дела (90кд)",
-    items: BASE_SEGMENTS
-  }
+// ================= ПРИКАЗНОЕ ПРОИЗВОДСТВО =================
+export const orderTermsConfig: ChartGroupConfig[] = [
+  { title: "Исключения", items: EXCEPTIONS_SEGMENTS },
+  { title: "1.1 Смена статуса подготовки (14кд)", items: BASE_SEGMENTS },
+  { title: "2.1 Реакция суда (60кд)", items: BASE_SEGMENTS },
+  { title: "3.1 ИД получен (14кд)", items: BASE_SEGMENTS },
+  { title: "4.1 Закрытие дела (90кд)", items: BASE_SEGMENTS },
 ];
 
+// Маппинг checkCode → русское название этапа для искового производства
 export const lawsuitChecksToLabel: Record<string, string> = {
-  "exceptionStatus": "Исключения",
-  "firstStatusChanged14days": "1.1 Смена статуса подготовки (14кд)",
-  "courtReaction7days": "2.1 Реакция суда (7рд)",
-  "nextHearing3days": "3.1 Назначение заседания (3рд)",
-  "hearingInterval2days": "3.2 Интервал между заседаниями (2рд)", 
-  "consideration60days": "3.3 Рассмотрение дела (60кд)",
-  "decision45days": "4.1 Вынесение решения (45кд)",
-  "decisionReceipt3days": "4.2 Получение решения (3кд)",
-  "decisionTransfer1day": "4.3 Передача решения (1кд)",
+  "exceptionsL": "Исключения",
+  "closedL": "6.1 Закрытие дела (125кд)",
   "executionDocumentReceivedL": "5.1 ИД получен (14кд)",
-  "closed125days": "6.1 Закрытие дела (125кд)"
+  "decisionDateL": "4.1 Вынесение решения (45кд)",
+  "decisionReceiptL": "4.2 Получение решения (3кд)",
+  "decisionTransferL": "4.3 Передача решения (1кд)",
+  "nextHearingPresentL": "3.1 Назначение заседания (3рд)",
+  "hearingIntervalL": "3.2 Интервал между заседаниями (2рд)",
+  "consideration60daysL": "3.3 Рассмотрение дела (60кд)",
+  "courtReactionL": "2.1 Реакция суда (7рд)",
+  "firstStatusChangedL": "1.1 Смена статуса подготовки (14кд)",
 };
+// Маппинг checkCode → русское название этапа для приказного производства
 export const orderChecksToLabel: Record<string, string> = {
-  "exceptionStatus": "Исключения",
-  "firstStatus14Days": "1.1 Смена статуса подготовки (14кд)",
-  "courtReaction60Days": "2.1 Реакция суда (60кд)", 
+  "exceptionsO": "Исключения",
+  "closedO": "4.1 Закрытие дела (90кд)",
   "executionDocumentReceivedO": "3.1 ИД получен (14кд)",
-  "closed90Days": "4.1 Закрытие дела (90кд)"
+  "courtReactionO": "2.1 Реакция суда (60кд)",
+  "firstStatusChangedO": "1.1 Смена статуса подготовки (14кд)",
 };
-
-// ================= МАППИНГ ДЛЯ СТАРОГО КОДА =================
-// Обновленный маппинг проверок (а не этапов) для обратной совместимости
-export const stageNameToLabel: Record<string, string> = {
-  // Исковое производство
-  "nextHearing3days": "3.1 Назначение заседания (3 рабочих дня)",
-  "hearingInterval2days": "3.2 Интервал между заседаниями (2 рабочих дня)", 
-  "consideration60days": "3.3 Рассмотрение дела (60 календарных дней)",
-  "decision45days": "4.1 Вынесение решения (45 календарных дней)",
-  "decisionReceipt3days": "4.2 Получение решения (3 календарных дня)",
-  "decisionTransfer1day": "4.3 Передача решения (1 календарный день)",
-  "courtReaction7days": "2.1 Реакция суда (7 рабочих дней)",
-  "firstStatusChanged14days": "1.1 Смена статуса подготовки (14 календарных дней)",
-  "closed125days": "6.1 Закрытие дела (125 календарных дней)",
-  "executionDocumentReceivedL": "5.1 ИД получен (14 календарных дней)",
-  
-  // Приказное производство
-  "exceptionStatus": "Исключения",
-  "closed90Days": "4.1 Закрытие дела (90 календарных дней)",
-  "executionDocumentReceivedO": "3.1 ИД получен (14 календарных дней)",
-  "courtReaction60Days": "2.1 Реакция суда (60 календарных дней)",
-  "firstStatus14Days": "1.1 Смена статуса подготовки (14 календарных дней)"
-};
-
-// Устаревшие конфиги (можно удалить после полного перехода на v2)
-export const stageNameToLabelV2: Record<string, string> = {};
-export const lawsuitTermsConfig: ChartGroupConfig[] = [];
-export const orderTermsConfig: ChartGroupConfig[] = [];
 
 // Вспомогательные функции
 export const getRussianLabel = (englishName: string, config: ChartItemConfig[]): string => {

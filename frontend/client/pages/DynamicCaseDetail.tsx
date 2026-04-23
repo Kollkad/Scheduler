@@ -292,10 +292,10 @@ export function DynamicCaseDetail() {
       </div>
 
       {/* Жизненная линия дела */}
-      {caseData.caseStage && (
+      {caseData.stageCode && (
         <div className="mb-8">
           <CaseLifecycleTimeline 
-            caseStage={caseData.caseStage} 
+            stageCode={caseData.stageCode} 
             productionType={getProductionType()}
           />
         </div>

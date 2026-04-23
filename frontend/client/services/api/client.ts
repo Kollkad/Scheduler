@@ -68,6 +68,35 @@ export class ApiClient {
     return await response.json();
   }
 
+
+  // Метод выполняет PATCH запрос
+  async patch<T>(endpoint: string, body?: any, options?: { params?: Record<string, string> }): Promise<T> {
+    let url = endpoint;
+    if (options?.params) {
+      const params = new URLSearchParams();
+      Object.entries(options.params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          params.append(key, value);
+        }
+      });
+      url += `?${params.toString()}`;
+    }
+
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  }
+
   // Метод для загрузки файлов
   async uploadFile(endpoint: string, formData: FormData): Promise<UploadResponse> {
     const response = await fetch(endpoint, {
@@ -163,10 +192,10 @@ export class ApiClient {
   }
 
   // ==================== ДРУГИЕ МЕТОДЫ ====================
-
+/*
   async getAllProcessedDataStatus(): Promise<StatusResponse> {
     return this.get<StatusResponse>(API_ENDPOINTS.SAVE_ALL_PROCESSED_DATA_STATUS);
-  }
+  }*/
 }
 
 export const apiClient = ApiClient.getInstance();

@@ -1,6 +1,6 @@
 # backend/app/common/config/task_mappings.py
 """
-Конфигурация задач для модуля управления задачами.
+Конфигурация задач для модуля управления задачами (v3).
 
 Содержит маппинг условий формирования задач для различных типов производств:
 - Исковое производство (lawsuit)
@@ -8,8 +8,8 @@
 - Документы (documents)
 
 Каждая задача содержит:
-- conditions: основные условия формирования [completion_status, monitoring_status]
-- failed_check_name: название проваленной проверки из terms_checks_config.py
+- conditions: условия формирования [completion_status, monitoring_status]
+- failed_check_name: код проверки из checks_config.py
 - task_text: текст задачи для отображения пользователю
 - reason_text: пояснение причины постановки задачи
 - source: источник данных для проверки
@@ -18,11 +18,10 @@ from backend.app.common.config.column_names import COLUMNS
 
 TASK_MAPPINGS = {
     "lawsuit": {
-        "closed": [
+        "closedL": [
             {
-                "index": 0,
                 "conditions": ["false", "overdue"],
-                "failed_check_name": "closed125days",
+                "failed_check_name": "closedL",
                 "task_text": "Обеспечить закрытие дела. Обновить 'Дата закрытия дела' в системе",
                 "reason_text": "Задача ставится если 'Дата закрытия дела' отсутствует и от 'Дата подачи иска/заявления' прошло более 125 календарных дней.",
                 "source": "detailed_report"
@@ -31,7 +30,6 @@ TASK_MAPPINGS = {
 
         "executionDocumentReceivedL": [
             {
-                "index": 0,
                 "conditions": ["false", "overdue"],
                 "failed_check_name": "executionDocumentReceivedL",
                 "task_text": "Обеспечить получение подтверждения исполнительного листа ПСИП",
@@ -42,32 +40,29 @@ TASK_MAPPINGS = {
             }
         ],
 
-        "decisionMade": [
+        "decisionMadeL": [
             {
-                "index": "special",
                 "special_conditions": {
                     "column": COLUMNS["CHARACTERISTICS_FINAL_COURT_ACT"],
                     "value": "Не в пользу Банка",
                     "columns": [COLUMNS["TAGS"]]
                 },
-                "failed_check_name": "decision45days",
+                "failed_check_name": "decisionDateL",
                 "task_text": "Принять решение об обжаловании",
                 "reason_text": "Задача ставится если заполнены теги дела и значение 'Характеристика финального судебного акта' равно 'Не в пользу Банка'",
                 "source": "detailed_report"
             },
             {
-                "index": 0,
                 "conditions": ["false", "overdue"],
-                "failed_check_name": "decisionReceipt3days",
+                "failed_check_name": "decisionReceiptL",
                 "task_text": "Отразить дату вступления в законную силу",
                 "reason_text": "Задача ставится если 'Дата вступления в законную силу решения суда' отсутствует и "
                                "от 'Дата вынесения решения суда' прошло более 45 календарных дней.",
                 "source": "detailed_report"
             },
             {
-                "index": 1,
                 "conditions": ["false", "overdue"],
-                "failed_check_name": "decisionTransfer1day",
+                "failed_check_name": "decisionTransferL",
                 "task_text": "Обеспечить передачу решения суда / судебного приказа / судебного акта",
                 "reason_text": "Задача ставится если 'Фактическая дата передачи ИД' отсутствует и "
                                "от 'Дата вынесения решения суда' прошло более 1 календарного дня.",
@@ -75,20 +70,18 @@ TASK_MAPPINGS = {
             }
         ],
 
-        "underConsideration": [
+        "underConsiderationL": [
             {
-                "index": 0,
                 "conditions": ["false", "overdue"],
-                "failed_check_name": "nextHearing3days",
+                "failed_check_name": "nextHearingPresentL",
                 "task_text": "Фиксировать реакцию суда(новая дата, 'решение вынесено')",
                 "reason_text": "Задача ставится если 'Дата ближайшего заседания суда' отсутствует и "
                                "от 'Дата вынесения определения суда' прошло более 3 рабочих дней.",
                 "source": "detailed_report"
             },
             {
-                "index": 1,
                 "conditions": ["false", "overdue"],
-                "failed_check_name": "hearingInterval2days",
+                "failed_check_name": "hearingIntervalL",
                 "task_text": "Фиксировать реакцию суда(новая дата, 'решение вынесено')",
                 "reason_text": "Задача ставится если интервал между 'Дата предыдущего заседания суда' и 'Дата ближайшего заседания суда' превышает 2 рабочих дня, "
                                "либо одна из дат отсутствует, "
@@ -100,31 +93,28 @@ TASK_MAPPINGS = {
                 }
             },
             {
-                "index": 2,
                 "conditions": ["false", "overdue"],
-                "failed_check_name": "consideration60days",
+                "failed_check_name": "consideration60daysL",
                 "task_text": "Обеспечить вынесение решения суда",
                 "reason_text": "Задача ставится если от 'Дата подачи иска/заявления' прошло более 60 календарных дней, а дело всё ещё в статусе 'На рассмотрении'.",
                 "source": "detailed_report"
             }
         ],
 
-        "courtReaction": [
+        "courtReactionL": [
             {
-                "index": 0,
                 "conditions": ["false", "overdue"],
-                "failed_check_name": "courtReaction7days",
+                "failed_check_name": "courtReactionL",
                 "task_text": "Отобразить реакцию суда",
                 "reason_text": "Задача ставится если 'Дата вынесения определения суда' отсутствует и от 'Дата подачи иска/заявления' прошло более 7 рабочих дней.",
                 "source": "detailed_report"
             }
         ],
 
-        "firstStatusChanged": [
+        "firstStatusChangedL": [
             {
-                "index": 0,
                 "conditions": ["false", "overdue"],
-                "failed_check_name": "firstStatusChanged14days",
+                "failed_check_name": "firstStatusChangedL",
                 "task_text": "Проверить подачу документов в суд",
                 "reason_text": "Задача ставится если от 'Дата подачи иска/заявления' прошло более 14 календарных дней, "
                                "а статус дела всё ещё 'Подготовка документов'.",
@@ -134,11 +124,10 @@ TASK_MAPPINGS = {
     },
 
     "order": {
-        "closed": [
+        "closedO": [
             {
-                "index": 0,
                 "conditions": ["false", "overdue"],
-                "failed_check_name": "closed90Days",
+                "failed_check_name": "closedO",
                 "task_text": "Обеспечить закрытие дела. Обновить данные 'Дата закрытия дела' в системе",
                 "reason_text": "Задача ставится если 'Дата закрытия дела' отсутствует и от 'Дата подачи иска/заявления' прошло более 90 календарных дней.",
                 "source": "detailed_report"
@@ -147,7 +136,6 @@ TASK_MAPPINGS = {
 
         "executionDocumentReceivedO": [
             {
-                "index": 0,
                 "conditions": ["false", "overdue"],
                 "failed_check_name": "executionDocumentReceivedO",
                 "task_text": "Обеспечить получение подтверждения исполнительного листа ПСИП",
@@ -155,7 +143,6 @@ TASK_MAPPINGS = {
                 "source": "detailed_report"
             },
             {
-                "index": "special",
                 "special_conditions": {
                     "status": "Условно закрыто",
                     "has_transfer_date": True
@@ -166,7 +153,6 @@ TASK_MAPPINGS = {
                 "source": "detailed_report"
             },
             {
-                "index": "special",
                 "special_conditions": {
                     "status": "Условно закрыто",
                     "has_transfer_date": False
@@ -178,11 +164,10 @@ TASK_MAPPINGS = {
             }
         ],
 
-        "courtReaction": [
+        "courtReactionO": [
             {
-                "index": 0,
                 "conditions": ["false", "overdue"],
-                "failed_check_name": "courtReaction60Days",
+                "failed_check_name": "courtReactionO",
                 "task_text": "Обеспечить получение СП",
                 "reason_text": "Задача ставится если от 'Дата подачи иска/заявления' прошло более 60 календарных дней, и при этом не выполнены все условия: "
                                "'Определение суда' не равно 'Судебный приказ', "
@@ -192,22 +177,20 @@ TASK_MAPPINGS = {
                 "source": "detailed_report"
             },
             {
-                "index": "special",
                 "special_conditions": {
                     "check_type": "court_order_delivery"
                 },
-                "failed_check_name": "courtReaction60Days",
+                "failed_check_name": "courtReactionO",
                 "task_text": "Убедиться в суде, что СП вынесен и направлен должнику в течение 15 дней",
                 "reason_text": "Задача ставится если дело приказного производства и требуется подтверждение, что судебный приказ вынесен и направлен должнику в течение 15 дней.",
                 "source": "detailed_report"
             }
         ],
 
-        "firstStatusChanged": [
+        "firstStatusChangedO": [
             {
-                "index": 0,
                 "conditions": ["false", "overdue"],
-                "failed_check_name": "firstStatus14Days",
+                "failed_check_name": "firstStatusChangedO",
                 "task_text": "Проверить подачу документов в суд",
                 "reason_text": "Задача ставится если от 'Дата подачи иска/заявления' прошло более 14 календарных дней, а статус дела всё ещё 'Подготовка документов'.",
                 "source": "detailed_report"
@@ -216,11 +199,10 @@ TASK_MAPPINGS = {
     },
 
     "documents": {
-        "executionDocument": [
+        "transferredDocumentD": [
             {
-                "index": 0,
                 "conditions": ["false", "overdue"],
-                "failed_check_name": "executionDocumentReceivedO",
+                "failed_check_name": "documentTransferConfirmationD",
                 "task_text": "Обеспечить подтверждение передачи документа",
                 "reason_text": "Задача ставится если от 'Дата запроса' до 'Дата передачи' (при отсутствии даты передачи: до дня проверки) прошло более 14 дней и в столбце 'Суть ответа' не стоит 'Передача подтверждена'",
                 "source": "documents_report"

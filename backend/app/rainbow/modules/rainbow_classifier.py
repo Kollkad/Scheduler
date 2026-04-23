@@ -2,318 +2,186 @@
 """
 Модуль классификатора для цветовой категоризации дел (радуга).
 
-Содержит класс RainbowClassifier для классификации дел по цветовым категориям
-на основе статусов, дат и других атрибутов. Используется для построения
-визуализации "радуги" - диаграммы распределения дел по цветовым категориям.
-
-Основные функции:
-- classify_cases: Классификация дел и подсчет статистики по цветам
-- print_rainbow_stats: Вывод статистики в консоль
-- add_color_column: Добавление цветовой колонки в DataFrame
-- _determine_case_color: Определение цвета для конкретного дела
+Содержит функции для добавления цветовой колонки в DataFrame дел
+на основе иерархических правил классификации.
 """
 
 import pandas as pd
-from typing import Dict, List
 from datetime import datetime, timedelta
+
 from backend.app.common.config.column_names import COLUMNS, VALUES
-from backend.app.common.modules.utils import safe_get_column
+from backend.app.common.modules.utils import safe_get_column_series
 
 
-class RainbowClassifier:
+def add_rainbow_color_column(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Классификатор для цветовой категоризации дел судебного производства.
+    Добавляет колонку с цветовой категорией в DataFrame дел.
 
-    Определяет цветовые категории для дел на основе их статусов, дат
-    и других характеристик для построения визуализации "радуги".
+    Применяет иерархические правила для определения цвета каждого дела.
+    Порядок правил важен: если дело подходит под несколько правил,
+    применяется первое подходящее.
+
+    Правила (в порядке приоритета):
+    1. ИК — запрос содержит "залог"
+    2. Серый — статус "Переоткрыто"
+    3. Зеленый — судебный акт в силе с датой передачи
+    4. Желтый — условно закрыто с датой передачи
+    5. Оранжевый — судебный акт в силе без даты передачи
+    6. Синий — приказное производство старше 90 дней
+    7. Красный — дата последнего запроса до 2025 года
+    8. Лиловый — исковое производство старше 120 дней
+    9. Белый — все остальные дела
+
+    Args:
+        df (pd.DataFrame): DataFrame с данными дел (detailed_report).
+
+    Returns:
+        pd.DataFrame: Копия DataFrame с добавленной колонкой COLUMNS["CURRENT_PERIOD_COLOR"].
     """
+    result_df = df.copy()
+    today = datetime.now().date()
+    today_timestamp = pd.Timestamp(today)
 
-    @staticmethod
-    def classify_cases(df: pd.DataFrame) -> List[int]:
-        """
-        Классифицирует дела по цветовым категориям и возвращает статистику.
+    # Инициализация колонки значением "Белый" по умолчанию
+    color_series = pd.Series("Белый", index=df.index, dtype=str)
 
-        Анализирует DataFrame с делами и распределяет их по 9 цветовым категориям
-        на основе статусов, типов дел и временных характеристик.
+    # Получение необходимых колонок
+    request_type = safe_get_column_series(df, COLUMNS["REQUEST_TYPE"])
+    case_status = safe_get_column_series(df, COLUMNS["CASE_STATUS"])
+    method_of_protection = safe_get_column_series(df, COLUMNS["METHOD_OF_PROTECTION"])
+    last_request_date = pd.to_datetime(
+        safe_get_column_series(df, COLUMNS["LAST_REQUEST_DATE"]),
+        errors='coerce'
+    )
+    actual_transfer_date = pd.to_datetime(
+        safe_get_column_series(df, COLUMNS["ACTUAL_TRANSFER_DATE"]),
+        errors='coerce'
+    )
+    next_hearing_date = pd.to_datetime(
+        safe_get_column_series(df, COLUMNS["NEXT_HEARING_DATE"]),
+        errors='coerce'
+    )
 
-        Args:
-            df (pd.DataFrame): DataFrame с данными дел для классификации
+    # Маска для уже классифицированных дел (чтобы соблюдать иерархию)
+    unclassified = pd.Series(True, index=df.index)
 
-        Returns:
-            List[int]: Список счетчиков дел по цветам в порядке:
-                     [ИК, Серый, Зеленый, Желтый, Оранжевый, Синий, Красный, Лиловый, Белый]
-        """
-        today = datetime.now().date()
-        counters = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+    # ===== Правило 1: ИК (Ипотечные кредиты) =====
+    ik_mask = unclassified & request_type.astype(str).str.lower().str.contains("залог", na=False)
+    color_series[ik_mask] = "ИК"
+    unclassified[ik_mask] = False
 
-        # Фильтрация данных с использованием safe_get_column
-        filtered_df = RainbowClassifier.get_rainbow_dataframe(df)
+    # ===== Правило 2: Серый (Переоткрыто) =====
+    gray_mask = unclassified & (case_status == VALUES["REOPENED"])
+    color_series[gray_mask] = "Серый"
+    unclassified[gray_mask] = False
 
-        # Использование единой функции определения цвета
-        color_order = ["ИК", "Серый", "Зеленый", "Желтый", "Оранжевый",
-                       "Синий", "Красный", "Лиловый", "Белый"]
-        counters = [0] * len(color_order)
-        color_index = {color: i for i, color in enumerate(color_order)}
+    # ===== Правило 3: Зеленый (Судебный акт в силе с передачей) =====
+    has_transfer = actual_transfer_date.notna()
+    court_act_mask = unclassified & (case_status == VALUES["COURT_ACT_IN_FORCE"]) & has_transfer
 
-        for _, row in filtered_df.iterrows():
-            color = RainbowClassifier._determine_case_color(row, today)
-            if color in color_index:
-                counters[color_index[color]] += 1
+    if court_act_mask.any():
+        # Случай с датой заседания: дата передачи > даты заседания
+        has_hearing = next_hearing_date.notna()
+        with_hearing = court_act_mask & has_hearing
+        if with_hearing.any():
+            transfer_after_hearing = actual_transfer_date > next_hearing_date
+            green_mask = with_hearing & transfer_after_hearing
+            color_series[green_mask] = "Зеленый"
+            unclassified[green_mask] = False
 
-        return counters
+        # Случай без даты заседания: достаточно наличия даты передачи
+        without_hearing = court_act_mask & ~has_hearing
+        if without_hearing.any():
+            color_series[without_hearing] = "Зеленый"
+            unclassified[without_hearing] = False
 
-    @staticmethod
-    def print_rainbow_stats(counters: List[int]):
-        """
-        Выводит статистику цветовой классификации в консоль.
+    # ===== Правило 4: Желтый (Условно закрыто с передачей) =====
+    yellow_mask = (
+        unclassified &
+        (case_status == VALUES["CONDITIONALLY_CLOSED"]) &
+        has_transfer
+    )
+    color_series[yellow_mask] = "Желтый"
+    unclassified[yellow_mask] = False
 
-        Форматирует и отображает количество дел по каждой цветовой категории
-        с понятными названиями и итоговой суммой.
+    # ===== Правило 5: Оранжевый (Судебный акт в силе без передачи) =====
+    orange_mask = (
+        unclassified &
+        (case_status == VALUES["COURT_ACT_IN_FORCE"]) &
+        ~has_transfer
+    )
+    color_series[orange_mask] = "Оранжевый"
+    unclassified[orange_mask] = False
 
-        Args:
-            counters (List[int]): Список счетчиков дел по цветам
-        """
-        # Названия цветовых категорий для отображения
-        names = [
-            "ИК (Ипотечные)",
-            "Серый (Переоткрыто)",
-            "Зеленый (Суд.акт + передача)",
-            "Желтый (Условно закрыто + передача)",
-            "Оранжевый (Суд.акт без передачи)",
-            "Синий (Приказное >90 дней)",
-            "Красный (До 2023 года)",
-            "Лиловый (Исковое >120 дней)",
-            "Иное"
-        ]
+    # ===== Правило 6: Синий (Приказное производство > 90 дней) =====
+    has_request_date = last_request_date.notna()
+    order_mask = (
+        unclassified &
+        (method_of_protection == VALUES["ORDER_PRODUCTION"]) &
+        has_request_date
+    )
+    if order_mask.any():
+        days_since_request = (today_timestamp - last_request_date).dt.days
+        blue_mask = order_mask & (days_since_request > 90)
+        color_series[blue_mask] = "Синий"
+        unclassified[blue_mask] = False
 
-        print("\nСтатистика по делам (только иск от банка + исковое производство):")
-        print("-------------------")
-        total = 0
-        # Вывод статистики по каждой категории
-        for i, count in enumerate(counters):
-            print(f"{names[i]}: {count}")
-            total += count
-        print("-------------------")
-        print(f"Всего: {total}\n")
+    # ===== Правило 7: Красный (Запрос до 2025 года) =====
+    red_mask = unclassified & has_request_date & (last_request_date.dt.year < 2025)
+    color_series[red_mask] = "Красный"
+    unclassified[red_mask] = False
 
-    @staticmethod
-    def _determine_case_color(row, today) -> str:
-        """
-       Определяет цветовую категорию для конкретного дела.
+    # ===== Правило 8: Лиловый (Исковое производство > 120 дней) =====
+    lawsuit_mask = (
+        unclassified &
+        (method_of_protection == VALUES["CLAIM_PROCEEDINGS"]) &
+        has_request_date
+    )
+    if lawsuit_mask.any():
+        days_since_request = (today_timestamp - last_request_date).dt.days
+        purple_mask = lawsuit_mask & (days_since_request > 120)
+        color_series[purple_mask] = "Лиловый"
+        unclassified[purple_mask] = False
 
-       Применяет иерархию правил для определения цвета дела на основе
-       его атрибутов и временных характеристик. Порядок правил важен.
+    # ===== Правило 9: Белый — все неклассифицированные (уже по умолчанию) =====
 
-       Args:
-           row: Строка данных дела
-           today (date): Текущая дата для временных расчетов
+    result_df[COLUMNS["CURRENT_PERIOD_COLOR"]] = color_series
+    return result_df
 
-       Returns:
-           str: Русское название цветовой категории
-        """
-        # Безопасное получение значений с fallback
-        request_type = safe_get_column(row, COLUMNS["REQUEST_TYPE"])
-        case_status = safe_get_column(row, COLUMNS["CASE_STATUS"], None)
-        method_of_protection = safe_get_column(row, COLUMNS["METHOD_OF_PROTECTION"], None)
-        actual_transfer_date = safe_get_column(row, COLUMNS["ACTUAL_TRANSFER_DATE"], None)
-        last_request_date = safe_get_column(row, COLUMNS["LAST_REQUEST_DATE"], None)
-        next_hearing_date = safe_get_column(row, COLUMNS["NEXT_HEARING_DATE"])
 
-        # Правило 1: Ипотечные кредиты - категория ИК
-        if request_type and "залог" in str(request_type).lower():
-            return "ИК"
+def get_rainbow_filtered_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Возвращает DataFrame, отфильтрованный по правилам радуги.
 
-        # Правило 2: Переоткрытые дела - категория Серый
-        if case_status == VALUES["REOPENED"]:
-            return "Серый"
+    Критерии фильтрации:
+    - Категория = CLAIM_FROM_BANK
+    - Статус дела НЕ входит в [CLOSED, ERROR_DUBLICATE, WITHDRAWN_BY_THE_INITIATOR]
 
-        # Правило 3: Судебный акт в силе с передачей - категория Зеленый
-        if (case_status == VALUES["COURT_ACT_IN_FORCE"] and
-                actual_transfer_date is not None):
-            try:
-                transfer_date = pd.to_datetime(actual_transfer_date).date()
+    Args:
+        df (pd.DataFrame): DataFrame с данными дел.
 
-                # Если есть дата заседания, проверяем AD15>X15
-                if next_hearing_date is not None:
-                    hearing_date = pd.to_datetime(next_hearing_date).date()
-                    if transfer_date > hearing_date:
-                        return "Зеленый"
-                else:
-                    # Если даты заседания нет, достаточно наличия даты передачи (AD15<>"")
-                    return "Зеленый"
-            except:
-                # Если преобразование не удалось, но дата передачи есть
-                if actual_transfer_date is not None:
-                    return "Зеленый"
+    Returns:
+        pd.DataFrame: Отфильтрованный DataFrame.
+    """
+    if df is None or df.empty:
+        return pd.DataFrame()
 
-        # Правило 4: Условно закрытые дела с передачей - категория Желтый
-        if (case_status == VALUES["CONDITIONALLY_CLOSED"] and
-                actual_transfer_date not in [None, "no_data"] and
-                not pd.isna(actual_transfer_date)):
-            return "Желтый"
+    category_col = COLUMNS["CATEGORY"]
+    status_col = COLUMNS["CASE_STATUS"]
 
-        # Правило 5: Судебный акт в силе без передачи - категория Оранжевый
-        if (case_status == VALUES["COURT_ACT_IN_FORCE"] and
-                (actual_transfer_date in [None, "no_data"] or pd.isna(actual_transfer_date))):
-            return "Оранжевый"
+    if category_col not in df.columns or status_col not in df.columns:
+        return pd.DataFrame()
 
-        # Правило 6: Приказное производство старше 90 дней - категория Синий
-        if (method_of_protection == VALUES["ORDER_PRODUCTION"] and
-                last_request_date not in [None, "no_data"] and
-                not pd.isna(last_request_date)):
-            try:
-                request_date = pd.to_datetime(last_request_date).date()
-                if (today - request_date) > timedelta(days=90):
-                    return "Синий"
-            except:
-                pass
+    excluded_statuses = [
+        VALUES["CLOSED"],
+        VALUES["ERROR_DUBLICATE"],
+        VALUES["WITHDRAWN_BY_THE_INITIATOR"]
+    ]
 
-        # Правило 7: Дела с запросами до 2023 года - категория Красный
-        if last_request_date is not None:
-            try:
-                request_date = pd.to_datetime(last_request_date).date()
-                if request_date.year < 2025:
-                    return "Красный"
-            except:
-                pass
+    mask = (
+        (df[category_col] == VALUES["CLAIM_FROM_BANK"]) &
+        (~df[status_col].isin(excluded_statuses))
+    )
 
-        # Правило 8: Исковое производство старше 120 дней - категория Лиловый
-        if (method_of_protection == VALUES["CLAIM_PROCEEDINGS"] and
-                last_request_date not in [None, "no_data"] and
-                not pd.isna(last_request_date)):
-            try:
-                request_date = pd.to_datetime(last_request_date).date()
-                if (today - request_date) > timedelta(days=120):
-                    return "Лиловый"
-            except:
-                pass
+    return df[mask].copy()
 
-        # Правило 9: Все остальные дела - категория Белый
-        return "Белый"
-
-    @staticmethod
-    def get_rainbow_dataframe(df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Возвращает DataFrame, отфильтрованный по правилам радуги:
-        - категория = 'CLAIM_FROM_BANK'
-        - case_status не закрыт, не дубликат, не withdrawn
-        """
-        if df is None or df.empty:
-            return pd.DataFrame()  # безопасно
-
-        return df[
-            (df[COLUMNS["CATEGORY"]] == VALUES["CLAIM_FROM_BANK"]) &
-            (~df[COLUMNS["CASE_STATUS"]].isin([
-                VALUES["CLOSED"],
-                VALUES["ERROR_DUBLICATE"],
-                VALUES["WITHDRAWN_BY_THE_INITIATOR"]
-            ]))
-        ]
-
-    @staticmethod
-    def create_derived_rainbow(df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Создаёт derived DataFrame с цветовой категорией для визуализации "радуги".
-        Для каждого дела рассчитывается цвет текущего периода и формируется
-        компактный DataFrame
-
-        Args:
-            df (pd.DataFrame): Очищенный детальный DataFrame
-
-        Returns:
-            pd.DataFrame: Derived DataFrame кодом дела и колонкой
-                          COLUMNS["CURRENT_PERIOD_COLOR"]
-        """
-        if df is None or df.empty:
-            return pd.DataFrame(columns=[
-                COLUMNS["CASE_CODE"],
-                COLUMNS["CURRENT_PERIOD_COLOR"]
-            ])
-
-        # Применение фильтрации
-        filtered_df = RainbowClassifier.get_rainbow_dataframe(df)
-        if filtered_df.empty:
-            return pd.DataFrame(columns=[
-                COLUMNS["CASE_CODE"],
-                COLUMNS["CURRENT_PERIOD_COLOR"]
-            ])
-
-        today = datetime.now().date()
-        rows = []
-
-        # Итерирация по отфильтрованным делам
-        for _, row in filtered_df.iterrows():
-            case_code = row.get(COLUMNS["CASE_CODE"])
-            color = RainbowClassifier._determine_case_color(row, today)
-
-            rows.append({
-                COLUMNS["CASE_CODE"]: case_code,
-                COLUMNS["CURRENT_PERIOD_COLOR"]: color
-            })
-
-        return pd.DataFrame(rows)
-
-    @staticmethod
-    def build_colored_cache(df: pd.DataFrame, derived: pd.DataFrame) -> pd.DataFrame:
-        """
-        Создаёт кэшированный DataFrame с цветовой информацией для детального отчета.
-
-        Args:
-            df (pd.DataFrame): Очищенный детальный DataFrame с исходными данными дел
-            derived (pd.DataFrame): Derived DataFrame с цветовой классификацией,
-                                   содержащий колонки CASE_CODE и CURRENT_PERIOD_COLOR
-
-        Returns:
-            pd.DataFrame: DataFrame с колонками:
-                         - caseCode: Код дела
-                         - responsibleExecutor: Ответственный исполнитель
-                         - gosb: ГОСБ
-                         - currentPeriodColor: Цветовая категория текущего периода
-                         - courtProtectionMethod: Метод судебной защиты
-                         - courtReviewingCase: Суд, рассматривающий дело
-                         - caseStatus: Статус дела
-                         - previousPeriodColor: Цветовая категория предыдущего периода
-
-        Raises:
-            ValueError: При передаче некорректных или пустых данных
-        """
-        if df is None or derived is None or derived.empty:
-            return pd.DataFrame()
-
-        filtered_df = RainbowClassifier.get_rainbow_dataframe(df)
-        if filtered_df.empty:
-            return pd.DataFrame()
-
-        # Создание словаря цветов выполняется для оптимизации поиска цвета по коду дела
-        color_dict = {}
-        color_column = COLUMNS["CURRENT_PERIOD_COLOR"]
-        case_code_column = COLUMNS["CASE_CODE"]
-
-        # Цикл перебирает строки derived DataFrame для построения словаря соответствия
-        for _, row in derived.iterrows():  # ← ИСПРАВЬ: derived, а не filtered_df
-            case_code = str(row.get(case_code_column, ""))
-            color = row.get(color_column)
-            if case_code:
-                color_dict[case_code] = color
-
-        cases_data = []
-
-        # Цикл перебирает строки очищенного DataFrame для формирования кэшированных данных
-        for _, row in filtered_df.iterrows():
-            case_code = str(row.get(case_code_column, ""))
-            color = color_dict.get(case_code)
-
-            case_data = {
-                "caseCode": case_code,
-                "responsibleExecutor": row.get(COLUMNS.get("RESPONSIBLE_EXECUTOR")),
-                "gosb": row.get(COLUMNS.get("GOSB")),
-                "currentPeriodColor": color,
-                "courtProtectionMethod": row.get(COLUMNS.get("METHOD_OF_PROTECTION")),
-                "courtReviewingCase": row.get(COLUMNS.get("COURT")),
-                "caseStatus": row.get(COLUMNS.get("CASE_STATUS")),
-                "previousPeriodColor": "Не доступно"
-            }
-
-            cases_data.append(case_data)
-
-        return pd.DataFrame(cases_data)

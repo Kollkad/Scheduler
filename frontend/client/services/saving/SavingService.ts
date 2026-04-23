@@ -1,16 +1,31 @@
-//client\services\saving\SavingService.ts
+// client/services/saving/SavingService.ts
 import { apiClient } from '../api/client';
-import { StatusResponse } from '../api/types';
+import { API_ENDPOINTS } from '../api/endpoints';
 
-// Типы данных, доступные для сохранения в системе
 export type SaveDataType = 
   | 'detailed-report'
-  | 'documents-report' 
-  | 'terms-productions'
-  | 'documents-analysis'
+  | 'documents-report'
+  | 'stages'
+  | 'checks'
+  | 'check-results-cases'
+  | 'check-results-documents'
   | 'tasks'
-  | 'rainbow-analysis'
-  | 'all-analysis';
+  | 'user-overrides';
+
+export interface DataStatus {
+  loaded: boolean;
+  row_count: number;
+}
+
+export interface AvailableDataStatus {
+  detailed_report: DataStatus;
+  documents_report: DataStatus;
+  stages: DataStatus;
+  checks: DataStatus;
+  check_results: DataStatus;
+  tasks: DataStatus;
+  user_overrides: DataStatus;
+}
 
 export class SavingService {
   private static instance: SavingService;
@@ -22,19 +37,29 @@ export class SavingService {
     return SavingService.instance;
   }
 
-  // Метод сохраняет данные указанного типа и возвращает blob с результатом
+  // Сохранение данных указанного типа
   async saveData(type: SaveDataType): Promise<Blob> {
-    return await apiClient.downloadFile(`/api/save/${type}`);
+    const endpointMap: Record<SaveDataType, string> = {
+      'detailed-report': API_ENDPOINTS.SAVE_DETAILED_REPORT,
+      'documents-report': API_ENDPOINTS.SAVE_DOCUMENTS_REPORT,
+      'stages': API_ENDPOINTS.SAVE_STAGES,
+      'checks': API_ENDPOINTS.SAVE_CHECKS,
+      'check-results-cases': API_ENDPOINTS.SAVE_CHECK_RESULTS_CASES,
+      'check-results-documents': API_ENDPOINTS.SAVE_CHECK_RESULTS_DOCUMENTS,
+      'tasks': API_ENDPOINTS.SAVE_TASKS,
+      'user-overrides': API_ENDPOINTS.SAVE_USER_OVERRIDES,
+    };
+    return await apiClient.downloadFile(endpointMap[type]);
   }
 
-  // Метод получает статус доступных данных для сохранения
-  async getAvailableDataStatus() {
-    return await apiClient.get('/api/save/available-data');
+  // Сохранение задач по исполнителю
+  async saveTasksByExecutor(executor: string): Promise<Blob> {
+    return await apiClient.downloadFile(API_ENDPOINTS.SAVE_TASKS_BY_EXECUTOR, { executor });
   }
 
-  // Метод получает статус всех обработанных данных в системе
-  async getAllProcessedDataStatus(): Promise<StatusResponse> {
-    return await apiClient.get<StatusResponse>('/api/save/all-processed-data');
+  // Получение статуса доступных данных для сохранения
+  async getAvailableDataStatus(): Promise<{ success: boolean; status: AvailableDataStatus }> {
+    return await apiClient.get(API_ENDPOINTS.SAVE_AVAILABLE_DATA_STATUS);
   }
 }
 

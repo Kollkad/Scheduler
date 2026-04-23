@@ -1,32 +1,46 @@
 # backend/app/saving_results/routes/saving.py
 """
-Модуль маршрутов FastAPI для сохранения обработанных данных в Excel файлы.
+Модуль маршрутов FastAPI для сохранения обработанных данных в Excel файлы (v3).
 
 Предоставляет эндпоинты для экспорта различных типов отчетов:
-- Очищенные исходные данные
-- Результаты анализа производств
-- Цветовую классификацию (радугу)
-- Рассчитанные задачи
-- Комплексные архивы всех данных
+- Исходные данные (детальный отчет, отчет документов)
+- Конфигурационные данные (этапы, проверки)
+- Результаты проверок (дела, документы)
+- Задачи и пользовательские переопределения
 """
-import urllib
+
+import tempfile
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query, Depends
 from fastapi.responses import FileResponse
 import pandas as pd
-import tempfile
-import logging
 
-from backend.app.common.config.column_names import COLUMNS
-from backend.app.data_management.modules.data_manager import data_manager
+from backend.app.data_management.modules.normalized_data_manager import normalized_manager
 from backend.app.saving_results.modules.saving_results_settings import (
     generate_filename,
     save_with_xlsxwriter_formatting,
-    rename_columns_to_russian, add_source_columns_to_tasks
+    DETAILED_AND_DOCUMENTS_RENAME_MAP,
+    STAGES_RENAME_MAP,
+    CHECKS_RENAME_MAP,
+    CHECK_RESULTS_RENAME_MAP,
+    TASKS_RENAME_MAP,
+    TASKS_EXTRA_RENAME_MAP,
+    USER_OVERRIDES_RENAME_MAP,
+    format_monitoring_status,
+    format_completion_status,
+    format_is_completed,
+    format_is_active,
+    format_stage_code,
+    enrich_tasks_for_export,
 )
+from backend.app.administration_settings.modules.authorization_logic import get_current_user
+from backend.app.administration_settings.modules.user_models import UserSession
 
 router = APIRouter(prefix="/api/save", tags=["saving"])
+
+
+# ==================== СТАТУС ДАННЫХ ====================
 
 @router.get("/available-data")
 async def get_available_data_status():
@@ -34,92 +48,57 @@ async def get_available_data_status():
     Получение статуса доступных данных для экспорта.
 
     Returns:
-        dict: Статус загрузки основных отчетов
+        dict: Статус загрузки всех типов данных
     """
     try:
-        detailed_data = data_manager.get_detailed_data()
-        documents_data = data_manager.get_documents_data()
+        detailed_df = normalized_manager.get_cases_data()
+        documents_df = normalized_manager.get_documents_data()
+        check_results_df = normalized_manager.get_check_results_data()
+        tasks_df = normalized_manager.get_tasks_data()
+        overrides_df = normalized_manager.get_user_overrides_data()
 
         status = {
             "detailed_report": {
-                "loaded": detailed_data is not None,
-                "row_count": len(detailed_data) if detailed_data is not None else 0,
+                "loaded": not detailed_df.empty,
+                "row_count": len(detailed_df) if not detailed_df.empty else 0,
             },
             "documents_report": {
-                "loaded": documents_data is not None,
-                "row_count": len(documents_data) if documents_data is not None else 0,
-            }
-        }
-
-        return {
-            "success": True,
-            "status": status,
-            "message": "Статус данных получен"
-        }
-
-    except Exception as e:
-        print(f"❌ Ошибка получения статуса: {e}")
-        raise HTTPException(status_code=500, detail=f"Ошибка получения статуса: {str(e)}")
-
-@router.get("/all-processed-data")
-async def get_all_processed_data_status():
-    """
-    Получение комплексного статуса всех обработанных данных.
-
-    Returns:
-        dict: Статус всех типов данных системы
-    """
-    try:
-        detailed_data = data_manager.get_detailed_data()
-        documents_data = data_manager.get_documents_data()
-        lawsuit_data = data_manager.get_processed_data("lawsuit_staged")
-        order_data = data_manager.get_processed_data("order_staged")
-        documents_analysis_data = data_manager.get_processed_data("documents_processed")
-        tasks_data = data_manager.get_processed_data("tasks")
-
-        # Объединение данных производств для статуса
-        terms_productions_data = pd.concat(
-            [df for df in [lawsuit_data, order_data] if df is not None and not df.empty],
-            ignore_index=True
-        ) if (lawsuit_data is not None or order_data is not None) else None
-
-        status = {
-            "detailed_report": {
-                "loaded": detailed_data is not None,
-                "row_count": len(detailed_data) if detailed_data is not None else 0,
+                "loaded": not documents_df.empty,
+                "row_count": len(documents_df) if not documents_df.empty else 0,
             },
-            "documents_report": {
-                "loaded": documents_data is not None,
-                "row_count": len(documents_data) if documents_data is not None else 0,
+            "stages": {
+                "loaded": True,
+                "row_count": len(normalized_manager.get_stages_data()),
             },
-            "terms_productions": {
-                "loaded": terms_productions_data is not None and not terms_productions_data.empty,
-                "row_count": len(terms_productions_data) if terms_productions_data is not None else 0,
+            "checks": {
+                "loaded": True,
+                "row_count": len(normalized_manager.get_checks_data()),
             },
-            "documents_analysis": {
-                "loaded": documents_analysis_data is not None,
-                "row_count": len(documents_analysis_data) if documents_analysis_data is not None else 0,
+            "check_results": {
+                "loaded": not check_results_df.empty,
+                "row_count": len(check_results_df) if not check_results_df.empty else 0,
             },
             "tasks": {
-                "loaded": tasks_data is not None,
-                "row_count": len(tasks_data) if tasks_data is not None else 0,
-            }
+                "loaded": not tasks_df.empty,
+                "row_count": len(tasks_df) if not tasks_df.empty else 0,
+            },
+            "user_overrides": {
+                "loaded": not overrides_df.empty,
+                "row_count": len(overrides_df) if not overrides_df.empty else 0,
+            },
         }
 
-        return {
-            "success": True,
-            "status": status,
-            "message": "Статус всех данных получен"
-        }
-
+        return {"success": True, "status": status}
     except Exception as e:
-        print(f"❌ Ошибка получения статуса всех данных: {e}")
-        raise HTTPException(status_code=500, detail=f"Ошибка получения статуса: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== ИСХОДНЫЕ ДАННЫЕ ====================
 
 @router.get("/detailed-report")
 async def save_detailed_report():
     """
-    Сохранение очищенного детального отчета с профессиональным форматированием.
+    Сохранение детального отчета с переименованием колонок и форматированием.
 
     Returns:
         FileResponse: Excel файл с детальным отчетом
@@ -129,18 +108,27 @@ async def save_detailed_report():
         HTTPException: 500 при ошибках сохранения
     """
     try:
-        detailed_data = data_manager.get_detailed_data()
+        df = normalized_manager.get_cases_data()
 
-        if detailed_data is None or detailed_data.empty:
+        if df is None or df.empty:
             raise HTTPException(status_code=400, detail="Детальный отчет не загружен")
 
-        print(f"💾 Сохраняем детальный отчет: {len(detailed_data)} строк, {len(detailed_data.columns)} колонок")
+        print(f"💾 Сохраняем детальный отчет: {len(df)} строк, {len(df.columns)} колонок")
+
+        # Замена значений stageCode на stageName (до переименования колонки)
+        stages_df = normalized_manager.get_stages_data()
+        if "stageCode" in df.columns:
+            df["stageCode"] = df["stageCode"].apply(
+                lambda x: format_stage_code(x, stages_df)
+            )
+
+        # Переименование колонок
+        df = df.rename(columns=DETAILED_AND_DOCUMENTS_RENAME_MAP)
 
         with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
             filepath = tmp_file.name
 
-        # Сохранение с форматированием через xlsxwriter
-        save_with_xlsxwriter_formatting(detailed_data, filepath, 'Детальный отчет')
+        save_with_xlsxwriter_formatting(df, filepath, 'Детальный отчет')
 
         download_filename = generate_filename("detailed_report")
 
@@ -150,6 +138,8 @@ async def save_detailed_report():
             media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"❌ Ошибка сохранения детального отчета: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка сохранения: {str(e)}")
@@ -158,7 +148,7 @@ async def save_detailed_report():
 @router.get("/documents-report")
 async def save_documents_report():
     """
-    Сохранение очищенного отчета документов с профессиональным форматированием.
+    Сохранение отчета документов с переименованием колонок и форматированием.
 
     Returns:
         FileResponse: Excel файл с отчетом документов
@@ -168,18 +158,27 @@ async def save_documents_report():
         HTTPException: 500 при ошибках сохранения
     """
     try:
-        documents_data = data_manager.get_documents_data()
+        df = normalized_manager.get_documents_data()
 
-        if documents_data is None or documents_data.empty:
+        if df is None or df.empty:
             raise HTTPException(status_code=400, detail="Отчет документов не загружен")
 
-        print(f"💾 Сохраняем отчет документов: {len(documents_data)} строк, {len(documents_data.columns)} колонок")
+        print(f"💾 Сохраняем отчет документов: {len(df)} строк, {len(df.columns)} колонок")
+
+        # Замена значений stageCode на stageName (до переименования колонки)
+        stages_df = normalized_manager.get_stages_data()
+        if "stageCode" in df.columns:
+            df["stageCode"] = df["stageCode"].apply(
+                lambda x: format_stage_code(x, stages_df)
+            )
+
+        # Переименование колонок
+        df = df.rename(columns=DETAILED_AND_DOCUMENTS_RENAME_MAP)
 
         with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
             filepath = tmp_file.name
 
-        # Сохранение с форматированием через xlsxwriter
-        save_with_xlsxwriter_formatting(documents_data, filepath, 'Документы')
+        save_with_xlsxwriter_formatting(df, filepath, 'Документы')
 
         download_filename = generate_filename("documents_report")
 
@@ -189,40 +188,44 @@ async def save_documents_report():
             media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"❌ Ошибка сохранения отчета документов: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка сохранения: {str(e)}")
 
 
-@router.get("/documents-analysis")
-async def save_documents_analysis():
+# ==================== КОНФИГУРАЦИОННЫЕ ДАННЫЕ ====================
+
+@router.get("/stages")
+async def save_stages():
     """
-    Сохранение результатов анализа документов с форматированием
+    Сохранение сводки этапов с переименованием колонок и форматированием.
 
     Returns:
-        FileResponse: Excel файл с анализом документов
+        FileResponse: Excel файл с этапами
 
     Raises:
-        HTTPException: 400 если данные не найдены
+        HTTPException: 400 если данные не загружены
         HTTPException: 500 при ошибках сохранения
     """
     try:
-        # Получаем обработанные данные документов
-        documents_data = data_manager.get_processed_data("documents_processed")
+        df = normalized_manager.get_stages_data()
 
-        if documents_data is None or documents_data.empty:
-            raise HTTPException(status_code=400, detail="Данные анализа документов не найдены")
+        if df is None or df.empty:
+            raise HTTPException(status_code=400, detail="Данные этапов не загружены")
 
-        print(f"💾 Сохраняем анализ документов: {len(documents_data)} строк, {len(documents_data.columns)} колонок")
+        print(f"💾 Сохраняем этапы: {len(df)} строк, {len(df.columns)} колонок")
 
-        # Создание временного файла Excel
+        # Переименование колонок
+        df = df.rename(columns=STAGES_RENAME_MAP)
+
         with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
             filepath = tmp_file.name
 
-        # Сохранение с форматированием через xlsxwriter
-        save_with_xlsxwriter_formatting(documents_data, filepath, 'Анализ документов', data_type="documents")
+        save_with_xlsxwriter_formatting(df, filepath, 'Этапы')
 
-        download_filename = generate_filename("documents_analysis")
+        download_filename = generate_filename("stages")
 
         return FileResponse(
             path=filepath,
@@ -230,71 +233,233 @@ async def save_documents_analysis():
             media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"❌ Ошибка сохранения анализа документов: {e}")
+        print(f"❌ Ошибка сохранения этапов: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка сохранения: {str(e)}")
+
+
+@router.get("/checks")
+async def save_checks():
+    """
+    Сохранение сводки проверок с переименованием колонок и форматированием.
+
+    Returns:
+        FileResponse: Excel файл с проверками
+
+    Raises:
+        HTTPException: 400 если данные не загружены
+        HTTPException: 500 при ошибках сохранения
+    """
+    try:
+        df = normalized_manager.get_checks_data()
+
+        if df is None or df.empty:
+            raise HTTPException(status_code=400, detail="Данные проверок не загружены")
+
+        print(f"💾 Сохраняем проверки: {len(df)} строк, {len(df.columns)} колонок")
+
+        # Переименование колонок и замена isActive
+        df = df.rename(columns=CHECKS_RENAME_MAP)
+        if "isActive" in df.columns:
+            df["isActive"] = df["isActive"].apply(format_is_active)
+
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
+            filepath = tmp_file.name
+
+        save_with_xlsxwriter_formatting(df, filepath, 'Проверки')
+
+        download_filename = generate_filename("checks")
+
+        return FileResponse(
+            path=filepath,
+            filename=download_filename,
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Ошибка сохранения проверок: {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка сохранения: {str(e)}")
+
+
+# ==================== РЕЗУЛЬТАТЫ ПРОВЕРОК ====================
+
+def _prepare_check_results_for_save(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Применяет переименование колонок и замену значений для результатов проверок.
+    """
+    df = df.rename(columns=CHECK_RESULTS_RENAME_MAP)
+    if "monitoringStatus" in df.columns:
+        df["monitoringStatus"] = df["monitoringStatus"].apply(format_monitoring_status)
+    if "completionStatus" in df.columns:
+        df["completionStatus"] = df["completionStatus"].apply(format_completion_status)
+    return df
+
+
+@router.get("/check-results/cases")
+async def save_check_results_cases():
+    """
+    Сохранение результатов проверок для дел (исковое + приказное).
+
+    Returns:
+        FileResponse: Excel файл с результатами проверок дел
+
+    Raises:
+        HTTPException: 400 если данные не найдены
+        HTTPException: 500 при ошибках сохранения
+    """
+    try:
+        df = normalized_manager.get_check_results_data()
+
+        if df is None or df.empty:
+            raise HTTPException(status_code=400, detail="Результаты проверок не найдены")
+
+        # Фильтрация по суффиксам L и O
+        df = df[
+            df["checkCode"].str.endswith("L", na=False) |
+            df["checkCode"].str.endswith("O", na=False)
+        ]
+
+        if df.empty:
+            raise HTTPException(status_code=400, detail="Результаты проверок для дел не найдены")
+
+        print(f"💾 Сохраняем результаты проверок дел: {len(df)} строк")
+
+        # Переименование и форматирование
+        df = _prepare_check_results_for_save(df)
+
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
+            filepath = tmp_file.name
+
+        save_with_xlsxwriter_formatting(df, filepath, 'Проверки дел')
+
+        download_filename = generate_filename("check_results_cases")
+
+        return FileResponse(
+            path=filepath,
+            filename=download_filename,
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Ошибка сохранения результатов проверок дел: {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка сохранения: {str(e)}")
+
+
+@router.get("/check-results/documents")
+async def save_check_results_documents():
+    """
+    Сохранение результатов проверок для документов.
+
+    Returns:
+        FileResponse: Excel файл с результатами проверок документов
+
+    Raises:
+        HTTPException: 400 если данные не найдены
+        HTTPException: 500 при ошибках сохранения
+    """
+    try:
+        df = normalized_manager.get_check_results_data()
+
+        if df is None or df.empty:
+            raise HTTPException(status_code=400, detail="Результаты проверок не найдены")
+
+        # Фильтрация по суффиксу D
+        df = df[df["checkCode"].str.endswith("D", na=False)]
+
+        if df.empty:
+            raise HTTPException(status_code=400, detail="Результаты проверок для документов не найдены")
+
+        print(f"💾 Сохраняем результаты проверок документов: {len(df)} строк")
+
+        # Переименование и форматирование
+        df = _prepare_check_results_for_save(df)
+
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
+            filepath = tmp_file.name
+
+        save_with_xlsxwriter_formatting(df, filepath, 'Проверки документов')
+
+        download_filename = generate_filename("check_results_documents")
+
+        return FileResponse(
+            path=filepath,
+            filename=download_filename,
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Ошибка сохранения результатов проверок документов: {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка сохранения: {str(e)}")
+
+
+# ==================== ЗАДАЧИ ====================
+
+def _prepare_tasks_for_save(tasks_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Обогащает задачи дополнительными колонками, переименовывает и форматирует.
+    """
+    # Обогащение
+    tasks_df = enrich_tasks_for_export(
+        tasks_df=tasks_df,
+        check_results_df=normalized_manager.get_check_results_data(),
+        checks_df=normalized_manager.get_checks_data(),
+        stages_df=normalized_manager.get_stages_data(),
+        cases_df=normalized_manager.get_cases_data(),
+    )
+
+    # Переименование основных колонок
+    tasks_df = tasks_df.rename(columns=TASKS_RENAME_MAP)
+
+    # Переименование дополнительных колонок
+    tasks_df = tasks_df.rename(columns=TASKS_EXTRA_RENAME_MAP)
+
+    # Замена значений
+    if "monitoringStatus" in tasks_df.columns:
+        tasks_df["monitoringStatus"] = tasks_df["monitoringStatus"].apply(format_monitoring_status)
+    if "completionStatus" in tasks_df.columns:
+        tasks_df["completionStatus"] = tasks_df["completionStatus"].apply(format_completion_status)
+    if "isCompleted" in tasks_df.columns:
+        tasks_df["isCompleted"] = tasks_df["isCompleted"].apply(format_is_completed)
+
+    return tasks_df
 
 
 @router.get("/tasks")
 async def save_tasks():
     """
-    Сохранение рассчитанных задач по срокам обработки дел.
-
-    Выполняет дополнительное обогащение данных задач информацией из исходных отчетов
-    перед сохранением в Excel файл с профессиональным форматированием.
+    Сохранение итогового списка задач с обогащением и форматированием.
 
     Returns:
-        FileResponse: Excel файл с задачами, обогащенный дополнительными колонками
+        FileResponse: Excel файл с задачами
 
     Raises:
-        HTTPException: 400 если данные задач не найдены
-        HTTPException: 500 при ошибках сохранения или обогащения данных
-
-    Note:
-        Обогащение включает добавление колонок из исходных отчетов:
-        - Для детальных задач: REQUEST_TYPE, COURT, BORROWER, CASE_NAME
-        - Для документных задач: REQUEST_TYPE, COURT_NAME, BORROWER, CASE_NAME
-        Отсутствие некоторых колонок в исходных данных не вызывает ошибок
+        HTTPException: 400 если данные не найдены
+        HTTPException: 500 при ошибках сохранения
     """
     try:
-        # Получение рассчитанных задач из менеджера данных
-        tasks_data = data_manager.get_processed_data("tasks")
+        df = normalized_manager.get_tasks_data()
 
-        if tasks_data is None or tasks_data.empty:
-            raise HTTPException(status_code=400, detail="Данные задач не найдены")
+        if df is None or df.empty:
+            raise HTTPException(status_code=400, detail="Задачи не найдены")
 
-        print(f"💾 Начинаем сохранение задач: {len(tasks_data)} строк, {len(tasks_data.columns)} колонок")
+        print(f"💾 Сохраняем задачи: {len(df)} строк")
 
-        # Получение исходных данных для обогащения задач
-        detailed_cleaned = data_manager.get_detailed_data()
-        documents_cleaned = data_manager.get_documents_data()
+        # Обогащение, переименование, форматирование
+        df = _prepare_tasks_for_save(df)
 
-        # Обновление колонок задач дополнительными колонками из исходных отчетов
-        if detailed_cleaned is not None or documents_cleaned is not None:
-            try:
-                tasks_data = add_source_columns_to_tasks(
-                    tasks_data,
-                    detailed_cleaned,
-                    documents_cleaned
-                )
-            except Exception as enrich_error:
-                # Продолжаем сохранение даже при ошибке обогащения
-                print(f"⚠️ Ошибка обогащения задач: {enrich_error}")
-                print("⚠️ Сохранение продолжается без дополнительных колонок")
-        else:
-            print("ℹ️ Исходные данные отсутствуют, сохранение без обогащения")
-
-        # Переименование колонок и форматирование значений согласно настройкам
-        tasks_data = rename_columns_to_russian(tasks_data, data_type="tasks")
-
-        # Создание временного файла для сохранения
         with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
             filepath = tmp_file.name
 
-        # Сохранение с форматированием через xlsxwriter
-        save_with_xlsxwriter_formatting(tasks_data, filepath, 'Задачи', 'tasks')
+        save_with_xlsxwriter_formatting(df, filepath, 'Задачи')
 
-        # Генерация имени файла для скачивания
         download_filename = generate_filename("tasks")
 
         return FileResponse(
@@ -309,189 +474,50 @@ async def save_tasks():
         print(f"❌ Ошибка сохранения задач: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка сохранения: {str(e)}")
 
+
 @router.get("/tasks-by-executor")
-async def save_tasks_by_executor(responsibleExecutor: str):
+async def save_tasks_by_executor(
+    executor: str = Query(..., description="Ответственный исполнитель")
+):
     """
-    Сохранение рассчитанных задач для конкретного ответственного исполнителя в Excel файл.
+    Сохранение списка задач для конкретного исполнителя с обогащением и форматированием.
 
     Args:
-        responsibleExecutor (str): Имя ответственного исполнителя для фильтрации задач.
+        executor: Ответственный исполнитель
 
     Returns:
-        FileResponse: Excel файл с задачами исполнителя, обогащенный дополнительными колонками
-
-    Raises:
-        HTTPException: 400 если данные задач отсутствуют
-        HTTPException: 500 при ошибках сохранения или обогащения данных
-    """
-    try:
-        if not responsibleExecutor:
-            raise HTTPException(status_code=400, detail="Не указан ответственный исполнитель")
-
-        # Получение всех рассчитанных задач
-        tasks_data = data_manager.get_processed_data("tasks")
-        if tasks_data is None or tasks_data.empty:
-            raise HTTPException(status_code=400, detail="Данные задач не найдены")
-
-        # Фильтрация по исполнителю
-        tasks_data = tasks_data[tasks_data["responsibleExecutor"] == responsibleExecutor]
-        if tasks_data.empty:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Задачи для исполнителя '{responsibleExecutor}' не найдены"
-            )
-
-        # Получение исходных данных для обогащения
-        detailed_cleaned = data_manager.get_detailed_data()
-        documents_cleaned = data_manager.get_documents_data()
-
-        # Обогащение дополнительными колонками
-        if detailed_cleaned is not None or documents_cleaned is not None:
-            try:
-                tasks_data = add_source_columns_to_tasks(
-                    tasks_data,
-                    detailed_cleaned,
-                    documents_cleaned
-                )
-            except Exception as enrich_error:
-                print(f"⚠️ Ошибка обогащения задач: {enrich_error}")
-                print("⚠️ Продолжаем сохранение без дополнительных колонок")
-
-        # Переименование колонок и форматирование значений
-        tasks_data = rename_columns_to_russian(tasks_data, data_type="tasks")
-
-        # Сохранение во временный файл
-        import tempfile
-        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
-            filepath = tmp_file.name
-
-        save_with_xlsxwriter_formatting(tasks_data, filepath, 'Задачи', 'tasks')
-
-        # Генерация имени файла
-        download_filename = generate_filename("tasks")
-
-        return FileResponse(
-            path=filepath,
-            filename=download_filename,
-            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"❌ Ошибка сохранения задач для {responsibleExecutor}: {e}")
-        raise HTTPException(status_code=500, detail=f"Ошибка сохранения: {str(e)}")
-
-@router.get("/rainbow-analysis")
-async def save_rainbow_analysis():
-    """
-    Сохранение объединенных данных радуги с профессиональным форматированием.
-
-    Функция реализует объединение очищенных детальных данных с цветовой классификацией
-    и сохранение результата в Excel файл с форматированием. Объединение выполняется
-    по коду дела с использованием внутренних структур данных менеджера.
-
-    Returns:
-        FileResponse: Excel файл с объединенными данными радуги
-
-    Raises:
-        HTTPException: 400 если данные не загружены или отсутствуют
-        HTTPException: 500 при ошибках обработки или сохранения данных
-    """
-    try:
-        # Получение очищенных детальных данных выполняется
-        cleaned_df = data_manager._cleaned_data.get("detailed_report")
-        if cleaned_df is None or cleaned_df.empty:
-            raise HTTPException(status_code=400, detail="Детальный отчет не загружен")
-
-        # Получение derived данных цветовой классификации
-        derived_df = data_manager._derived_data.get("detailed_rainbow")
-        if derived_df is None or derived_df.empty:
-            raise HTTPException(status_code=400, detail="Данные цветовой классификации не подготовлены")
-
-        # Приведение ключей к строковому типу выполняется для обеспечения корректного объединения
-        cleaned_key = COLUMNS["CASE_CODE"]
-        derived_key = COLUMNS["CASE_CODE"]
-
-        cleaned_df[cleaned_key] = cleaned_df[cleaned_key].astype(str).str.strip()
-        derived_df[derived_key] = derived_df[derived_key].astype(str).str.strip()
-
-        # Объединение данных выполняется по коду дела с использованием левого соединения
-        # Левое соединение сохраняет все записи из детального отчета
-        merged_df = cleaned_df.merge(
-            derived_df[[derived_key, COLUMNS["CURRENT_PERIOD_COLOR"]]],
-            how="left",
-            left_on=cleaned_key,
-            right_on=derived_key,
-            suffixes=("", "_rainbow")
-        )
-
-        # Создание временного файла выполняется для последующего возврата как FileResponse
-        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
-            filepath = tmp_file.name
-
-        # Сохранение с форматированием выполняется через специализированную функцию
-        save_with_xlsxwriter_formatting(
-            merged_df,
-            filepath,
-            sheet_name="Цветовая классификация",
-            data_type="detailed"
-        )
-
-        # Генерация имени файла для скачивания выполняется по стандартному шаблону
-        download_filename = generate_filename("rainbow_analysis")
-
-        return FileResponse(
-            path=filepath,
-            filename=download_filename,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"❌ Ошибка сохранения анализа радуги: {e}")
-        raise HTTPException(status_code=500, detail=f"Ошибка сохранения: {str(e)}")
-
-@router.get("/terms-productions")
-async def save_terms_productions():
-    """
-    Сохранение рассчитанных сроков производств (иск. и приказное) в один файл Excel.
-
-    Объединяет данные искового и приказного производства в один лист.
-    Автоматически применяется переименование колонок и форматирование значений
-
-    Returns:
-        FileResponse: Excel файл с объединенными данными производств
+        FileResponse: Excel файл с задачами исполнителя
 
     Raises:
         HTTPException: 400 если данные не найдены
         HTTPException: 500 при ошибках сохранения
     """
     try:
-        # Получение данных обоих типов производств
-        lawsuit_data = data_manager.get_processed_data("lawsuit_staged")
-        order_data = data_manager.get_processed_data("order_staged")
+        df = normalized_manager.get_tasks_data()
 
-        # Проверка наличия данных
-        if (lawsuit_data is None or lawsuit_data.empty) and (order_data is None or order_data.empty):
-            raise HTTPException(status_code=400, detail="Нет данных для сохранения производств")
+        if df is None or df.empty:
+            raise HTTPException(status_code=400, detail="Задачи не найдены")
 
-        # Объединение данных в один DataFrame
-        combined_data = pd.concat(
-            [df for df in [lawsuit_data, order_data] if df is not None and not df.empty],
-            ignore_index=True
-        )
+        # Обогащение до фильтрации (чтобы получить responsibleExecutor)
+        df = _prepare_tasks_for_save(df)
 
-        print(f"💾 Сохраняем рассчитанные сроки производств: {len(combined_data)} строк, {len(combined_data.columns)} колонок")
+        # Фильтрация по исполнителю
+        if "responsibleExecutor" not in df.columns:
+            raise HTTPException(status_code=400, detail="Колонка responsibleExecutor не найдена")
 
-        # Создание временного файла Excel
+        df = df[df["responsibleExecutor"] == executor]
+
+        if df.empty:
+            raise HTTPException(status_code=400, detail=f"Задачи для исполнителя '{executor}' не найдены")
+
+        print(f"💾 Сохраняем задачи для {executor}: {len(df)} строк")
+
         with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
             filepath = tmp_file.name
 
-        # Сохранение с форматированием
-        save_with_xlsxwriter_formatting(combined_data, filepath, 'Сроки производств', 'production')
-        download_filename = generate_filename("terms_productions")
+        save_with_xlsxwriter_formatting(df, filepath, f'Задачи {executor}')
+
+        download_filename = generate_filename("tasks_by_executor", executor)
 
         return FileResponse(
             path=filepath,
@@ -502,123 +528,58 @@ async def save_terms_productions():
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Ошибка сохранения производств: {e}")
+        print(f"❌ Ошибка сохранения задач для {executor}: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка сохранения: {str(e)}")
 
-@router.get("/all-analysis")
-async def save_all_analysis():
-    """
-    Сохранение всех видов анализа в один ZIP-архив.
 
-    Создает комплексный архив, содержащий все анализы.
-    Исковое и приказное производство объединяются в один лист 'Производства'.
+# ==================== ПОЛЬЗОВАТЕЛЬСКИЕ ПЕРЕОПРЕДЕЛЕНИЯ ====================
+
+@router.get("/user-overrides")
+async def save_user_overrides(
+    current_user: UserSession = Depends(get_current_user)
+):
+    """
+    Сохранение пользовательских переопределений задач для текущего пользователя.
 
     Returns:
-        FileResponse: ZIP архив со всеми отчетами
+        FileResponse: Excel файл с переопределениями
 
     Raises:
-        HTTPException: 400 если нет данных для сохранения
-        HTTPException: 500 при ошибках создания архива
+        HTTPException: 401 если не авторизован
+        HTTPException: 400 если данные не найдены
+        HTTPException: 500 при ошибках сохранения
     """
-    import zipfile
-    import os
-
     try:
-        # Создание временного файла для ZIP архива
-        with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp_zip_file:
-            zip_filepath = tmp_zip_file.name
+        if not current_user.login:
+            raise HTTPException(status_code=401, detail="Требуется авторизация")
 
-        files_to_zip = []
-        temp_files = []
+        df = normalized_manager.get_user_overrides_data()
 
-        try:
-            # Получаем готовые данные
-            terms_productions_data = pd.concat(
-                [df for df in [
-                    data_manager.get_processed_data("lawsuit_staged"),
-                    data_manager.get_processed_data("order_staged")
-                ] if df is not None and not df.empty],
-                ignore_index=True
-            ) if (data_manager.get_processed_data("lawsuit_staged") is not None or
-                  data_manager.get_processed_data("order_staged") is not None) else None
+        if df is None or df.empty:
+            raise HTTPException(status_code=400, detail="Пользовательские переопределения не найдены")
 
-            documents_analysis_data = data_manager.get_processed_data("documents_processed")
-            tasks_data = data_manager.get_processed_data("tasks")
-            rainbow_data = data_manager.get_colored_data("detailed")
+        print(f"💾 Сохраняем переопределения для {current_user.login}: {len(df)} строк")
 
-            # Словарь для всех данных
-            data_sources = {
-                "terms_productions": {
-                    "data": terms_productions_data,
-                    "sheet_name": "Обработанные производства",
-                    "data_type": "production"
-                },
-                "documents_analysis": {
-                    "data": documents_analysis_data,
-                    "sheet_name": "Анализ документов",
-                    "data_type": "documents"
-                },
-                "tasks": {
-                    "data": tasks_data,
-                    "sheet_name": "Задачи",
-                    "data_type": "tasks"
-                },
-                "rainbow_analysis": {
-                    "data": rainbow_data,
-                    "sheet_name": "Радуга",
-                    "data_type": "detailed"
-                }
-            }
+        # Обогащение, переименование, форматирование (аналогично задачам)
+        df = _prepare_tasks_for_save(df)
+        df = df.rename(columns=USER_OVERRIDES_RENAME_MAP)
 
-            # Сохраняем все данные во временные файлы
-            for key, cfg in data_sources.items():
-                data = cfg["data"]
-                sheet_name = cfg["sheet_name"]
-                data_type = cfg["data_type"]
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
+            filepath = tmp_file.name
 
-                if data is not None and not data.empty:
-                    with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
-                        filepath = tmp_file.name
-                        temp_files.append(filepath)
+        save_with_xlsxwriter_formatting(df, filepath, f'Изменения {current_user.login}')
 
-                    save_with_xlsxwriter_formatting(data, filepath, sheet_name, data_type)
-                    files_to_zip.append((filepath, f"{key}.xlsx"))
-                    print(f"✅ Добавлен в архив: {sheet_name}")
-                else:
-                    print(f"⚠️ Пропущено: {sheet_name} - нет данных")
+        download_filename = generate_filename("user_overrides", current_user.login)
 
-            if not files_to_zip:
-                raise HTTPException(status_code=400, detail="Нет данных для сохранения")
-
-            # Создаем ZIP архив
-            with zipfile.ZipFile(zip_filepath, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                for file_path, archive_name in files_to_zip:
-                    zipf.write(file_path, archive_name)
-
-            download_filename = generate_filename("all_analysis") + ".zip"
-
-            return FileResponse(
-                path=zip_filepath,
-                filename=download_filename,
-                media_type='application/zip'
-            )
-
-        finally:
-            # Удаляем временные файлы
-            for file_path in temp_files:
-                try:
-                    if os.path.exists(file_path):
-                        os.unlink(file_path)
-                except Exception as e:
-                    print(f"⚠️ Ошибка удаления временного файла {file_path}: {e}")
+        return FileResponse(
+            path=filepath,
+            filename=download_filename,
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
 
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Ошибка создания архива всех анализов: {e}")
-        try:
-            if os.path.exists(zip_filepath):
-                os.unlink(zip_filepath)
-        except:
-            pass
-        raise HTTPException(status_code=500, detail=f"Ошибка создания архива: {str(e)}")
+        print(f"❌ Ошибка сохранения переопределений: {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка сохранения: {str(e)}")
+

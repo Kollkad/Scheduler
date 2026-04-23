@@ -1,4 +1,4 @@
-#backend/app.common.modules.utils.py
+# backend/app/common/modules/utils.py
 """
 Модуль утилитарных функций для обработки данных судебных дел.
 
@@ -105,6 +105,21 @@ def get_filing_date(row, use_all_fields: bool = True) -> pd.Timestamp | None:
         return None
 
 
+def get_filing_date_series(df: pd.DataFrame) -> pd.Series:
+    """
+    Извлекает дату подачи иска для всего DataFrame.
+    Приоритет: FIRST_LAWSUIT_FILING_DATE → LAWSUIT_FILING_DATE.
+    """
+    first_filing = safe_get_column_series(df, COLUMNS["FIRST_LAWSUIT_FILING_DATE"])
+    filing = safe_get_column_series(df, COLUMNS["LAWSUIT_FILING_DATE"])
+
+    # Приоритет первой дате, если её нет — обычной
+    result = pd.to_datetime(first_filing, errors='coerce')
+    mask = result.isna()
+    result.loc[mask] = pd.to_datetime(filing.loc[mask], errors='coerce')
+
+    return result
+
 def safe_get_column(row, column_name, default="no_data"):
     """
     Безопасно получает значение из колонки DataFrame.
@@ -146,6 +161,26 @@ def safe_get_column(row, column_name, default="no_data"):
     except Exception as e:
         print(f"Ошибка в safe_get_column для колонки {column_name}: {e}")
         return default
+
+def safe_get_column_series(df: pd.DataFrame, column_name: str) -> pd.Series:
+    """
+    Безопасно получает колонку из DataFrame в виде Series.
+
+    Если колонка отсутствует, возвращает Series с NaT для datetime
+    или "no_data" для строковых колонок (определяется автоматически).
+
+    Args:
+        df (pd.DataFrame): DataFrame с данными.
+        column_name (str): Название колонки.
+
+    Returns:
+        pd.Series: Series с данными колонки или значениями по умолчанию.
+    """
+    if column_name in df.columns:
+        return df[column_name]
+    else:
+        # Возвращаем Series с NaN (для datetime) или "no_data" (для строк)
+        return pd.Series([pd.NA] * len(df), index=df.index)
 
 def evaluate_exceptions_row(row) -> str:
     """

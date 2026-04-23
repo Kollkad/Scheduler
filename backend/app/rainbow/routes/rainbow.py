@@ -7,24 +7,24 @@
 API для получения статистики и детальной информации по делам различных цветовых категорий.
 
 Основные эндпоинты:
-- /analyze: Анализ данных и получение цветовой статистики
+- /analyze: Анализ данных и добавление цветовой колонки в источник данных
+- /fill-diagram: Получение данных для заполнения диаграммы распределения по цветам
 - /cases-by-color: Фильтрация дел по цветовым категориям
 - /quick-test: Тестовые данные для разработки
 """
+
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query, Body
 from typing import Dict, List, Optional, Any
 
 router = APIRouter(prefix="/api/rainbow", tags=["rainbow"])
 
-# Импорт модулей анализа данных
-try:
-    from backend.app.data_management.modules.data_manager import data_manager
-    from backend.app.rainbow.modules.rainbow_classifier import RainbowClassifier
-    from backend.app.common.config.column_names import COLUMNS
-    from backend.app.common.modules.utils import extract_value
-except ImportError as e:
-    raise RuntimeError("Ошибка инициализации rainbow routes") from e
+from backend.app.data_management.modules.normalized_data_manager import normalized_manager
+from backend.app.rainbow.modules.rainbow_classifier import (
+    add_rainbow_color_column,
+    get_rainbow_filtered_dataframe
+)
+from backend.app.common.config.column_names import COLUMNS, VALUES
 
 # Маппинг цветовых категорий для преобразования английских кодов в русские названия
 COLOR_MAPPING = {
@@ -43,19 +43,19 @@ COLOR_MAPPING = {
 @router.get("/analyze")
 async def analyze_rainbow():
     """
-    Выполняет полную подготовку данных для визуализации радуги.
+    Выполняет расчет и добавление цветовой классификации в данные дел.
 
-    Функция реализует трехэтапный процесс обработки данных:
-    1. Загрузка и очистка исходных данных (cleaned)
-    2. Создание производных данных цветовой классификации (derived)
-    3. Формирование кэшированных данных для быстрой фильтрации (cached)
+    Функция реализует:
+    1. Загрузку детального отчета через NormalizedDataManager
+    2. Добавление колонки с цветовой категорией
+    3. Сохранение обновленного DataFrame обратно в менеджер
 
     Returns:
         Dict: Результат подготовки данных в формате: {
             "success": bool,
             "message": str,
-            "derivedCount": int,  # Количество записей в derived данных
-            "cachedCount": int    # Количество записей в cached данных
+            "totalCases": int,
+            "coloredCases": int
         }
 
     Raises:
@@ -63,33 +63,33 @@ async def analyze_rainbow():
         HTTPException: 500 при возникновении ошибок обработки данных
     """
     try:
-        detailed_df = data_manager.load_detailed_report()
+        df = normalized_manager.get_or_load_detailed_report()
 
-        derived_df = RainbowClassifier.create_derived_rainbow(detailed_df)
-        if derived_df is None or derived_df.empty:
+        if df is None or df.empty:
             raise HTTPException(
-                status_code=500,
-                detail="Не удалось создать производные данные для радуги"
+                status_code=404,
+                detail="Детальный отчет не загружен или пуст"
             )
 
-        cached_df = RainbowClassifier.build_colored_cache(detailed_df, derived_df)
-        if cached_df is None or cached_df.empty:
-            raise HTTPException(
-                status_code=500,
-                detail="Не удалось создать кэшированные данные для фильтрации"
-            )
+        # Добавление цветовой колонки
+        df_with_color = add_rainbow_color_column(df)
 
-        data_manager.set_rainbow_data(derived_df, cached_df)
+        # Сохранение обновленного DataFrame
+        normalized_manager.set_cases_data(df_with_color)
+
+        # Подсчет количества классифицированных дел (имеющих цвет)
+        color_column = COLUMNS["CURRENT_PERIOD_COLOR"]
+        colored_count = df_with_color[color_column].notna().sum() if color_column in df_with_color.columns else 0
 
         return {
             "success": True,
-            "message": "Полная подготовка данных радуги выполнена успешно",
-            "derivedCount": len(derived_df),
-            "cachedCount": len(cached_df)
+            "message": "Цветовая классификация выполнена успешно",
+            "totalCases": len(df_with_color),
+            "coloredCases": int(colored_count)
         }
 
-    except ValueError:
-        raise HTTPException(status_code=404, detail="Текущий детальный отчет не загружен")
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
@@ -106,9 +106,6 @@ async def fill_diagram(
 ):
     """
     Возвращает данные для построения диаграммы распределения дел по цветовым категориям.
-
-    Использует get_colored_data для доступа к полным данным с цветовой информацией,
-    что позволяет корректно применять фильтры формы настроек.
 
     Args:
         filters (Optional[Dict[str, Any]]): Фильтры для применения к данным в формате:
@@ -132,32 +129,68 @@ async def fill_diagram(
         }
 
     Raises:
-        HTTPException: 400 если данные радуги не были предварительно подготовлены
+        HTTPException: 400 если данные не загружены
         HTTPException: 500 при возникновении ошибок расчета статистики
     """
     try:
-        # Получение данных с цветовой классификацией из кэша
-        working_df = data_manager.get_colored_data("detailed")
+        df = normalized_manager.get_cases_data()
 
-        if working_df is None or working_df.empty:
-            print("❌ ОШИБКА: colored_cache отсутствует или пуст")
+        if df is None or df.empty:
             raise HTTPException(
                 status_code=400,
-                detail="Данные радуги не подготовлены. Сначала вызовите /api/rainbow/analyze"
+                detail="Данные дел не загружены. Сначала загрузите детальный отчет"
             )
 
-        # Применение фильтров к данным
+        # Проверка наличия цветовой колонки
+        color_column = COLUMNS["CURRENT_PERIOD_COLOR"]
+        if color_column not in df.columns:
+            raise HTTPException(
+                status_code=400,
+                detail="Цветовая классификация не выполнена. Сначала вызовите /api/rainbow/analyze"
+            )
+
+        # Применение фильтрации по правилам радуги
+        working_df = get_rainbow_filtered_dataframe(df)
+
+        if working_df.empty:
+            color_order = list(COLOR_MAPPING.values())
+            return {
+                "success": True,
+                "data": [0] * len(color_order),
+                "totalCases": 0,
+                "filtered": False,
+                "colorLabels": color_order,
+                "message": "Нет дел, удовлетворяющих условиям радуги"
+            }
+
+        # Применение пользовательских фильтров
+        filtered = False
         if filters and isinstance(filters, dict):
             filtered_df = working_df.copy()
             filters_applied = 0
 
-            # Последовательное применение фильтров к DataFrame
+            # Маппинг полей фильтра к колонкам DataFrame
+            field_mapping = {
+                "caseCode": COLUMNS["CASE_CODE"],
+                "responsibleExecutor": COLUMNS["RESPONSIBLE_EXECUTOR"],
+                "gosb": COLUMNS["GOSB"],
+                "courtProtectionMethod": COLUMNS["METHOD_OF_PROTECTION"],
+                "courtReviewingCase": COLUMNS["COURT"],
+                "caseStatus": COLUMNS["CASE_STATUS"],
+                "currentPeriodColor": COLUMNS["CURRENT_PERIOD_COLOR"],
+            }
+
             for field_name, filter_value in filters.items():
-                if (filter_value and isinstance(filter_value, str) and
-                        field_name in filtered_df.columns):
+                if field_name not in field_mapping:
+                    continue
+
+                col_name = field_mapping[field_name]
+                if col_name not in filtered_df.columns:
+                    continue
+
+                if filter_value and isinstance(filter_value, str):
                     try:
-                        # Фильтрация выполняется путем сравнения строковых значений
-                        mask = filtered_df[field_name].astype(str).str.strip() == str(filter_value).strip()
+                        mask = filtered_df[col_name].astype(str).str.strip() == str(filter_value).strip()
                         filtered_df = filtered_df[mask]
                         filters_applied += 1
                     except Exception as filter_error:
@@ -167,62 +200,18 @@ async def fill_diagram(
             if filters_applied > 0:
                 working_df = filtered_df
                 filtered = True
-            else:
-                filtered = False
-        else:
-            filtered = False
 
         # Определение порядка цветов для диаграммы
         color_order = list(COLOR_MAPPING.values())
         chart_data = [0] * len(color_order)
 
         # Подсчет количества дел по цветовым категориям
-        color_stats = {}
-        unknown_colors = set()
+        if not working_df.empty and color_column in working_df.columns:
+            color_counts = working_df[color_column].value_counts()
 
-        for _, row in working_df.iterrows():
-            color_value = row.get("currentPeriodColor")
+            for i, color_name in enumerate(color_order):
+                chart_data[i] = int(color_counts.get(color_name, 0))
 
-            if pd.isna(color_value):
-                continue
-
-            color_str = str(color_value).strip()
-
-            # Определение русского названия цвета выполняется по иерархии правил
-            russian_color = None
-
-            # Правило 1: Цвет уже в русском формате
-            if color_str in color_order:
-                russian_color = color_str
-            # Правило 2: Цвет в английском коде
-            elif color_str in COLOR_MAPPING:
-                russian_color = COLOR_MAPPING[color_str]
-            # Правило 3: Поиск по полному совпадению без учёта регистра
-            else:
-                for eng, rus in COLOR_MAPPING.items():
-                    if color_str.lower() == eng.lower() or color_str.lower() == rus.lower():
-                        russian_color = rus
-                        break
-
-                if not russian_color:
-                    unknown_colors.add(color_str)
-                    continue
-
-            # Увеличение счетчика для найденного цвета
-            if russian_color in color_stats:
-                color_stats[russian_color] += 1
-            else:
-                color_stats[russian_color] = 1
-
-        # Заполнение массива данных диаграммы
-        for i, color_name in enumerate(color_order):
-            chart_data[i] = color_stats.get(color_name, 0)
-
-        # Логирование неизвестных цветов
-        if unknown_colors:
-            print(f"⚠️ Найдены неизвестные значения цветов: {list(unknown_colors)[:5]}")
-
-        # Формирование ответа с результатами расчета
         total_cases = len(working_df)
 
         response_data = {
@@ -266,15 +255,24 @@ async def get_cases_by_color(
         Dict: Результат фильтрации с данными дел
 
     Raises:
-        HTTPException: 400 при неверном параметре цвета
-        HTTPException: 404 если детальный отчет не загружен
+        HTTPException: 400 при неверном параметре цвета или отсутствии данных
         HTTPException: 500 при ошибках обработки данных
     """
     try:
-        # Получение готового кэша через публичный метод DataManager
-        detailed_colored_df = data_manager.get_colored_data("detailed")
-        if detailed_colored_df is None or detailed_colored_df.empty:
-            raise HTTPException(status_code=404, detail="Текущий детальный отчет не загружен")
+        df = normalized_manager.get_cases_data()
+
+        if df is None or df.empty:
+            raise HTTPException(
+                status_code=400,
+                detail="Данные дел не загружены. Сначала загрузите детальный отчет"
+            )
+
+        color_column = COLUMNS["CURRENT_PERIOD_COLOR"]
+        if color_column not in df.columns:
+            raise HTTPException(
+                status_code=400,
+                detail="Цветовая классификация не выполнена. Сначала вызовите /api/rainbow/analyze"
+            )
 
         # Преобразование входного цвета в русское название
         russian_color = COLOR_MAPPING.get(color, color)
@@ -285,22 +283,36 @@ async def get_cases_by_color(
                 detail=f"Неверный цвет. Допустимые значения: {', '.join(valid_russian_colors)}"
             )
 
-        # Фильтрация DataFrame по цвету
-        filtered_df = detailed_colored_df[detailed_colored_df["currentPeriodColor"] == russian_color]
+        # Применение фильтрации по правилам радуги
+        working_df = get_rainbow_filtered_dataframe(df)
 
-        # Обработка NaN значений перед преобразованием в JSON
-        # Создание копии предотвращает изменение оригинальных данных
-        cleaned_df = filtered_df.copy()
+        # Фильтрация по цвету
+        filtered_df = working_df[working_df[color_column] == russian_color]
 
-        # Обработка каждого столбца в зависимости от типа данных
-        for col in cleaned_df.columns:
-            if cleaned_df[col].dtype == 'object':  # Строковые колонки
-                cleaned_df[col] = cleaned_df[col].fillna("Не задано")
-            elif pd.api.types.is_numeric_dtype(cleaned_df[col]):  # Числовые колонки
-                cleaned_df[col] = cleaned_df[col].fillna(0)
+        # Формирование данных для ответа
+        columns_to_include = {
+            COLUMNS["CASE_CODE"]: "caseCode",
+            COLUMNS["RESPONSIBLE_EXECUTOR"]: "responsibleExecutor",
+            COLUMNS["GOSB"]: "gosb",
+            COLUMNS["METHOD_OF_PROTECTION"]: "courtProtectionMethod",
+            COLUMNS["COURT"]: "courtReviewingCase",
+            COLUMNS["CASE_STATUS"]: "caseStatus",
+            color_column: "currentPeriodColor",
+        }
 
-        # Преобразование в список словарей для API-ответа
-        cases_data = cleaned_df.to_dict(orient="records")
+        # Оставляем только существующие колонки
+        existing_columns = {k: v for k, v in columns_to_include.items() if k in filtered_df.columns}
+
+        result_df = filtered_df[list(existing_columns.keys())].rename(columns=existing_columns)
+
+        # Заполнение NaN значений
+        for col in result_df.columns:
+            if result_df[col].dtype == 'object':
+                result_df[col] = result_df[col].fillna("Не указано")
+            elif pd.api.types.is_numeric_dtype(result_df[col]):
+                result_df[col] = result_df[col].fillna(0)
+
+        cases_data = result_df.to_dict(orient="records")
 
         return {
             "success": True,
@@ -335,7 +347,6 @@ async def quick_test_analysis():
             "message": str      # Информационное сообщение
         }
     """
-    # Фиксированные тестовые значения для разработки
     test_values = [743, 23, 0, 211, 0, 4204, 7131, 0, 6729]
 
     return {

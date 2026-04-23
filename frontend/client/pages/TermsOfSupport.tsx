@@ -10,7 +10,7 @@ import {
   lawsuitChecksToLabel, 
   orderChecksToLabel
 } from '@/config/chartConfig';
-import { transformLawsuitV2Data, transformOrderV2Data, transformDocumentsData } from '@/utils/dataTransform';
+import { transformLawsuitData, transformOrderData, transformDocumentsData } from '@/utils/dataTransform';
 import { apiClient } from '@/services/api/client';
 import { API_ENDPOINTS } from '@/services/api/endpoints';
 
@@ -57,10 +57,10 @@ interface ChartsResponse {
 export function TermsOfSupport() {
   const [selectedProcess, setSelectedProcess] = useState('lawsuit');
   const [lawsuitData, setLawsuitData] = useState<TransformedTermsGroup[]>(() => 
-    transformLawsuitV2Data([])
+    transformLawsuitData([])
   );
   const [orderData, setOrderData] = useState<TransformedTermsGroup[]>(() => 
-    transformOrderV2Data([])
+    transformOrderData([])
   );
   const [documentsData, setDocumentsData] = useState<TransformedTermsGroup[]>(() => 
     transformDocumentsData([])
@@ -89,14 +89,14 @@ export function TermsOfSupport() {
         const parsed = JSON.parse(cached);
         const isExpired = Date.now() - parsed.timestamp > CACHE_TTL;
         if (!isExpired && isMounted.current) {
-          setLawsuitData(transformLawsuitV2Data(parsed.data));
+          setLawsuitData(transformLawsuitData(parsed.data));
           setLawsuitTotalCases(parsed.total || 0);
           return;
         }
       }
 
       if (isMounted.current) setIsLoading(true);
-      const response = await apiClient.get<ChartsResponse>(API_ENDPOINTS.TERMS_V2_LAWSUIT_CHARTS);
+      const response = await apiClient.get<ChartsResponse>(API_ENDPOINTS.TERMS_LAWSUIT_CHARTS);
       
       if (response.success && isMounted.current) {
         const chartData = response.data || [];
@@ -108,7 +108,7 @@ export function TermsOfSupport() {
           timestamp: Date.now()
         }));
         
-        setLawsuitData(transformLawsuitV2Data(chartData));
+        setLawsuitData(transformLawsuitData(chartData));
         setLawsuitTotalCases(total);
       }
     } catch (error) {
@@ -126,14 +126,14 @@ export function TermsOfSupport() {
         const parsed = JSON.parse(cached);
         const isExpired = Date.now() - parsed.timestamp > CACHE_TTL;
         if (!isExpired && isMounted.current) {
-          setOrderData(transformOrderV2Data(parsed.data));
+          setOrderData(transformOrderData(parsed.data));
           setOrderTotalCases(parsed.total || 0);
           return;
         }
       }
 
       if (isMounted.current) setIsLoading(true);
-      const response = await apiClient.get<ChartsResponse>(API_ENDPOINTS.TERMS_V2_ORDER_CHARTS);
+      const response = await apiClient.get<ChartsResponse>(API_ENDPOINTS.TERMS_ORDER_CHARTS);
       
       if (response.success && isMounted.current) {
         const chartData = response.data || [];
@@ -145,7 +145,7 @@ export function TermsOfSupport() {
           timestamp: Date.now()
         }));
         
-        setOrderData(transformOrderV2Data(chartData));
+        setOrderData(transformOrderData(chartData));
         setOrderTotalCases(total);
       }
     } catch (error) {
@@ -200,7 +200,7 @@ export function TermsOfSupport() {
       const parsed = JSON.parse(cachedLawsuit);
       const isExpired = Date.now() - parsed.timestamp > CACHE_TTL;
       if (!isExpired) {
-        setLawsuitData(transformLawsuitV2Data(parsed.data));
+        setLawsuitData(transformLawsuitData(parsed.data));
         setLawsuitTotalCases(parsed.total || 0);
       }
     }
@@ -210,7 +210,7 @@ export function TermsOfSupport() {
       const parsed = JSON.parse(cachedOrder);
       const isExpired = Date.now() - parsed.timestamp > CACHE_TTL;
       if (!isExpired) {
-        setOrderData(transformOrderV2Data(parsed.data));
+        setOrderData(transformOrderData(parsed.data));
         setOrderTotalCases(parsed.total || 0);
       }
     }

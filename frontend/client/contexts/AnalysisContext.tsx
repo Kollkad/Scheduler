@@ -170,10 +170,10 @@ export const AnalysisProvider: React.FC<AnalysisProviderProps> = ({ children }) 
         { type: 'rainbow', name: 'Анализ цветовой классификации', weight: 15 },
         { type: 'documents', name: 'Анализ документов', weight: 25 },
         { type: 'documents-charts', name: 'Данные для диаграмм документов', weight: 30 },
-        { type: 'terms-v2-lawsuit', name: 'Анализ искового производства', weight: 40 },
-        { type: 'terms-v2-order', name: 'Анализ приказного производства', weight: 55 },
-        { type: 'terms-v2-lawsuit-charts', name: 'Данные для диаграмм искового', weight: 70 },
-        { type: 'terms-v2-order-charts', name: 'Данные для диаграмм приказного', weight: 80 },
+        { type: 'terms-v3-lawsuit', name: 'Анализ искового производства', weight: 40 },
+        { type: 'terms-v3-order', name: 'Анализ приказного производства', weight: 55 },
+        { type: 'terms-v3-lawsuit-charts', name: 'Данные для диаграмм искового', weight: 70 },
+        { type: 'terms-v3-order-charts', name: 'Данные для диаграмм приказного', weight: 80 },
         { type: 'tasks', name: 'Расчет задач', weight: 90 }
       ];
 
@@ -194,7 +194,7 @@ export const AnalysisProvider: React.FC<AnalysisProviderProps> = ({ children }) 
             triggerRainbowUpdate();
             console.log('✅ Триггер Rainbow обновлен');
           }
-          if (type === 'terms-v2-lawsuit-charts' || type === 'terms-v2-order-charts') {
+          if (type === 'terms-v3-lawsuit-charts' || type === 'terms-v3-order-charts') {
             triggerTermsUpdate();
             console.log('✅ Триггер Terms обновлен');
           }

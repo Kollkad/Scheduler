@@ -23,8 +23,7 @@ export interface CaseDetails {
     other: CaseField[];
   };
   totalFields: number;
-  foundInColumn?: string;
-  caseStage?: string;
+  stageCode?: string;
   rainbowColor?: string | null;
 }
 

@@ -103,15 +103,15 @@ export function FilteredCases() {
 
   const getCasesByTerms = async (process: string, stage: string, status: string): Promise<TermsCasesResponse> => {
     let endpoint;
-    if (process === 'lawsuit') endpoint = API_ENDPOINTS.TERMS_V2_LAWSUIT_FILTERED;
-    else if (process === 'order') endpoint = API_ENDPOINTS.TERMS_V2_ORDER_FILTERED;
+    if (process === 'lawsuit') endpoint = API_ENDPOINTS.TERMS_LAWSUIT_FILTERED;
+    else if (process === 'order') endpoint = API_ENDPOINTS.TERMS_ORDER_FILTERED;
     else throw new Error('Неизвестный тип процесса');
 
     return apiClient.get(`${endpoint}?stage=${encodeURIComponent(stage)}&status=${encodeURIComponent(status)}`);
   };
 
   const getDocumentsByType = async (documentType: string, status: string): Promise<DocumentCasesResponse> => {
-    const endpoint = '/api/documents/filter_documents';
+    const endpoint = API_ENDPOINTS.DOCUMENTS_FILTER;
     return apiClient.get(`${endpoint}?documentType=${encodeURIComponent(documentType)}&status=${encodeURIComponent(status)}`);
   };
 

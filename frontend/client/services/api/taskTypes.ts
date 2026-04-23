@@ -7,17 +7,26 @@ export interface Task {
   failedCheck: string;
   caseCode: string;
   responsibleExecutor: string;
-  caseStage: string;
+  stageCode: string;
   taskText: string;
   monitoringStatus: string;
   isCompleted: boolean;
   reasonText?: string;
   sourceType?: string;
   createdDate?: string;
+  executionDatePlan?: string;
+  executionDateTimeFact?: string;
   documentType?: string;
   department?: string;
   requestCode?: string;
-  [key: string]: any; // для расширяемости
+  // Поля оверрайда
+  hasOverride?: boolean;
+  shiftCode?: string;
+  shiftName?: string;
+  daysToAdd?: number;
+  originalPlannedDate?: string;
+  // для расширяемости
+  [key: string]: any;
 }
 
 // Тип для отображения в таблице (TaskItem)

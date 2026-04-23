@@ -19,13 +19,13 @@ const COURT_ORDER_STAGES = [
 type ProductionType = 'lawsuit' | 'courtOrder';
 
 interface CaseLifecycleTimelineProps {
-  caseStage: string;
+  stageCode: string;
   productionType?: ProductionType;
   className?: string;
 }
 
-export function CaseLifecycleTimeline({ caseStage, productionType = 'lawsuit', className = '' }: CaseLifecycleTimelineProps) {
-  if (caseStage === 'exceptions') {
+export function CaseLifecycleTimeline({ stageCode, productionType = 'lawsuit', className = '' }: CaseLifecycleTimelineProps) {
+  if (stageCode === 'exceptions') {
     return (
       <div className={`bg-bg-default-light-field border border-border-default rounded-lg p-4 text-center ${className}`}>
         <p className="text-text-secondary text-sm">Дело входит в ряд исключений из общих сроков</p>
@@ -34,7 +34,7 @@ export function CaseLifecycleTimeline({ caseStage, productionType = 'lawsuit', c
   }
 
   const STAGES = productionType === 'courtOrder' ? COURT_ORDER_STAGES : LAWSUIT_STAGES;
-  const currentIndex = STAGES.findIndex(stage => stage.key === caseStage);
+  const currentIndex = STAGES.findIndex(stage => stage.key === stageCode);
   if (currentIndex === -1) return null;
 
   return (

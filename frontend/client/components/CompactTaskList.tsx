@@ -69,7 +69,7 @@ export function CompactTaskList({
             {/* Этап дела */}
             <div className="w-1/5 px-4 border-r border-border">
               <span className="text-sm text-text-primary">
-                {task.caseStage || "Не указан"}
+                {task.stageCode || "Не указан"}
               </span>
             </div>
             

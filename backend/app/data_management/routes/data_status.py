@@ -9,8 +9,9 @@
 
 from fastapi import APIRouter, HTTPException
 import pandas as pd
-
-from backend.app.data_management.modules.data_manager import data_manager
+import gc
+from backend.app.data_management.modules.normalized_data_manager import normalized_manager
+from backend.app.common.config.column_names import COLUMNS
 
 router = APIRouter(prefix="/api/data", tags=["data-status"])
 
@@ -32,16 +33,12 @@ async def test_data():
             или {"status": "no_data"} при отсутствии данных
     """
 
-    # Получение DataFrame из менеджера данных
-    df = data_manager.get_detailed_data()
-
+    df = normalized_manager.get_cases_data()
     # Проверка наличия и корректности данных
-    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+    if df is None or df.empty:
         return {"status": "no_data"}
 
     all_columns = list(df.columns)
-
-    from backend.app.common.config.column_names import COLUMNS
 
     target_columns = {
         "GOSB": COLUMNS["GOSB"],
@@ -57,7 +54,6 @@ async def test_data():
     for eng_name, rus_name in target_columns.items():
         found = rus_name in all_columns
         found_columns[eng_name] = found
-
         if found:
             try:
                 # Извлечение уникальных значений для примера
@@ -94,42 +90,24 @@ async def reset_analysis():
     """
 
     try:
-        cleared_data = []
-
-        # Очистка обработанных данных анализа
-        data_manager.clear_processed_data("all")
-        cleared_data.extend([
-            "lawsuit_staged",
-            "order_staged",
-            "documents_processed",
-            "tasks"
-        ])
-
-        # Очистка загруженных и подготовленных данных
-        data_manager.clear_data("all")
-        cleared_data.extend([
-            "detailed_report",
-            "documents_report",
-            "raw_data",
-            "colored_data"
-        ])
-
-        # Принудительная очистка памяти
-        import gc
+        # Очистка всех данных в normalized_manager
+        normalized_manager.clear_data("all")
         gc.collect()
 
         return {
             "success": True,
             "message": "Сброс результатов анализа выполнен успешно",
-            "cleared_data": cleared_data,
+            "cleared_data": [
+                "detailed_report",
+                "documents_report",
+                "check_results",
+                "tasks"
+            ],
             "memory_cleaned": True
         }
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Ошибка сброса анализа: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Ошибка сброса анализа: {str(e)}")
 
 
 

@@ -71,20 +71,20 @@ export class AnalysisService {
           data = await apiClient.get(API_ENDPOINTS.DOCUMENTS_CHARTS);
           break;
         
-        case 'terms-v2-lawsuit':
-          data = await apiClient.get(API_ENDPOINTS.TERMS_V2_LAWSUIT_ANALYZE);
+        case 'terms-v3-lawsuit':
+          data = await apiClient.get(API_ENDPOINTS.TERMS_LAWSUIT_ANALYZE);
           break;
         
-        case 'terms-v2-order':
-          data = await apiClient.get(API_ENDPOINTS.TERMS_V2_ORDER_ANALYZE);
+        case 'terms-v3-order':
+          data = await apiClient.get(API_ENDPOINTS.TERMS_ORDER_ANALYZE);
           break;
         
-        case 'terms-v2-lawsuit-charts':
-          data = await apiClient.get(API_ENDPOINTS.TERMS_V2_LAWSUIT_CHARTS);
+        case 'terms-v3-lawsuit-charts':
+          data = await apiClient.get(API_ENDPOINTS.TERMS_LAWSUIT_CHARTS);
           break;
         
-        case 'terms-v2-order-charts':
-          data = await apiClient.get(API_ENDPOINTS.TERMS_V2_ORDER_CHARTS);
+        case 'terms-v3-order-charts':
+          data = await apiClient.get(API_ENDPOINTS.TERMS_ORDER_CHARTS);
           break;
         
         case 'tasks':
@@ -166,10 +166,10 @@ export class AnalysisService {
       'rainbow': 'Анализ радуги',
       'documents': 'Анализ документов',
       'documents-charts': 'Данные для диаграмм документов',
-      'terms-v2-lawsuit': 'Анализ искового производства',
-      'terms-v2-order': 'Анализ приказного производства',
-      'terms-v2-lawsuit-charts': 'Данные для диаграмм искового',
-      'terms-v2-order-charts': 'Данные для диаграмм приказного',
+      'terms-v3-lawsuit': 'Анализ искового производства',
+      'terms-v3-order': 'Анализ приказного производства',
+      'terms-v3-lawsuit-charts': 'Данные для диаграмм искового',
+      'terms-v3-order-charts': 'Данные для диаграмм приказного',
       'tasks': 'Расчет задач',
       'unique-values': 'Получение уникальных значений'
     };

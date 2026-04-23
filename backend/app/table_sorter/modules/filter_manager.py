@@ -10,7 +10,7 @@
 from typing import Dict, List, Any
 import pandas as pd
 from backend.app.common.config.column_names import COLUMNS
-from backend.app.data_management.modules.data_manager import data_manager
+from backend.app.data_management.modules.normalized_data_manager import normalized_manager
 
 
 class FilterSettings:
@@ -20,6 +20,28 @@ class FilterSettings:
     Предоставляет функциональность для получения уникальных значений
     из колонок данных и управления метаинформацией о фильтрах.
     """
+
+    def __init__(self):
+        """Инициализация с экземпляром нормализованного менеджера данных."""
+        self._normalized_manager = normalized_manager
+
+        # Маппинг системных имен фильтров к реальным колонкам в _source_data
+        self._filter_column_mapping = {
+            "gosb": COLUMNS["GOSB"],
+            "responsibleExecutor": COLUMNS["RESPONSIBLE_EXECUTOR"],
+            "courtReviewingCase": COLUMNS["COURT"],
+            "courtProtectionMethod": COLUMNS["METHOD_OF_PROTECTION"],
+            "currentPeriodColor": COLUMNS["CURRENT_PERIOD_COLOR"],
+            "caseCode": COLUMNS["CASE_CODE"],
+            "caseStatus": COLUMNS["CASE_STATUS"],
+        }
+
+        # Список всех доступных системных имен фильтров
+        self._available_filter_names = [
+            "gosb", "responsibleExecutor", "courtReviewingCase",
+            "courtProtectionMethod", "currentPeriodColor"
+        ]
+
     def get_filter_options(self, column_names: List[str] = None) -> Dict[str, List[Dict[str, str]]]:
         """
         Возвращает уникальные значения для указанных колонок.
@@ -34,7 +56,9 @@ class FilterSettings:
             Dict[str, List[Dict[str, str]]]: Словарь с опциями фильтров в формате
                                            {filter_name: [{"name": value, "label": value}]}
         """
-        df = data_manager.get_colored_data("detailed")
+        # Получение данных из NormalizedDataManager
+        df = self._normalized_manager.get_cases_data()
+
         if df is None or df.empty:
             return self._get_empty_options()
 
@@ -44,12 +68,17 @@ class FilterSettings:
         options = {}
 
         # Определение колонок для обработки
-        columns_to_process = column_names if column_names else df.columns.tolist()
+        if column_names:
+            columns_to_process = column_names
+        else:
+            columns_to_process = self._available_filter_names
 
         for filter_name in columns_to_process:
-            column_name = filter_name
+            # Получение реального имени колонки из маппинга
+            column_name = self._filter_column_mapping.get(filter_name)
 
             if not column_name:
+                options[filter_name] = []
                 continue
 
             if column_name in df.columns:
@@ -67,7 +96,7 @@ class FilterSettings:
 
     def _clean_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Очищает DataFrame от дубликатов колонок и нестандартных значений.
+        Очищает DataFrame от дубликатов колонок.
 
         Args:
             df (pd.DataFrame): Исходный DataFrame для очистки
@@ -75,10 +104,8 @@ class FilterSettings:
         Returns:
             pd.DataFrame: Очищенный DataFrame
         """
-        # Удаление дубликатов колонок
         if df.columns.duplicated().any():
             df = df.loc[:, ~df.columns.duplicated()]
-
         return df
 
     def _get_unique_values(self, df: pd.DataFrame, column_name: str) -> List[Dict[str, str]]:
@@ -95,12 +122,21 @@ class FilterSettings:
         Returns:
             List[Dict[str, str]]: Список уникальных значений в формате для фронтенда
         """
-        # Извлечение колонки с удалением NaN и преобразованием в строки
-        series = df[column_name].dropna().astype(str)
+        # Извлечение колонки с удалением NaN
+        series = df[column_name].dropna()
+
+        if series.empty:
+            return []
+
+        # Преобразование в строки
+        series = series.astype(str)
 
         # Удаление пустых строк и лишних пробелов
         series = series[series.str.strip() != '']
         series = series.str.strip()
+
+        if series.empty:
+            return []
 
         # Получение уникальных значений и сортировка
         unique_values = series.unique()
@@ -116,20 +152,14 @@ class FilterSettings:
         Returns:
             Dict[str, List]: Словарь с пустыми списками для всех системных имен фильтров
         """
-        # Получение списка всех колонок из данных
-        df = data_manager.get_colored_data("detailed")
-        if df is None or df.empty:
-            return {}
-
-        return {column: [] for column in df.columns}
+        return {name: [] for name in self._available_filter_names}
 
     def get_available_filters(self) -> List[Dict[str, str]]:
         """
         Возвращает метаинформацию о доступных фильтрах.
 
-        Frontend использует:
-        - 'column' как системное имя для API-вызовов (должно быть в данных)
-        - 'name' как отображаемое название (берём из COLUMNS)
+        Returns:
+            List[Dict[str, str]]: Список доступных фильтров с метаданными
         """
         return [
             {

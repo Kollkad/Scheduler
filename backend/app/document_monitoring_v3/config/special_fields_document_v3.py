@@ -1,4 +1,4 @@
-# backend/app/document_monitoring_v2/config/special_fields_document.py
+# backend/app/document_monitoring_v3/config/special_fields_document_v3.py
 
 from backend.app.common.config.column_names import COLUMNS
 

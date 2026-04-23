@@ -11,86 +11,37 @@ import pandas as pd
 import os
 from backend.app.common.config.column_names import COLUMNS
 
-CASE_STAGE_MAPPING = {
-    "exceptions": "Исключение",
-    "underConsideration": "На рассмотрении",
-    "decisionMade": "Решение вынесено",
-    "courtReaction": "Ожидание реакции суда",
-    "firstStatusChanged": "Подготовка документов",
-    "closed": "Закрыто",
-    "executionDocumentReceived": "ИД получен",
-}
 
-
-def format_monitoring_status(status_string):
-    """Форматирование статуса мониторинга для экспорта"""
-    if not status_string or status_string == "no_data":
-        return "Нет данных"
-
-    status_mapping = {
-        "timely": "в срок",
-        "overdue": "просрочено",
-        "no_data": "нет данных"
-    }
-
-    status_parts = status_string.split(';')
-    formatted_parts = []
-
-    for index, status in enumerate(status_parts):
-        clean_status = status.strip().lower()
-        translated_status = status_mapping.get(clean_status, clean_status)
-        formatted_parts.append(f"Проверка {index + 1} - {translated_status}")
-
-    return '; '.join(formatted_parts)
-
-
-def format_source_type(source_type):
-    """Форматирование типа источника для экспорта"""
-    if not source_type or pd.isna(source_type):
-        return "Не указан"
-
-    source_type_mapping = {
-        "detailed": "Детальный отчет",
-        "documents": "Отчет по полученным и переданным документам"
-    }
-
-    return source_type_mapping.get(str(source_type).strip().lower(), str(source_type))
-
-# Форматирование задач
-DEFAULT_VALUE_FORMATTERS = {
-    COLUMNS["MONITORING_STATUS"]: format_monitoring_status,
-    COLUMNS["CASE_STAGE"]: lambda x: CASE_STAGE_MAPPING.get(x, x) if pd.notna(x) else "Не указан",
-    COLUMNS["SOURCE_TYPE"]: format_source_type,
-    COLUMNS["COMPLETION_STATUS"]: lambda x: "Выполнено" if x == True else "Не выполнено" if x == False else "—"
-}
-
-def generate_filename(report_type: str) -> str:
+def generate_filename(report_type: str, custom_name: str = None) -> str:
     """
-    Генерация уникального имени файла для экспорта с временной меткой.
+    Генерация имени файла для экспорта по заданному шаблону.
 
     Args:
-        report_type (str): Тип отчета ('detailed_report', 'documents_report')
+        report_type (str): Тип отчета.
+        custom_name (str, optional): Дополнительное имя (например, логин пользователя).
 
     Returns:
-        str: Уникальное имя файла с временной меткой
+        str: Имя файла с расширением .xlsx
     """
     timestamp = datetime.now().strftime("%d-%m-%Y")
+
     type_names = {
-        "detailed_report": "детальный_отчет",
-        "documents_report": "отчет_документов",
-        "lawsuit_production": "исковое_производство",
-        "order_production": "приказное_производство",
-        "documents_analysis": "анализ_документов",
-        "tasks": "задачи",
-        "rainbow_analysis": "радуга",
-        "all_analysis": "все_анализы"
+        "detailed_report": f"source_data_Детальный_отчет_{timestamp}",
+        "documents_report": f"source_data_Отчет_по_полученным_и_переданным_документам_{timestamp}",
+        "stages": "stages_Этапы_документов_и_дел",
+        "checks": "checks_Проверки_документов_и_дел",
+        "check_results_cases": f"check_results_Проведенные_проверки_для_дел_{timestamp}",
+        "check_results_documents": f"check_results_Проведенные_проверки_для_документов_{timestamp}",
+        "tasks": f"tasks_Поставленные_задачи_{timestamp}",
+        "tasks_by_executor": f"tasks_Поставленные_задачи_для_{custom_name}_{timestamp}" if custom_name else f"tasks_Поставленные_задачи_{timestamp}",
+        "user_overrides": f"user_overrides_Изменения_задач_пользователя_{custom_name}" if custom_name else "user_overrides_Изменения_задач_пользователя",
     }
 
-    report_name = type_names.get(report_type, report_type)
-    return f"{report_name}_{timestamp}.xlsx"
+    filename = type_names.get(report_type, f"export_{timestamp}")
+    return f"{filename}.xlsx"
 
 
-def save_with_xlsxwriter_formatting(dataframe, filepath, sheet_name, data_type=None, value_formatters=None):
+def save_with_xlsxwriter_formatting(dataframe: pd.DataFrame, filepath: str, sheet_name: str) -> bool:
     """
     Сохраняет DataFrame с профессиональным форматированием используя xlsxwriter.
 
@@ -104,65 +55,27 @@ def save_with_xlsxwriter_formatting(dataframe, filepath, sheet_name, data_type=N
         dataframe: DataFrame для сохранения
         filepath (str): Путь для сохранения файла
         sheet_name (str): Название листа в Excel
-        data_type (str, optional): Тип данных для переименования колонок
 
     Returns:
         bool: True при успешном сохранении, False при использовании fallback
     """
     try:
-        # 1. Переименование колонок, если указано
-        if data_type:
-            dataframe = rename_columns_to_russian(dataframe, data_type)
-
-        # 2. Авто-применение форматеров
-        if value_formatters is None:
-            value_formatters = {col: func for col, func in DEFAULT_VALUE_FORMATTERS.items() if col in dataframe.columns}
-        for col, func in value_formatters.items():
-            dataframe[col] = dataframe[col].apply(func)
-
         with pd.ExcelWriter(filepath, engine='xlsxwriter') as writer:
             dataframe.to_excel(writer, sheet_name=sheet_name, index=False)
 
             workbook = writer.book
             worksheet = writer.sheets[sheet_name]
 
-            # Определение оптимальных ширин для ключевых колонок
-            column_widths = {
-                '№ п/п': 10,
-                'Код дела': 15,
-                'Код передачи': 15,
-                'Код запроса': 15,
-                'Ответственный исполнитель': 25,
-                'Способ судебной защиты': 20,
-                'Дата подачи': 12,
-                'ГОСБ': 10,
-                'Статус дела': 25,
-                'Этап дела': 20,
-                'Статус мониторинга': 15,
-                'Документ': 40,
-                'Дата получения': 12,
-                'Статус документа': 20,
-                'Код задачи': 15,
-                'Тип задачи': 20,
-                'Тип документа-источника': 25,
-                'Завершено': 12,
-                'Текст задачи': 40,
-                'Причина постановки задачи': 50,
-                'Количество неудачных проверок': 25,
-                'Дата создания': 12,
-                'Статус завершения': 20,
-            }
-
-            # Форматы с серой границей и выравниванием по центру
+            # Форматы с серой границей
             border_format = {
                 'border': 1,
-                'border_color': '#D0D0D0'  # Серая граница
+                'border_color': '#D0D0D0'
             }
 
             # Формат для заголовков таблицы
             header_format = workbook.add_format({
                 'bold': True,
-                'bg_color': '#439639',  # Зеленый фон
+                'bg_color': '#439639',
                 'font_color': 'white',
                 'text_wrap': True,
                 'valign': 'vcenter',
@@ -181,7 +94,7 @@ def save_with_xlsxwriter_formatting(dataframe, filepath, sheet_name, data_type=N
 
             # Формат для нечетных строк
             odd_row_format = workbook.add_format({
-                'bg_color': '#F8FBFC',  # Светло-голубой фон
+                'bg_color': '#F8FBFC',
                 'text_wrap': True,
                 'valign': 'vcenter',
                 'align': 'center',
@@ -192,9 +105,15 @@ def save_with_xlsxwriter_formatting(dataframe, filepath, sheet_name, data_type=N
             for col_num, value in enumerate(dataframe.columns.values):
                 worksheet.write(0, col_num, value, header_format)
 
-            # Настройка ширины колонок согласно предустановленным значениям
+            # Автоматическая ширина колонок
             for col_num, column_name in enumerate(dataframe.columns):
-                width = column_widths.get(column_name, 25)  # Значение по умолчанию
+                max_len = len(str(column_name))
+                try:
+                    col_data = dataframe[column_name].astype(str)
+                    max_len = max(max_len, col_data.str.len().max())
+                except:
+                    pass
+                width = min(max(max_len, 10), 50)
                 worksheet.set_column(col_num, col_num, width)
 
             # Применение чередующейся заливки к строкам данных
@@ -205,7 +124,7 @@ def save_with_xlsxwriter_formatting(dataframe, filepath, sheet_name, data_type=N
                     worksheet.set_row(row_num + 1, None, odd_row_format)
 
         size = os.path.getsize(filepath)
-        print(f"✅ Файл создан с улучшенным форматированием, размер: {size} байт")
+        print(f"✅ Файл создан с форматированием, размер: {size} байт")
         return True
 
     except Exception as e:
@@ -215,181 +134,219 @@ def save_with_xlsxwriter_formatting(dataframe, filepath, sheet_name, data_type=N
         return False
 
 
-def rename_columns_to_russian(dataframe, data_type, value_formatters=None):
-    """
-    Переименование столбцов DataFrame с английских названий на русские согласно конфигурации.
-    Опционально применяет форматирование значений колонок через value_formatters.
+# ==================== ФУНКЦИИ ЗАМЕНЫ ЗНАЧЕНИЙ ====================
 
-    Args:
-        dataframe: DataFrame для переименования
-        data_type (str): Тип данных для определения набора переименований
-        value_formatters (dict, optional): Словарь {русское_имя_колонки: функция},
-                                           который применяется к значениям колонок после переименования
-
-    Returns:
-        DataFrame: DataFrame с переименованными колонками и отформатированными значениями
+def format_monitoring_status(value: str) -> str:
     """
-    rename_mappings = {
-        "production": {
-            "caseStage": COLUMNS["CASE_STAGE"],
-            "monitoringStatus": COLUMNS["MONITORING_STATUS"],
-            "completionStatus": COLUMNS["COMPLETION_STATUS"],
-            "caseCode": COLUMNS["CASE_CODE"],
-            "responsibleExecutor": COLUMNS["RESPONSIBLE_EXECUTOR"],
-            "courtProtectionMethod": COLUMNS["METHOD_OF_PROTECTION"],
-            "filingDate": COLUMNS["LAWSUIT_FILING_DATE"],
-            "gosb": COLUMNS["GOSB"],
-            "courtReviewingCase": COLUMNS["COURT"],
-            "caseStatus": COLUMNS["CASE_STATUS"]
-        },
-        "tasks": {
-            "taskCode": COLUMNS["TASK_CODE"],
-            "failedCheck": COLUMNS["FAILED_CHECK"],
-            "caseCode": COLUMNS["CASE_CODE"],
-            "sourceType": COLUMNS["SOURCE_TYPE"],
-            "responsibleExecutor": COLUMNS["RESPONSIBLE_EXECUTOR"],
-            "caseStage": COLUMNS["CASE_STAGE"],
-            "monitoringStatus": COLUMNS["MONITORING_STATUS"],
-            "isCompleted": COLUMNS["IS_COMPLETED"],
-            "taskText": COLUMNS["TASK_TEXT"],
-            "reasonText": COLUMNS["REASON_TEXT"],
-            "createdDate": COLUMNS["CREATED_DATE"],
-            # Документные колонки:
-            "transferCode": COLUMNS["TRANSFER_CODE"],
-            "documentType": COLUMNS["DOCUMENT_TYPE"],
-            "department": COLUMNS["DEPARTMENT_CATEGORY"],
-            "requestCode": COLUMNS["DOCUMENT_REQUEST_CODE"],
-        },
-        "documents": {
-            "transferCode": COLUMNS["TRANSFER_CODE"],
-            "requestCode": COLUMNS["DOCUMENT_REQUEST_CODE"],
-            "caseCode": COLUMNS["CASE_CODE"],
-            "document": COLUMNS["DOCUMENT_TYPE"],
-            "department": COLUMNS["DEPARTMENT_CATEGORY"],
-            "responseEssence": COLUMNS["ESSENSE_OF_THE_ANSWER"],
-            "monitoringStatus": COLUMNS["MONITORING_STATUS"],
-            "completionStatus": COLUMNS["COMPLETION_STATUS"],
-        }
+    Заменяет технические значения monitoringStatus на русские.
+    Исключения (reopened, complaint_filed, error_dublicate, withdraw_by_the_initiator)
+    остаются без изменений.
+    """
+    if pd.isna(value):
+        return "Нет данных"
+
+    status_mapping = {
+        "timely": "В срок",
+        "overdue": "Просрочено",
+        "no_data": "Нет данных",
     }
 
-    mapping = rename_mappings.get(data_type, {})
-    existing_columns = {eng: rus for eng, rus in mapping.items() if eng in dataframe.columns}
-
-    if existing_columns:
-        dataframe = dataframe.rename(columns=existing_columns)
-
-    # Применяем форматирование значений колонок
-    if value_formatters:
-        for col, func in value_formatters.items():
-            if col in dataframe.columns:
-                dataframe[col] = dataframe[col].apply(func)
-
-    return dataframe
-
-    mapping = rename_mappings.get(data_type, {})
-
-    # Применяем только те переименования, колонки которых существуют в DataFrame
-    existing_columns = {eng: rus for eng, rus in mapping.items() if eng in dataframe.columns}
-
-    if existing_columns:
-        return dataframe.rename(columns=existing_columns)
-
-    return dataframe
+    return status_mapping.get(str(value).strip().lower(), str(value))
 
 
-def add_source_columns_to_tasks(tasks_df: pd.DataFrame,
-                                detailed_cleaned: pd.DataFrame,
-                                documents_cleaned: pd.DataFrame) -> pd.DataFrame:
+def format_completion_status(value: bool) -> str:
+    """Заменяет True/False на русские значения."""
+    if pd.isna(value):
+        return "—"
+    return "Завершено" if value else "Не завершено"
+
+
+def format_is_completed(value: bool) -> str:
+    """Заменяет True/False на русские значения для задач."""
+    if pd.isna(value):
+        return "—"
+    return "Выполнено" if value else "Не выполнено"
+
+
+def format_is_active(value: bool) -> str:
+    """Заменяет True/False на Да/Нет."""
+    if pd.isna(value):
+        return "—"
+    return "Да" if value else "Нет"
+
+
+def format_stage_code(value: str, stages_df: pd.DataFrame) -> str:
     """
-    Добавляет дополнительные колонки из исходных отчетов в DataFrame задач.
+    Заменяет stageCode на stageName из справочника этапов.
+    """
+    if pd.isna(value):
+        return "Не указан"
 
-    Для задач с sourceType == "detailed" данные берутся из detailed_cleaned по ключу caseCode.
-    Для задач с sourceType == "documents" данные берутся из documents_cleaned по ключу transferCode.
+    if stages_df is None or stages_df.empty:
+        return str(value)
+
+    match = stages_df[stages_df["stageCode"] == str(value).strip()]
+    if not match.empty:
+        return match.iloc[0]["stageName"]
+
+    return str(value)
+
+
+# ==================== ФУНКЦИИ ОБОГАЩЕНИЯ ДАННЫХ ====================
+
+def enrich_tasks_for_export(
+        tasks_df: pd.DataFrame,
+        check_results_df: pd.DataFrame,
+        checks_df: pd.DataFrame,
+        stages_df: pd.DataFrame,
+        cases_df: pd.DataFrame
+) -> pd.DataFrame:
+    """
+    Обогащает DataFrame задач дополнительными колонками из связанных данных.
+
+    Добавляет колонки:
+    - Из check_results: executionDatePlan, monitoringStatus, completionStatus
+    - Из checks: checkName
+    - Из stages: stageName (через check_results → checkCode → checks → stageCode → stages)
+    - Из cases_df: CASE_NUMBER, RESPONSIBLE_EXECUTOR, COURT, BORROWER, CASE_NAME
 
     Args:
-        tasks_df (pd.DataFrame): DataFrame исходных задач.
-        detailed_cleaned (pd.DataFrame): DataFrame детального отчета.
-        documents_cleaned (pd.DataFrame): DataFrame документов.
+        tasks_df: DataFrame с задачами (должен содержать checkResultCode)
+        check_results_df: DataFrame с результатами проверок
+        checks_df: DataFrame с конфигурацией проверок
+        stages_df: DataFrame с этапами
+        cases_df: DataFrame с делами
 
     Returns:
-        pd.DataFrame: DataFrame задач с добавленными колонками.
+        pd.DataFrame: Обогащенный DataFrame задач
     """
-    import pandas as pd
-
-    # Колонки для добавления
-    columns_to_add = [
-        COLUMNS.get("REQUEST_TYPE"),
-        COLUMNS.get("COURT"),
-        COLUMNS.get("BORROWER"),
-        COLUMNS.get("CASE_NAME")
-    ]
-
     result_df = tasks_df.copy()
 
-    # Инициализация колонок
-    for col in columns_to_add:
-        if col is not None and col not in result_df.columns:
-            result_df[col] = pd.NA
+    # 1. Присоединяем check_results
+    if not check_results_df.empty and "checkResultCode" in result_df.columns:
+        check_cols = ["checkResultCode", "checkCode", "targetId", "monitoringStatus", "completionStatus"]
+        if "executionDatePlan" in check_results_df.columns:
+            check_cols.append("executionDatePlan")
 
-    # Добавление для детальных задач
-    mask_detailed = result_df["sourceType"] == "detailed"
-    if mask_detailed.any() and detailed_cleaned is not None and COLUMNS.get("CASE_CODE") in detailed_cleaned.columns:
-        detailed_indexed = detailed_cleaned.drop_duplicates(
-            subset=[COLUMNS["CASE_CODE"]],
-            keep="last"
-        ).set_index(COLUMNS["CASE_CODE"])
+        available = [c for c in check_cols if c in check_results_df.columns]
+        result_df = result_df.merge(
+            check_results_df[available],
+            on="checkResultCode",
+            how="left",
+            suffixes=("", "_cr")
+        )
 
-        for col in columns_to_add:
-            if col in detailed_indexed.columns:
-                result_df.loc[mask_detailed, col] = result_df.loc[mask_detailed, "caseCode"].map(detailed_indexed[col])
+    # 2. Присоединяем checks_df для checkName и stageCode
+    if not checks_df.empty and "checkCode" in result_df.columns:
+        result_df = result_df.merge(
+            checks_df[["checkCode", "checkName", "stageCode"]],
+            on="checkCode",
+            how="left",
+            suffixes=("", "_ch")
+        )
 
-    # Добавление для документных задач
-    mask_documents = result_df["sourceType"] == "documents"
-    transfer_col = COLUMNS.get("TRANSFER_CODE")
+    # 3. Присоединяем stages_df для stageName
+    if not stages_df.empty and "stageCode" in result_df.columns:
+        result_df = result_df.merge(
+            stages_df[["stageCode", "stageName"]],
+            on="stageCode",
+            how="left",
+            suffixes=("", "_st")
+        )
 
-    if mask_documents.any() and documents_cleaned is not None and transfer_col in documents_cleaned.columns:
-        documents_indexed = documents_cleaned.drop_duplicates(
-            subset=[transfer_col],
-            keep="last"
-        ).set_index(transfer_col)
+    # 4. Присоединяем cases_df для дополнительных колонок
+    if not cases_df.empty and "targetId" in result_df.columns:
+        case_cols = [
+            COLUMNS["CASE_CODE"],
+            COLUMNS["CASE_NUMBER"],
+            COLUMNS["RESPONSIBLE_EXECUTOR"],
+            COLUMNS["COURT"],
+            COLUMNS["BORROWER"],
+            COLUMNS["CASE_NAME"],
+        ]
+        available = [c for c in case_cols if c in cases_df.columns]
+        if available:
+            result_df = result_df.merge(
+                cases_df[available],
+                left_on="targetId",
+                right_on=COLUMNS["CASE_CODE"],
+                how="left",
+                suffixes=("", "_case")
+            )
 
-        for col in columns_to_add:
-            if col in documents_indexed.columns:
-                result_df.loc[mask_documents, col] = result_df.loc[mask_documents, "transferCode"].map(
-                    documents_indexed[col])
+    return result_df
 
-    # Порядок колонок - исправлен согласно требованиям
-    column_order = [
-        "taskCode",
-        "caseCode",
-        "responsibleExecutor",
-        COLUMNS["REQUEST_TYPE"],
-        COLUMNS["COURT"],
-        COLUMNS["BORROWER"],
-        COLUMNS["CASE_NAME"],
-        "caseStage",
-        "failedCheck",
-        "taskText",
-        "reasonText",
-        "monitoringStatus",
-        "sourceType",
-        "documentType",
-        "department",
-        "transferCode",
-        "requestCode",
-        "isCompleted",
-        "Комментарий",
-        "createdDate",
-    ]
+# ==================== МАППИНГИ ПЕРЕИМЕНОВАНИЙ ====================
 
-    # 1. Столбец isCompleted должен быть пустым
-    if "isCompleted" in result_df.columns:
-        result_df["isCompleted"] = pd.NA
+# Детальный отчет и отчет документов (переименование + замена stageCode → stageName)
+DETAILED_AND_DOCUMENTS_RENAME_MAP = {
+    "stageCode": COLUMNS["CASE_STAGE"],
+}
 
-    # 2. Новый пустой столбец "Комментарий" после isCompleted
-    result_df["Комментарий"] = pd.NA
+# Этапы
+STAGES_RENAME_MAP = {
+    "stageCode": COLUMNS["STAGE_CODE"],
+    "stageName": COLUMNS["CASE_STAGE"],
+    "fileType": COLUMNS["SOURCE_TYPE"],
+}
 
-    existing_columns = [col for col in column_order if col in result_df.columns]
-    other_columns = [col for col in result_df.columns if col not in existing_columns]
+# Проверки
+CHECKS_RENAME_MAP = {
+    "checkCode": COLUMNS["CHECK_CODE"],
+    "checkName": COLUMNS["CHECK_NAME"],
+    "stageCode": COLUMNS["STAGE_CODE"],
+    "functionName": COLUMNS["FUNCTION_NAME_IN_CODE"],
+    "isActive": COLUMNS["IS_CHECK_ACTIVE"],
+}
 
-    return result_df[existing_columns + other_columns]
+# Результаты проверок
+CHECK_RESULTS_RENAME_MAP = {
+    "checkResultCode": COLUMNS["CHECK_RESULT_CODE"],
+    "checkCode": COLUMNS["CHECK_CODE"],
+    "targetId": COLUMNS["TARGET_ID"],
+    "monitoringStatus": COLUMNS["MONITORING_STATUS"],
+    "completionStatus": COLUMNS["COMPLETION_STATUS"],
+    "checkedAt": COLUMNS["DATA_TIME_CHECK_EXECUTION"],
+    "executionDatePlan": COLUMNS["PLANNED_DATE_FOR_TASK_EXECUTION"],
+}
+
+# Задачи (основные колонки)
+TASKS_RENAME_MAP = {
+    "taskCode": COLUMNS["TASK_CODE"],
+    "checkResultCode": COLUMNS["CHECK_RESULT_CODE"],
+    "taskText": COLUMNS["TASK_TEXT"],
+    "reasonText": COLUMNS["REASON_TEXT"],
+    "createdAt": COLUMNS["DATA_TIME_TASK_CREATE"],
+    "isCompleted": COLUMNS["IS_COMPLETED"],
+    "executionDateTimeFact": COLUMNS["FACT_DATE_OF_TASK_EXECUTION"],
+    "createdBy": COLUMNS["AUTHOR_OF_THE_TASK"],
+}
+
+# Дополнительные колонки для обогащения задач
+TASKS_EXTRA_RENAME_MAP = {
+    "executionDatePlan": COLUMNS["EXECUTION_DATE_PLAN"],
+    "monitoringStatus": COLUMNS["MONITORING_STATUS"],
+    "completionStatus": COLUMNS["COMPLETION_STATUS"],
+    "checkName": COLUMNS["CHECK_NAME"],
+    "stageName": COLUMNS["CASE_STAGE"],
+    COLUMNS["CASE_NUMBER"]: COLUMNS["CASE_NUMBER"],
+    COLUMNS["RESPONSIBLE_EXECUTOR"]: COLUMNS["RESPONSIBLE_EXECUTOR"],
+    COLUMNS["COURT"]: COLUMNS["COURT"],
+    COLUMNS["BORROWER"]: COLUMNS["BORROWER"],
+    COLUMNS["CASE_NAME"]: COLUMNS["CASE_NAME"],
+}
+
+# Пользовательские переопределения (основные колонки)
+USER_OVERRIDES_RENAME_MAP = {
+    "taskCode": COLUMNS["TASK_CODE"],
+    "checkResultCode": COLUMNS["CHECK_RESULT_CODE"],
+    "taskText": COLUMNS["TASK_TEXT"],
+    "reasonText": COLUMNS["REASON_TEXT"],
+    "createdAt": COLUMNS["DATA_TIME_TASK_CREATE"],
+    "isCompleted": COLUMNS["IS_COMPLETED"],
+    "executionDateTimeFact": COLUMNS["FACT_DATE_OF_TASK_EXECUTION"],
+    "createdBy": COLUMNS["AUTHOR_OF_THE_TASK"],
+    "executionDatePlan": COLUMNS["EXECUTION_DATE_PLAN"],
+    "shiftCode": COLUMNS["SHIFT_CODE"],
+}
+

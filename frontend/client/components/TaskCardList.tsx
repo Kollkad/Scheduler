@@ -1,20 +1,11 @@
 // frontend/client/components/TaskCardList.tsx
 
 import { TaskCard } from "@/components/TaskCard";
-
-interface Task {
-  taskCode: string;
-  taskText: string;
-  reasonText?: string;
-  isCompleted: boolean;
-  executionDatePlan?: string;
-  executionDateFact?: string;
-}
+import { Task } from "@/services/api/taskTypes";
 
 interface TaskCardListProps {
   tasks: Task[];
 }
-
 export function TaskCardList({ tasks }: TaskCardListProps) {
   if (!tasks.length) {
     return (
@@ -27,7 +18,7 @@ export function TaskCardList({ tasks }: TaskCardListProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       {tasks.map((task) => (
-        <TaskCard key={task.taskCode} {...task} />
+        <TaskCard key={task.taskCode} task={task} />
       ))}
     </div>
   );

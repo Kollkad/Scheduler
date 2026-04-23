@@ -22,7 +22,7 @@ export const mapBackendDataDocuments = (data: Record<string, any>[]) => {
     transferCode: row.transferCode || '',
     responsibleExecutor: row.responsibleExecutor || '',
     caseCode: row.caseCode || '',
-    documentType: row.document || '',
+    documentType: row.documentType || '',
     department: row.department || '',
     monitoringStatus: formatMonitoringStatus(row.monitoringStatus || '')
   }));
@@ -32,7 +32,7 @@ export const mapBackendDataDocuments = (data: Record<string, any>[]) => {
 export const mapBackendDataTasks = (data: any[]): any[] => {
   return data.map(task => ({
     ...task,
-    caseStage: caseStageMapping[task.caseStage] || task.caseStage || "Не указан",
+    stageCode: caseStageMapping[task.stageCode] || task.stageCode || "Не указан",
     monitoringStatus: formatMonitoringStatus(task.monitoringStatus)
   }));
 };
@@ -91,8 +91,8 @@ export const tasksTableConfig: TableConfig = {
     { key: "taskCode", title: "Код задачи", width: "150px", sortable: true },
     { key: "caseCode", title: "Код дела", width: "150px", sortable: true },  
     { key: "responsibleExecutor", title: "Ответственный исполнитель", width: "200px", sortable: true },
-    { key: "caseStage", title: "Этап дела", width: "180px", sortable: true },
-    { key: "failedCheck", title: "Название проверки", width: "120px", sortable: true },
+    { key: "stageCode", title: "Этап дела", width: "180px", sortable: true },
+    { key: "checkName", title: "Название проверки", width: "120px", sortable: true },
     { key: "monitoringStatus", title: "Статус проверки", width: "150px", sortable: true },
     { key: "taskText", title: "Текст задачи", width: "300px", sortable: true },
   ],
@@ -101,13 +101,22 @@ export const tasksTableConfig: TableConfig = {
 
 // Маппинг этапов дела для читаемого отображения
 export const caseStageMapping: Record<string, string> = {
-  "exceptions": "Исключение",
-  "underConsideration": "На рассмотрении", 
-  "decisionMade": "Решение вынесено",
-  "courtReaction": "Ожидание реакции суда",
-  "firstStatusChanged": "Подготовка документов",
-  "closed": "Закрыто",
-  "executionDocumentReceived": "ИД получен",
+  // Исковое производство
+  "exceptionsL": "Исключение",
+  "closedL": "Закрыто",
+  "executionDocumentReceivedL": "ИД получен",
+  "decisionMadeL": "Решение вынесено",
+  "underConsiderationL": "На рассмотрении",
+  "courtReactionL": "Ожидание реакции суда",
+  "firstStatusChangedL": "Подготовка документов",
+  // Приказное производство
+  "exceptionsO": "Исключение",
+  "closedO": "Закрыто",
+  "executionDocumentReceivedO": "ИД получен",
+  "courtReactionO": "Ожидание реакции суда",
+  "firstStatusChangedO": "Подготовка документов",
+  // Документы
+  "transferredDocumentD": "Передача документа",
 };
 
 // Маппинг статусов мониторинга для читаемого отображения

@@ -8,10 +8,10 @@ export type AnalysisType =
   | 'rainbow'                   // Цветовая классификация (радуга)
   | 'documents'                 // Мониторинг документов
   | 'documents-charts'          // Мониторинг документов(диаграммы)
-  | 'terms-v2-lawsuit'          // Исковое производство (данные)
-  | 'terms-v2-order'            // Приказное производство (данные)
-  | 'terms-v2-lawsuit-charts'   // Исковое производство (диаграммы)
-  | 'terms-v2-order-charts'     // Приказное производство (диаграммы)
+  | 'terms-v3-lawsuit'          // Исковое производство (данные)
+  | 'terms-v3-order'            // Приказное производство (данные)
+  | 'terms-v3-lawsuit-charts'   // Исковое производство (диаграммы)
+  | 'terms-v3-order-charts'     // Приказное производство (диаграммы)
   | 'tasks'                     // Расчет задач
   | 'unique-values';            // Уникальные значения (фильтры)
 
@@ -76,7 +76,7 @@ export interface TaskData {
   caseCode: string;            // Код дела
   sourceType: string;          // Тип источника (detailed/documents)
   responsibleExecutor: string; // Ответственный исполнитель
-  caseStage: string;           // Этап дела
+  stageCode: string;           // Этап дела
   monitoringStatus: string;    // Статус мониторинга
   isCompleted: boolean;        // Выполнена ли задача
   taskText: string;            // Текст задачи

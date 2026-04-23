@@ -1,6 +1,6 @@
 # backend/app/task_manager/modules/task_text_overrides.py
 """
-Модуль с переопределениями текста задач для специфичных проверок.
+Модуль с переопределениями текста задач для специфичных проверок (v3).
 
 Каждая функция предназначена для конкретного failed_check_name и содержит
 логику определения текста задачи и/или причины на основе данных строки.
@@ -62,15 +62,18 @@ def get_task_text_for_decision_check(row: pd.Series, task_config: dict) -> Tuple
 
     tags = row.get(COLUMNS["TAGS"], "")
     if pd.isna(tags) or str(tags).strip() in ("", "#"):
-        return "Указать теги дела", "Задача ставится если в столбце детального отчета \"Теги\" нет данных, либо стоит только знак '#'"
+        return (
+            "Указать теги дела",
+            "Задача ставится если в столбце детального отчета \"Теги\" нет данных, либо стоит только знак '#'"
+        )
     else:
         return default_text, default_reason
 
 
-# Словарь для сопоставления failed_check_name с соответствующей функцией
+# Словарь для сопоставления failed_check_name с соответствующей функцией (v3)
 TASK_TEXT_OVERRIDES = {
-    "hearingInterval2days": get_task_text_for_hearing_check,
-    "decision45days": get_task_text_for_decision_check,
+    "hearingIntervalL": get_task_text_for_hearing_check,
+    "decisionDateL": get_task_text_for_decision_check,
 }
 
 

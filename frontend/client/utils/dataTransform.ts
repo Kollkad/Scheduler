@@ -2,13 +2,11 @@
 import { 
   ChartItemConfig, 
   ChartGroupConfig, 
-  stageNameToLabel,
   lawsuitChecksToLabel, 
   orderChecksToLabel,
-  documentsChecksToLabel,
-  lawsuitTermsV2Config,
-  orderTermsV2Config, 
-  documentsChartConfig
+  lawsuitTermsConfig,
+  orderTermsConfig, 
+  DEFAULT_SEGMENTS 
 } from '@/config/chartConfig';
 
 // Функция для преобразования данных радуги (числа -> объекты с метаданными)
@@ -41,35 +39,10 @@ export const transformRainbowData = (
   }));
 };
 
-// Функция для преобразования данных статусов (использует обновленный stageNameToLabel)
+// Функция для преобразования данных диаграмм производств (исковое/приказное)
+// Сопоставляет данные с бэкенда (group_name = checkCode) с конфигом диаграммы
+// и формирует структуру для SegmentedChart
 export const transformTermsData = (
-  backendData: Array<{ group_name: string; values: number[] }>, 
-  config: ChartGroupConfig[]
-) => {
-  return config.map((groupConfig) => {
-    // Поиск данных по русскому названию через обновленный маппинг проверок
-    const backendGroup = backendData.find(group => 
-      stageNameToLabel[group.group_name] === groupConfig.title
-    );
-    
-    const segments = groupConfig.items.map((itemConfig, itemIndex) => {
-      const value = backendGroup?.values?.[itemIndex] ?? 0;
-      return {
-        ...itemConfig,
-        value: value
-      };
-    });
-
-    return {
-      title: groupConfig.title,
-      segments: segments,
-      total: segments.reduce((sum, segment) => sum + segment.value, 0)
-    };
-  });
-};
-
-// Функция для v2 формата (использует специализированные маппинги)
-export const transformTermsV2Data = (
   backendData: Array<{ group_name: string; values: number[] }>, 
   config: ChartGroupConfig[],
   stageMapping: Record<string, string> 
@@ -97,14 +70,33 @@ export const transformTermsV2Data = (
 };
 
 // Специализированные функции для каждого модуля
-export const transformLawsuitV2Data = (backendData: Array<{ group_name: string; values: number[] }>) => {
-  return transformTermsV2Data(backendData, lawsuitTermsV2Config, lawsuitChecksToLabel);
+export const transformLawsuitData = (backendData: Array<{ group_name: string; values: number[] }>) => {
+  return transformTermsData(backendData, lawsuitTermsConfig, lawsuitChecksToLabel);
 };
 
-export const transformOrderV2Data = (backendData: Array<{ group_name: string; values: number[] }>) => {
-  return transformTermsV2Data(backendData, orderTermsV2Config, orderChecksToLabel);
+export const transformOrderData = (backendData: Array<{ group_name: string; values: number[] }>) => {
+  return transformTermsData(backendData, orderTermsConfig, orderChecksToLabel);
 };
 
-export const transformDocumentsData = (backendData: Array<{ group_name: string; values: number[] }>) => {
-  return transformTermsV2Data(backendData, documentsChartConfig, documentsChecksToLabel);
+export const transformDocumentsData = (
+  backendData: Array<{ group_name: string; values: number[] }>
+) => {
+  if (!backendData || backendData.length === 0) {
+    return [];
+  }
+
+  return backendData.map((group) => {
+    const segments = DEFAULT_SEGMENTS.map((statusConfig, index) => ({
+      ...statusConfig,
+      value: group.values[index] ?? 0
+    }));
+
+    const total = segments.reduce((sum, seg) => sum + seg.value, 0);
+
+    return {
+      title: group.group_name,
+      segments,
+      total
+    };
+  });
 };

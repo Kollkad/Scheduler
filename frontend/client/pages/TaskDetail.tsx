@@ -2,36 +2,25 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { ArrowLeft, Loader, Check, X, AlertCircle, Eraser} from "lucide-react";
 import { PageContainer } from "@/components/PageContainer";
+import { FieldGroup } from "@/components/FieldGroup";
+import { TaskEditModal } from "@/components/TaskEditModal";
 import { apiClient } from "@/services/api/client";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/utils/dateFormat";
-
-type TaskDetails = {
-    taskCode: string;
-    failedCheck: string;
-    caseCode: string;
-    responsibleExecutor: string;
-    caseStage: string;
-    taskText: string;
-    reasonText?: string;
-    monitoringStatus: string;
-    isCompleted: boolean;
-    sourceType: string;
-    createdDate: string;
-    documentType?: string;
-    department?: string;
-    requestCode?: string;
-};
+import { caseStageMapping } from "@/config/tableConfig";
+import { CaseField } from "@/services/case/caseService";
+import { Task } from "@/services/api/taskTypes";
 
 export default function TaskDetail() {
     const navigate = useNavigate();
     const { taskCode } = useParams<{ taskCode: string }>();
-    const [taskData, setTaskData] = useState<TaskDetails | null>(null);
+    const [taskData, setTaskData] = useState<Task | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     // Загрузка данных задачи при изменении taskCode
     useEffect(() => {
@@ -40,18 +29,15 @@ export default function TaskDetail() {
         }
     }, [taskCode]);
 
+    // Загружает детальную информацию о задаче по коду
     const loadTaskData = async (code: string) => {
         try {
             setLoading(true);
-            console.log('🔄 Загрузка данных для задачи:', code);
-            
             const response = await apiClient.get<{ 
                 success: boolean; 
-                task: TaskDetails; 
+                task: Task; 
                 message?: string 
             }>(`${API_ENDPOINTS.TASK_DETAILS}/${code}`);
-            
-            console.log('✅ Данные задачи получены:', response);
             
             if (response && response.success && response.task) {
                 setTaskData(response.task);
@@ -67,7 +53,7 @@ export default function TaskDetail() {
         }
     };
 
-    // Обработка перехода к источнику задачи
+    // Переход к делу или документу, связанному с задачей
     const handleGoToSource = () => {
         if (!taskData) return;
         
@@ -75,6 +61,13 @@ export default function TaskDetail() {
             navigate(`/document?caseCode=${encodeURIComponent(taskData.caseCode)}&documentType=${encodeURIComponent(taskData.documentType)}&department=${encodeURIComponent(taskData.department)}`);
         } else {
             navigate(`/case/${taskData.caseCode}`);
+        }
+    };
+
+    // Обновляет данные задачи после успешного редактирования
+    const handleEditSuccess = () => {
+        if (taskCode) {
+            loadTaskData(taskCode);
         }
     };
 
@@ -110,107 +103,151 @@ export default function TaskDetail() {
         );
     }
 
+    // Формирует список полей для компонента FieldGroup
+    const buildTaskFields = (): CaseField[] => {
+        const fields: CaseField[] = [
+            { id: 'caseCode', label: 'Код дела', value: taskData.caseCode, type: 'text' },
+            { id: 'failedCheck', label: 'Название проверки', value: taskData.failedCheck, type: 'text' },
+            { id: 'stageCode', label: 'Этап дела', value: caseStageMapping[taskData.stageCode] || taskData.stageCode, type: 'text' },
+            { id: 'sourceType', label: 'Источник данных', value: taskData.sourceType === 'detailed' ? 'Детальный отчет' : taskData.sourceType, type: 'text' },
+            { id: 'responsibleExecutor', label: 'Ответственный исполнитель', value: taskData.responsibleExecutor, type: 'text' },
+            { id: 'monitoringStatus', label: 'Статус мониторинга', value: taskData.monitoringStatus, type: 'text' },
+            { id: 'createdDate', label: 'Дата создания', value: formatDate(taskData.createdDate), type: 'text' },
+        ];
+
+        // Плановая дата включается только если задача не имеет переноса срока
+        if (!taskData.hasOverride || !taskData.originalPlannedDate) {
+            fields.push({ 
+                id: 'executionDatePlan', 
+                label: 'Плановая дата исполнения', 
+                value: formatDate(taskData.executionDatePlan), 
+                type: 'text' 
+            });
+        }
+
+        return fields;
+    };
+
+    const hasShiftInfo = taskData.hasOverride && taskData.originalPlannedDate;
+
+    // Удаляет пользовательское переопределение для задачи
+    const handleClearOverride = async () => {
+        if (!taskData) return;
+        
+        try {
+            await apiClient.delete(`${API_ENDPOINTS.TASK_DELETE_OVERRIDE}/${taskData.taskCode}/override`);
+            if (taskCode) {
+                loadTaskData(taskCode);
+            }
+        } catch (error) {
+            console.error('Ошибка удаления переопределения:', error);
+            alert('Не удалось очистить изменения');
+        }
+    };
+
     return (
         <PageContainer>
-            {/* Заголовок и навигация */}
+            {/* Блок 1: Навигация и действия */}
             <div className="flex items-center justify-between mb-6">
                 <Button 
                     variant="grayOutline"
                     size="rounded"
                     onClick={() => navigate(-1)}
                     className="inline-flex items-center gap-2"
-                    >
+                >
                     <ArrowLeft className="h-4 w-4" />
                     Вернуться назад
                 </Button>
                 
                 <div className="flex items-center gap-3">
-                    {/* Статус выполнения задачи */}
-                    <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${
-                        taskData.isCompleted ? 'bg-bg-light-green text-green-dark' : 'bg-red-light-transparent text-dark-default'
-                    }`}>
-                        {taskData.isCompleted ? (
-                            <CheckCircle className="h-5 w-5 text-green mr-2" />
-                        ) : (
-                            <XCircle className="h-5 w-5 text-red mr-2" />
-                        )}
-                        <span>{taskData.isCompleted ? "Выполнена" : "Не выполнена"}</span>
-                    </div>
+                    <Button 
+                        variant="grayOutline"
+                        size="rounded"
+                        onClick={() => setIsEditModalOpen(true)}
+                    >
+                        Изменить задачу
+                    </Button>
                     
-                    {/* Кнопка перехода к источнику */}
                     <Button 
                         variant="grayOutline"
                         size="rounded"
                         onClick={handleGoToSource}
-                        >
+                    >
                         {taskData.sourceType === "documents" ? "Перейти к документу" : "Перейти к делу"}
                     </Button>
                 </div>
             </div>
 
-            {/* Заголовок задачи */}
+            {/* Блок 2: Заголовок задачи с индикатором статуса */}
             <div className="mb-8">
-                <h1 className="text-2xl font-bold text-text-primary">
-                    Задача: {taskData.taskCode}
-                </h1>
-                <p className="text-text-secondary mt-1">{taskData.taskText}</p>
+                <div className="flex items-center gap-3 mb-2">
+                    {/* Индикатор статуса выполнения с подсказкой при наведении */}
+                    <div 
+                        className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                            taskData.isCompleted ? 'bg-bg-light-green' : 'bg-red-light-transparent'
+                        }`}
+                        title={taskData.isCompleted ? "Задача считается выполненной" : "Задача считается не выполненной"}
+                    >
+                        {taskData.isCompleted ? (
+                            <Check className="h-5 w-5 text-green" />
+                        ) : (
+                            <X className="h-5 w-5 text-red" />
+                        )}
+                    </div>
+                    <h1 className="text-2xl font-bold text-text-primary">
+                        Задача: {taskData.taskCode}
+                    </h1>
+                </div>
+                {/* Текст и причины постановки задачи */}
+                <p className="text-text-primary mt-1">Текст задачи: {taskData.taskText}</p>
+                <p className="text-text-primary mt-1">Причины постановки задачи: {taskData.reasonText || "Причина не указана"}</p>
             </div>
 
-            {/* Основная информация о задаче */}
+            {/* Блок 3: Данные задачи */}
             <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Левая колонка - основная информация */}
-                    <div className="space-y-4">
-                        <div>
-                            <h3 className="text-sm font-medium text-text-primary">Код дела</h3>
-                            <p className="mt-1 text-sm text-text-primary">{taskData.caseCode}</p>
-                        </div>
-                        
-                        <div>
-                            <h3 className="text-sm font-medium text-text-primary">Название проверки</h3>
-                            <p className="mt-1 text-sm text-text-primary">{taskData.failedCheck}</p>
-                        </div>
-                        
-                        <div>
-                            <h3 className="text-sm font-medium text-text-primary">Этап дела</h3>
-                            <p className="mt-1 text-sm text-text-primary">{taskData.caseStage}</p>
-                        </div>
-                        
-                        <div>
-                            <h3 className="text-sm font-medium text-text-primary">Источник данных</h3>
-                            <p className="mt-1 text-sm text-text-primary capitalize">{taskData.sourceType}</p>
-                        </div>
-                    </div>
+                <h2 className="text-lg font-semibold text-text-primary">Данные задачи</h2>
+                <FieldGroup fields={buildTaskFields()} columns={2} showAlertIcon={false} />
 
-                    {/* Правая колонка - статусы и исполнитель */}
-                    <div className="space-y-4">
-                        <div>
-                            <h3 className="text-sm font-medium text-text-primary">Ответственный исполнитель</h3>
-                            <p className="mt-1 text-sm text-text-primary">{taskData.responsibleExecutor}</p>
-                        </div>
+                {/* Блок 4: Изменения срока (отображается только при наличии переноса) */}
+                {hasShiftInfo && (
+                    <div className="pt-6 border-t border-border">
+                        <h2 className="text-lg font-semibold text-text-primary mb-4">Изменения срока</h2>
                         
-                        <div>
-                            <h3 className="text-sm font-medium text-text-primary">Статус мониторинга</h3>
-                            <p className="mt-1 text-sm text-text-primary">{taskData.monitoringStatus}</p>
-                        </div>
-                        
-                        <div>
-                            <h3 className="text-sm font-medium text-text-primary">Дата создания</h3>
-                            <p className="mt-1 text-sm text-text-primary">
-                                {formatDate(taskData.createdDate)}
+                        <div className="space-y-2">
+                            <p className="text-sm text-text-primary">
+                                Причина изменения плановой даты исполнения: {taskData.shiftName || "—"}
+                            </p>
+                            <p className="text-sm text-text-primary">
+                                Прежняя дата исполнения: {formatDate(taskData.originalPlannedDate) || "—"}
+                            </p>
+                            <p className="text-sm text-text-primary">
+                                Новая дата исполнения: {formatDate(taskData.executionDatePlan) || "—"}
                             </p>
                         </div>
+                        
+                        {/* Кнопка очистки изменений */}
+                        <div className="mt-4">
+                            <Button 
+                                variant="grayOutline"
+                                size="rounded"
+                                onClick={handleClearOverride}
+                                className="inline-flex items-center gap-2"
+                            >
+                                <Eraser className="h-4 w-4" />
+                                Очистить изменения
+                            </Button>
+                        </div>
                     </div>
-                </div>
-
-                {/* Причины постановки задачи */}
-                <div className="pt-6 border-t border-border">
-                    <h3 className="text-sm font-medium text-text-primary mb-2">Причины постановки задачи</h3>
-                    <p className="text-sm text-text-primary">
-                        {taskData.reasonText || "Причина не указана"}
-                    </p>
-                </div>
+                )}
             </div>
+
+            {/* Модальное окно редактирования задачи */}
+            <TaskEditModal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                task={taskData}
+                onSuccess={handleEditSuccess}
+            />
         </PageContainer>
     );
 }

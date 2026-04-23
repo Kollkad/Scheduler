@@ -1,11 +1,26 @@
-// client\components\SavingModal.tsx
-import { useState, useEffect, useRef } from "react";
+// client/components/SavingModal.tsx
+import { useState, useRef, useEffect } from "react";
 import { X, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { savingService, SaveDataType } from "@/services/saving/SavingService";
 import { SmartSelect } from "@/components/sorter/SmartSelect";
 import { SelectOption } from "@/components/sorter/SorterTypes";
-import { AvailableDataStatus, StatusResponse } from "@/services/api/types";
+
+// Тип статуса доступных данных
+interface DataStatus {
+  loaded: boolean;
+  row_count: number;
+}
+
+interface AvailableDataStatus {
+  detailed_report: DataStatus;
+  documents_report: DataStatus;
+  stages: DataStatus;
+  checks: DataStatus;
+  check_results: DataStatus;
+  tasks: DataStatus;
+  user_overrides: DataStatus;
+}
 
 interface SavingModalProps {
   isOpen: boolean;
@@ -18,55 +33,38 @@ export function SavingModal({ isOpen, onClose }: SavingModalProps) {
   const [availableData, setAvailableData] = useState<AvailableDataStatus | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
+  // Опции выбора типа данных для выгрузки
   const dataTypeOptions: SelectOption[] = [
-    { 
-      value: 'detailed-report', 
-      label: 'Детальный отчет', 
-    },
-    { 
-      value: 'documents-report', 
-      label: 'Отчет документов', 
-    },
-    { 
-      value: 'terms-productions', 
-      label: 'Анализ сроков сопровождения', 
-    },
-    { 
-      value: 'documents-analysis', 
-      label: 'Полный анализ документов', 
-    },
-    { 
-      value: 'tasks', 
-      label: 'Задачи', 
-    },
-    { 
-      value: 'rainbow-analysis', 
-      label: 'Радуга', 
-    },
-    { 
-      value: 'all-analysis', 
-      label: 'Все анализы (ZIP)', 
-    }
+    { value: 'detailed-report', label: 'Детальный отчет' },
+    { value: 'documents-report', label: 'Отчет документов' },
+    { value: 'stages', label: 'Этапы документов и дел' },
+    { value: 'checks', label: 'Проверки документов и дел' },
+    { value: 'check-results-cases', label: 'Результаты проверок (дела)' },
+    { value: 'check-results-documents', label: 'Результаты проверок (документы)' },
+    { value: 'tasks', label: 'Все задачи' },
+    { value: 'user-overrides', label: 'Мои изменения задач' },
   ];
 
+  // Описания типов данных для отображения
   const dataTypeDescriptions: Record<SaveDataType, string> = {
     'detailed-report': 'Очищенный детальный отчет по судебной работе',
     'documents-report': 'Очищенный отчет по полученным и переданным документам',
-    'rainbow-analysis': 'Результаты цветовой классификации (радуга)',
-    'terms-productions': 'Результаты анализа сроков сопровождения дел по детальному отчету',
-    'documents-analysis': 'Результаты анализа сроков обработки документов',
-    'tasks': 'Рассчитанные задачи на основании анализов сроков сопровождения дел и документов',
-    'all-analysis': 'Все виды анализа в одном ZIP-архиве'
+    'stages': 'Сводка всех этапов документов и дел',
+    'checks': 'Сводка всех проверок документов и дел',
+    'check-results-cases': 'Результаты проведенных проверок для дел',
+    'check-results-documents': 'Результаты проведенных проверок для документов',
+    'tasks': 'Все поставленные задачи',
+    'user-overrides': 'Внесенные изменения в задачи (текущий пользователь)',
   };
 
-  // Загрузка статуса доступных данных при открытии модального окна
+  // Загрузка статуса доступных данных при открытии
   useEffect(() => {
     if (isOpen) {
       loadAvailableDataStatus();
     }
   }, [isOpen]);
 
-  // Обработчик клика вне модального окна и нажатия Escape
+  // Закрытие по клику вне модального окна и по Escape
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
@@ -91,89 +89,84 @@ export function SavingModal({ isOpen, onClose }: SavingModalProps) {
     };
   }, [isOpen, onClose]);
 
-  // Функция загружает статус доступных данных
+  // Загружает статус доступных данных с бэкенда
   const loadAvailableDataStatus = async () => {
     try {
-      const status = await savingService.getAllProcessedDataStatus() as StatusResponse;
-      if (status.success) {
-        setAvailableData(status.status);
+      const response = await savingService.getAvailableDataStatus();
+      if (response.success) {
+        setAvailableData(response.status);
       }
     } catch (error) {
       console.error('Ошибка загрузки статуса данных:', error);
     }
   };
 
-  // Функция выполняет сохранение выбранного типа данных
-  const handleSave = async () => {
-    if (!selectedType) return;
-
-    try {
-        setIsSaving(true);
-        
-        // Подготовка данных для скачивания
-        const selectedOption = dataTypeOptions.find(opt => opt.value === selectedType);
-        const isZip = selectedType === 'all-analysis';
-        const extension = isZip ? 'zip' : 'xlsx';
-        const fileName = `${selectedOption?.label || 'data'}.${extension}`;
-        
-        // Создание скрытой ссылки для скачивания
-        const link = document.createElement('a');
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        
-        // Запуск загрузки
-        const blob = await savingService.saveData(selectedType);
-        
-        // Создание URL для скачивания
-        const url = window.URL.createObjectURL(blob);
-        link.href = url;
-        link.download = fileName;
-        
-        // Автоматический запуск скачивания
-        link.click();
-        
-        // Очистка ресурсов
-        setTimeout(() => {
-          window.URL.revokeObjectURL(url);
-          document.body.removeChild(link);
-        }, 100);
-        
-    } catch (error) {
-        console.error('Ошибка загрузки файла:', error);
-        alert('Ошибка при загрузке файла. Проверьте консоль для подробностей.');
-    } finally {
-        setIsSaving(false);
-    }
-  };
-
-  // Функция получает информацию о статусе данных для выбранного типа
-  const getDataStatusInfo = (type: SaveDataType) => {
+  // Получает статус для выбранного типа данных
+  const getDataStatusInfo = (type: SaveDataType): DataStatus | null => {
     if (!availableData) return null;
     
     const statusMap: Record<SaveDataType, keyof AvailableDataStatus> = {
       'detailed-report': 'detailed_report',
-      'documents-report': 'documents_report', 
-      'terms-productions': 'terms_productions',
-      'documents-analysis': 'documents_analysis',
+      'documents-report': 'documents_report',
+      'stages': 'stages',
+      'checks': 'checks',
+      'check-results-cases': 'check_results',
+      'check-results-documents': 'check_results',
       'tasks': 'tasks',
-      'rainbow-analysis': 'detailed_report', // rainbow использует detailed_report как основу
-      'all-analysis': 'detailed_report' // all-analysis проверяет все типы
+      'user-overrides': 'user_overrides',
     };
     
     const statusKey = statusMap[type];
-    return availableData[statusKey];
+    return availableData[statusKey] || null;
   };
 
+  // Выполняет сохранение выбранного типа данных
+  const handleSave = async () => {
+    if (!selectedType) return;
+
+    try {
+      setIsSaving(true);
+      
+      const selectedOption = dataTypeOptions.find(opt => opt.value === selectedType);
+      const extension = 'xlsx';
+      const fileName = `${selectedOption?.label || 'data'}.${extension}`;
+      
+      const link = document.createElement('a');
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      
+      const blob = await savingService.saveData(selectedType);
+      
+      const url = window.URL.createObjectURL(blob);
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(link);
+      }, 100);
+      
+    } catch (error) {
+      console.error('Ошибка загрузки файла:', error);
+      alert('Ошибка при загрузке файла. Проверьте консоль для подробностей.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Обработчик изменения выбранного типа
   const handleTypeChange = (value: string) => {
     setSelectedType(value as SaveDataType);
   };
 
+  // Обработчик очистки выбора
   const handleClearType = () => {
     setSelectedType(undefined);
   };
 
   const selectedOption = dataTypeOptions.find(opt => opt.value === selectedType);
-  const statusInfo = getDataStatusInfo(selectedType);
+  const statusInfo = selectedType ? getDataStatusInfo(selectedType) : null;
 
   if (!isOpen) return null;
 
@@ -213,7 +206,7 @@ export function SavingModal({ isOpen, onClose }: SavingModalProps) {
             onValueChange={handleTypeChange}
             onClear={handleClearType}
             isSelected={!!selectedType}
-            />
+          />
 
           {/* Описание и статус */}
           {selectedType && (
@@ -236,7 +229,7 @@ export function SavingModal({ isOpen, onClose }: SavingModalProps) {
                         : 'bg-bg-yellow text-dark-default'
                     }`}>
                       {statusInfo.loaded 
-                        ? `✓ Данные доступны (${statusInfo.row_count || 0} записей)`
+                        ? `✓ Данные доступны (${statusInfo.row_count} записей)`
                         : '⚠ Данные не загружены'
                       }
                     </span>

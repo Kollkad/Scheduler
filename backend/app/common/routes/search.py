@@ -32,27 +32,25 @@ async def search_cases(
         }
     """
     try:
-        from backend.app.data_management.modules.data_manager import data_manager
+        from backend.app.data_management.modules.normalized_data_manager import normalized_manager
         from backend.app.common.modules.utils import extract_unique_values
 
         results = []
         seen = set()
 
         # Поиск в детальном отчете
-        df_detailed = data_manager.get_detailed_data()
+        df_detailed = normalized_manager.get_cases_data()
         if df_detailed is not None and not df_detailed.empty:
-            # Извлчечение уникальных значений из колонки CASE_CODE
             case_codes = extract_unique_values(df_detailed, 'CASE_CODE')
             for code in case_codes:
                 if q.lower() in code.lower() and code not in seen:
                     results.append({"caseCode": code, "source": "detailed_report"})
                     seen.add(code)
 
-        # Сортировка: сначала точные совпадения, потом по длине
         results.sort(key=lambda x: (
-            -int(x["caseCode"].lower() == q.lower()),  # точное совпадение выше
-            len(x["caseCode"]),  # короткие выше
-            x["caseCode"]  # алфавитно
+            -int(x["caseCode"].lower() == q.lower()),
+            len(x["caseCode"]),
+            x["caseCode"]
         ))
 
         return {
@@ -71,3 +69,4 @@ async def search_cases(
             "total": 0,
             "error": str(e)
         }
+

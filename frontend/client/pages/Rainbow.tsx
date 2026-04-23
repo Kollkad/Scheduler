@@ -1,5 +1,7 @@
 // frontend/client/pages/Rainbow.tsx
 
+// TODO: При возврате на страницу с фильтрами из URL диаграмма не применяет фильтры,
+// хотя адресная строка содержит параметры. Требуется доработка синхронизации состояния.
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { DefaultChart } from "@/components/DefaultChart";
@@ -278,6 +280,7 @@ export default function Rainbow() {
           responsibleExecutor: caseItem.responsibleExecutor || 'Не указан',
           gosb: caseItem.gosb || 'Не указан',
           currentPeriodColor: caseItem.currentPeriodColor || 'Не указан',
+          caseStatus: caseItem.caseStatus || 'Не указан',  
           courtProtectionMethod: caseItem.courtProtectionMethod || 'Не указан',
           courtReviewingCase: caseItem.courtReviewingCase || 'Не указан',
           ...(featureFlags.hasPreviousReport && {

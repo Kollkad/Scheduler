@@ -1,4 +1,4 @@
-// client\services\api\endpoints.ts
+// client/services/api/endpoints.ts
 export const API_ENDPOINTS = {
   // ==================== ACCESS ====================
   AUTH_STATUS: '/api/auth/status',
@@ -15,29 +15,33 @@ export const API_ENDPOINTS = {
   RAINBOW_QUICK_TEST: '/api/rainbow/quick-test',
   RAINBOW_FILL_DIAGRAM: '/api/rainbow/fill-diagram',
 
-  // ==================== DOCUMENTS ====================
-  DOCUMENTS_ANALYZE: '/api/documents/analyze_documents',
-  DOCUMENTS_FILTER: '/api/documents/filter_documents',
-  DOCUMENTS_STATUSES: '/api/documents/document_statuses',
-  DOCUMENTS_CHARTS: '/api/documents/analyze_document_charts', 
-  DOCUMENT_DETAILS: '/api/documents/document',
+  // ==================== DOCUMENTS V3 ====================
+  DOCUMENTS_ANALYZE: '/api/documents/v3/analyze_documents',
+  DOCUMENTS_FILTER: '/api/documents/v3/filter_documents',
+  DOCUMENTS_STATUSES: '/api/documents/v3/document_statuses',
+  DOCUMENTS_CHARTS: '/api/documents/v3/analyze_document_charts',
+  DOCUMENT_DETAILS: '/api/documents/v3/document',
 
-  // ==================== TERMS V2 - LAWSUIT ====================
-  TERMS_V2_LAWSUIT_ANALYZE: '/api/terms/v2/lawsuit/analyze_lawsuit',
-  TERMS_V2_LAWSUIT_CHARTS: '/api/terms/v2/lawsuit/analyze_lawsuit_charts',
-  TERMS_V2_LAWSUIT_FILTERED: '/api/terms/v2/lawsuit/filtered-cases',
+  // ==================== TERMS V3 - LAWSUIT ====================
+  TERMS_LAWSUIT_ANALYZE: '/api/terms/v3/lawsuit/analyze_lawsuit',
+  TERMS_LAWSUIT_CHARTS: '/api/terms/v3/lawsuit/analyze_lawsuit_charts',
+  TERMS_LAWSUIT_FILTERED: '/api/terms/v3/lawsuit/filtered-cases',
 
-  // ==================== TERMS V2 - ORDER ====================
-  TERMS_V2_ORDER_ANALYZE: '/api/terms/v2/order/analyze_order',
-  TERMS_V2_ORDER_CHARTS: '/api/terms/v2/order/analyze_order_charts',
-  TERMS_V2_ORDER_FILTERED: '/api/terms/v2/order/filtered-cases',
+  // ==================== TERMS V3 - ORDER ====================
+  TERMS_ORDER_ANALYZE: '/api/terms/v3/order/analyze_order',
+  TERMS_ORDER_CHARTS: '/api/terms/v3/order/analyze_order_charts',
+  TERMS_ORDER_FILTERED: '/api/terms/v3/order/filtered-cases',
 
   // ==================== TASKS ====================
   TASKS_CALCULATE: '/api/tasks/calculate',
   TASKS_LIST: '/api/tasks/list',
   TASKS_SAVE: '/api/tasks/save-all',
-  TASKS_FILTER: '/api/tasks/filter',
+  TASKS_STATUS: '/api/tasks/status',
   TASK_DETAILS: '/api/tasks',
+
+  TASK_UPDATE: '/api/tasks',                      // PATCH /api/tasks/{taskCode}
+  TASK_DELETE_OVERRIDE: '/api/tasks',             // DELETE /api/tasks/{taskCode}/override
+  TASK_SHIFT_REASONS: '/api/tasks',               // GET /api/tasks/{taskCode}/shift-reasons
 
   // ==================== FILE OPERATIONS ====================
   UPLOAD_FILE: '/api/data/upload-file',
@@ -53,19 +57,19 @@ export const API_ENDPOINTS = {
 
   // ==================== CASE DETAILS ====================
   CASE_DETAILS: '/api/case',
-  FILTERED_CASES: '/api/terms/filtered-cases',
+  FILTERED_CASES: '/api/terms/v3/lawsuit/filtered-cases',
 
   // ==================== SAVING ENDPOINTS ====================
   SAVE_DETAILED_REPORT: '/api/save/detailed-report',
   SAVE_DOCUMENTS_REPORT: '/api/save/documents-report',
-  SAVE_TERMS_PRODUCTIONS: '/api/save/terms-productions',
-  SAVE_DOCUMENTS_ANALYSIS: '/api/save/documents-analysis',
+  SAVE_STAGES: '/api/save/stages',
+  SAVE_CHECKS: '/api/save/checks',
+  SAVE_CHECK_RESULTS_CASES: '/api/save/check-results/cases',
+  SAVE_CHECK_RESULTS_DOCUMENTS: '/api/save/check-results/documents',
   SAVE_TASKS: '/api/save/tasks',
-  SAVE_RAINBOW_ANALYSIS: '/api/save/rainbow-analysis',
-  SAVE_ALL_ANALYSIS: '/api/save/all-analysis',
+  SAVE_TASKS_BY_EXECUTOR: '/api/save/tasks-by-executor',
+  SAVE_USER_OVERRIDES: '/api/save/user-overrides',
   SAVE_AVAILABLE_DATA_STATUS: '/api/save/available-data',
-  SAVE_ALL_PROCESSED_DATA_STATUS: '/api/save/all-processed-data',
-  SAVE_TASKS_EXECUTOR: '/api/save/tasks-by-executor',
 
   // ==================== ANONYMIZATION ====================
   ANONYMIZATION_NORMALIZE: '/api/additional_processing/normalize',
@@ -76,12 +80,4 @@ export const API_ENDPOINTS = {
   // ==================== DATA STATUS ====================
   TEST_DATA: '/api/data/test-data',
   RESET_ANALYSIS: '/api/data/reset-analysis',
-
-  // ==================== УСТАРЕВШИЕ (НЕ ИСПОЛЬЗОВАТЬ) ====================
-  // TERMS_LAWSUIT_ANALYZE: '/api/terms/lawsuit/analyze_l', // УСТАРЕЛО - использовать TERMS_V2_LAWSUIT_ANALYZE
-  // TERMS_ORDER_ANALYZE: '/api/terms/order/analyze_o', // УСТАРЕЛО - использовать TERMS_V2_ORDER_ANALYZE
-  // TERMS_LAWSUIT_TEST: '/api/terms/lawsuit/quick-test', // УСТАРЕЛО
-  // TERMS_ORDER_TEST: '/api/terms/order/quick-test', // УСТАРЕЛО
-  // FILTERED_LAWSUIT_CASES: '/api/terms/lawsuit/filtered-cases', // УСТАРЕЛО - использовать TERMS_V2_LAWSUIT_FILTERED
-  // FILTERED_ORDER_CASES: '/api/terms/order/filtered-cases', // УСТАРЕЛО - использовать TERMS_V2_ORDER_FILTERED
 } as const;

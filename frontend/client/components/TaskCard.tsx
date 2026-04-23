@@ -1,31 +1,20 @@
 // frontend/client/components/TaskCard.tsx
 
-import { Check, CheckCircle } from "lucide-react";
+import { Check, CheckCircle, Pencil } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/utils/dateFormat";
+import { Task } from "@/services/api/taskTypes";
 
 interface TaskCardProps {
-  taskCode: string;
-  taskText: string;
-  reasonText?: string;
-  isCompleted?: boolean;
-  executionDatePlan?: string;
-  executionDateFact?: string;
+  task: Task;
 }
 
-export function TaskCard({
-  taskCode,
-  taskText,
-  reasonText,
-  isCompleted,
-  executionDatePlan,
-  executionDateFact
-}: TaskCardProps) {
+export function TaskCard({ task }: TaskCardProps) {
   const navigate = useNavigate();
 
   const handleNavigate = () => {
-    navigate(`/task/${taskCode}`);
+    navigate(`/task/${task.taskCode}`);
   };
 
   return (
@@ -34,20 +23,23 @@ export function TaskCard({
       <div className="flex-1">
         {/* Заголовок с иконкой статуса */}
         <div className="flex items-center gap-2 mb-3">
-          {isCompleted ? (
+          {task.isCompleted ? (
             <CheckCircle className="h-5 w-5 text-green" />
           ) : (
             <Check className="h-5 w-5 text-text-primary" />
           )}
-          <span className="text-text-primary font-medium">Задача: {taskCode}</span>
+          {task.hasOverride && (
+            <Pencil className="h-4 w-4 text-text-tertiary" />
+          )}
+          <span className="text-text-primary font-medium">Задача: {task.taskCode}</span>
         </div>
 
         {/* Текст задачи */}
-        <div className="text-text-primary text-sm mb-2">{taskText}</div>
+        <div className="text-text-primary text-sm mb-2">{task.taskText}</div>
 
         {/* Причина постановки */}
-        {reasonText && (
-          <div className="text-text-primary text-sm">{reasonText}</div>
+        {task.reasonText && (
+          <div className="text-text-primary text-sm">{task.reasonText}</div>
         )}
       </div>
 
@@ -68,7 +60,7 @@ export function TaskCard({
           {/* Левая половина - план */}
           <div className="flex-1 py-2 px-3 text-center rounded-l-full">
             <div className="text-text-primary text-sm">
-              {executionDatePlan ? formatDate(executionDatePlan) : "—"}
+              {task.executionDatePlan ? formatDate(task.executionDatePlan) : "—"}
             </div>
           </div>
 
@@ -78,7 +70,7 @@ export function TaskCard({
           {/* Правая половина - факт */}
           <div className="flex-1 py-2 px-3 text-center bg-bg-default-light-field rounded-r-full">
             <div className="text-text-primary text-sm">
-              {executionDateFact ? formatDate(executionDateFact) : "—"}
+              {task.executionDateTimeFact ? formatDate(task.executionDateTimeFact) : "—"}
             </div>
           </div>
         </div>

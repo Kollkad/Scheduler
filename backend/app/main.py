@@ -17,13 +17,17 @@ from backend.app.data_management.routes.data_status import router as data_status
 from backend.app.rainbow.routes.rainbow import router as rainbow_router
 from backend.app.common.routes.case import router as case_router
 from backend.app.task_manager.routes.tasks import router as tasks_router
-from backend.app.document_monitoring_v2.routes.document_terms_v2 import router as document_router
-from backend.app.terms_of_support_v2.routes.terms_v2 import router as terms_v2_router
 from backend.app.saving_results.routes.saving import router as saving_router
 from backend.app.additional_processing.routes.anonymization import router as additional_processing_router
 from backend.app.common.routes.search import router as search_router
 from backend.app.table_sorter.routes.filters import router as filters_router
 from backend.app.administration_settings.routes.authorization import router as authorization_router
+from backend.app.document_monitoring_v3.routes.document_terms_v3 import router as document_router_v3
+from backend.app.terms_of_support_v3.routes.terms_v3 import router as terms_v3_router
+from backend.app.task_manager.routes import task_overrides
+from backend.app.data_exchange.routes import export_normalized_data
+from backend.app.data_exchange.routes import import_normalized_data
+from backend.app.data_exchange.routes import clear_exchange_folder
 
 logger = logging.getLogger("uvicorn")
 
@@ -51,12 +55,16 @@ app.include_router(filters_router)
 app.include_router(rainbow_router)
 app.include_router(case_router)
 app.include_router(tasks_router)
-app.include_router(document_router)
-app.include_router(terms_v2_router)
 app.include_router(saving_router)
 app.include_router(additional_processing_router)
 app.include_router(search_router)
 app.include_router(authorization_router)
+app.include_router(document_router_v3)
+app.include_router(terms_v3_router)
+app.include_router(task_overrides.router)
+app.include_router(export_normalized_data.router)
+app.include_router(import_normalized_data.router)
+app.include_router(clear_exchange_folder.router)
 
 # При наличии - используются статичные файлы фронта
 frontend_path = Path(__file__).parent.parent.parent / "frontend" / "dist" / "spa"
