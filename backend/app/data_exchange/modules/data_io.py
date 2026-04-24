@@ -16,7 +16,7 @@ from typing import Callable, Optional
 import pandas as pd
 
 from backend.app.administration_settings.modules.assistant_functions import get_working_directory
-
+from backend.app.reporting.modules.report_types.incorrect_dates_in_data_exchange import should_save_date_problems
 
 def get_exchange_folder() -> Path:
     """
@@ -93,8 +93,12 @@ def retry_operation(
             time.sleep(delay)
 
 
-# TODO: Заменить сохранение проблемных дат в CSV на модуль репортов
-def save_dataframe(df: pd.DataFrame, filename: str, folder: Optional[Path] = None) -> None:
+def save_dataframe(
+    df: pd.DataFrame,
+    filename: str,
+    folder: Optional[Path] = None,
+    save_problems: bool = True
+) -> None:
     """
     Сохраняет DataFrame в Parquet-файл.
 
@@ -102,6 +106,7 @@ def save_dataframe(df: pd.DataFrame, filename: str, folder: Optional[Path] = Non
         df: DataFrame для сохранения
         filename: Имя файла (например, "source_detailed_report.parquet")
         folder: Папка для сохранения (по умолчанию get_exchange_folder())
+        save_problems: Создавать ли репорт о проблемных датах (по умолчанию True)
     """
     if folder is None:
         folder = get_exchange_folder()
@@ -110,6 +115,8 @@ def save_dataframe(df: pd.DataFrame, filename: str, folder: Optional[Path] = Non
 
     # Преобразование date/datetime колонок в datetime64 для Parquet
     df = df.copy()
+    problem_rows = []
+
     for col in df.columns:
         if df[col].dtype == 'object':
             sample = df[col].dropna()
@@ -121,15 +128,29 @@ def save_dataframe(df: pd.DataFrame, filename: str, folder: Optional[Path] = Non
 
                     problem_mask = df[col].isna() & original.notna()
                     if problem_mask.any():
-                        # Сохраняем проблемные даты в CSV для будущего репорта
-                        csv_path = folder / f"{filepath.stem}_date_problems.csv"
-                        problems_df = pd.DataFrame({
-                            'index': df.index[problem_mask],
+                        problem_rows.append({
                             'column': col,
-                            'invalid_value': original[problem_mask].astype(str)
+                            'count': problem_mask.sum(),
+                            'invalid_values': original[problem_mask].astype(str).tolist()[:10]
                         })
-                        problems_df.to_csv(csv_path, index=False)
-                        print(f"⚠️ {len(problems_df)} проблемных дат сохранены в {csv_path}")
+
+    # Сохранение репорта о проблемных датах (только для руководителей/админов)
+    if save_problems and problem_rows:
+        from backend.app.reporting.modules.report_builder import build_report
+
+        info_metadata = {
+            "Файл": filename,
+            "Количество проблемных колонок": str(len(problem_rows)),
+            "Общее количество проблемных строк": str(sum(p['count'] for p in problem_rows)),
+        }
+
+        problems_df = pd.DataFrame(problem_rows)
+        build_report(
+            info_metadata=info_metadata,
+            data_df=problems_df,
+            report_type="date_problems",
+            created_by="system"
+        )
 
     def write():
         df.to_parquet(filepath, compression="snappy")

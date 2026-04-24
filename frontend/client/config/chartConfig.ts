@@ -1,4 +1,4 @@
-// src/config/chartConfig.ts
+// frontend/client/config/chartConfig.ts
 
 export interface ChartItemConfig {
   name: string;

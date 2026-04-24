@@ -16,6 +16,7 @@ from backend.app.data_exchange.modules.data_io import (
 from backend.app.data_management.modules.normalized_data_manager import normalized_manager
 from backend.app.administration_settings.modules.authorization_logic import get_current_user
 from backend.app.administration_settings.modules.user_models import UserSession
+from backend.app.reporting.modules.report_types.incorrect_dates_in_data_exchange import should_save_date_problems
 
 router = APIRouter(prefix="/api/exchange", tags=["data_exchange"])
 
@@ -54,7 +55,8 @@ async def export_all_data(
 
         for filename, df in data_sources.items():
             if df is not None and not df.empty:
-                save_dataframe(df, filename)
+                save_problems = should_save_date_problems(current_user.role)
+                save_dataframe(df, filename, save_problems=save_problems)
                 files_info[filename] = {"rows": len(df), "columns": len(df.columns)}
                 exported_files.append(filename)
 
@@ -95,7 +97,8 @@ async def export_user_overrides(
             raise HTTPException(status_code=400, detail="Нет пользовательских переопределений для экспорта.")
 
         filename = "user_overrides.parquet"
-        save_dataframe(df, filename)
+        save_problems = should_save_date_problems(current_user.role)
+        save_dataframe(df, filename, save_problems=save_problems)
 
         # Сохранение метаданных в metadata_overrides.json
         files_info = {filename: {"rows": len(df), "columns": len(df.columns)}}
@@ -147,7 +150,8 @@ async def export_my_overrides(
         # Сохранение в app_data/users/
         user_folder = get_user_exchange_folder(login)
         filename = f"user_overrides_{login}.parquet"
-        save_dataframe(df, filename, folder=user_folder)
+        save_problems = should_save_date_problems(current_user.role)
+        save_dataframe(df, filename, save_problems=save_problems)
 
         # Сохранение метаданных
         files_info = {filename: {"rows": len(df), "columns": len(df.columns)}}

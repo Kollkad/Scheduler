@@ -96,7 +96,7 @@ export function ProgressBarModal({ isOpen, onClose }: ProgressBarModalProps) {
         {/* Отображение текущей задачи */}
         {progress && (
           <div className="p-3 bg-bg-default-light-field rounded-lg">
-            <p className="text-sm font-medium text-text-primary mb-1">Текущая задача:</p>
+            <p className="text-sm font-medium text-text-primary mb-1">Текущий анализ:</p>
             <p className="text-sm text-text-secondary">{progress.currentTask}</p>
           </div>
         )}

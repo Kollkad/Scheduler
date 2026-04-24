@@ -11,13 +11,11 @@
 
 import pandas as pd
 import os
-from datetime import datetime
-from typing import Optional, Tuple, Dict, List
-from pathlib import Path
+from typing import Optional, Dict
 
 from backend.app.common.config.column_names import COLUMNS
 from backend.app.administration_settings.modules.assistant_functions import get_working_directory
-
+from backend.app.reporting.modules.report_builder import build_report
 
 class GOSBNormalizer:
     """
@@ -163,43 +161,28 @@ class GOSBNormalizer:
 
     def _save_unmatched_records(self, unmatched_df: pd.DataFrame) -> Optional[str]:
         """
-        Сохранение необработанных записей в отдельный Excel-файл.
-        Файл создается в директории data/reports с временной меткой в имени.
+        Сохранение необработанных записей через модуль reporting.
 
         Args:
-            unmatched_df (pd.DataFrame): DataFrame с необработанными записями
+            unmatched_df: DataFrame с необработанными записями
 
         Returns:
-            Optional[str]: Путь к сохраненному файлу или None при ошибке
+            Optional[str]: Путь к сохраненному файлу или None
         """
         if unmatched_df.empty:
             return None
 
-        try:
-            # Формирование пути к директории для отчетов
-            working_dir = get_working_directory()
-            if working_dir:
-                reports_dir = os.path.join(working_dir, "reports")
-            else:
-                reports_dir = os.path.join(
-                    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-                    "data/reports"
-                )
+        info_metadata = {
+            "Количество необработанных записей": str(len(unmatched_df)),
+            "Файл конфигурации": self.config_path or "Не найден",
+        }
 
-            Path(reports_dir).mkdir(parents=True, exist_ok=True)
-
-            # Генерация имени файла с текущей датой и временем
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"unmatched_gosb_{timestamp}.xlsx"
-            filepath = os.path.join(reports_dir, filename)
-
-            # Сохранение в Excel
-            unmatched_df.to_excel(filepath, index=False)
-            print(f"Необработанные записи сохранены в: {filepath}")
-            return filepath
-        except Exception as e:
-            self._warnings.append(f"Ошибка при сохранении отчета: {str(e)}")
-            return None
+        return build_report(
+            info_metadata=info_metadata,
+            data_df=unmatched_df,
+            report_type="normalization_errors",
+            created_by="system"
+        )
 
     def normalize(self, df: pd.DataFrame) -> pd.DataFrame:
         """
