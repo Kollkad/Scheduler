@@ -1,4 +1,4 @@
-// frontend/client/components/TaskCard.tsx
+// frontend/client/components/tasks/TaskCard.tsx
 
 import { Check, CheckCircle, Pencil } from "lucide-react";
 import { useNavigate } from "react-router-dom";

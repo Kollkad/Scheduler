@@ -9,7 +9,7 @@ import { FieldGroup } from "@/components/FieldGroup";
 import { CaseService, CaseDetails, CaseField } from "@/services/case/caseService";
 import { Button } from "@/components/ui/button";
 import { CaseLifecycleTimeline } from "@/components/ui/CaseLifecycleTimeline";
-import { TaskCardList } from "@/components/TaskCardList";
+import { TaskCardList } from "@/components/tasks/TaskCardList";
 import { apiClient } from "@/services/api/client";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { Task } from "@/services/api/taskTypes";

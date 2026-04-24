@@ -1,4 +1,4 @@
-// client/pages/UserProfileDetail.tsx
+// frontend/client/pages/UserProfileDetail.tsx
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";

@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Task } from "@/services/api/taskTypes";
 import { apiClient } from "@/services/api/client";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
-import { TaskCardList } from "@/components/TaskCardList";
+import { TaskCardList } from "@/components/tasks/TaskCardList";
 
 export function DocumentDetail() {
   const navigate = useNavigate();

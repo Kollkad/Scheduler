@@ -1,6 +1,6 @@
-// frontend/client/components/TaskCardList.tsx
+// frontend/client/components/tasks/TaskCardList.tsx
 
-import { TaskCard } from "@/components/TaskCard";
+import { TaskCard } from "@/components/tasks/TaskCard";
 import { Task } from "@/services/api/taskTypes";
 
 interface TaskCardListProps {

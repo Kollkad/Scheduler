@@ -10,11 +10,11 @@ import { sorterConfig } from "@/config/sorterConfig";
 import { Button } from "@/components/ui/button";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { apiClient } from "@/services/api/client";
-import { CompactTaskList } from "@/components/CompactTaskList";
+import { CompactTaskList } from "@/components/tasks/CompactTaskList";
 import { savingService, SaveDataType } from "@/services/saving/SavingService";
 import { useTableFiltersWithUrl } from "@/hooks/useTableFiltersWithUrl";
 import { TaskItem, TasksListResponse } from "@/services/api/taskTypes";
-import { TaskCardList } from "@/components/TaskCardList";
+import { TaskCardList } from "@/components/tasks/TaskCardList";
 
 export default function Tasks() {
   const navigate = useNavigate();
@@ -104,7 +104,7 @@ export default function Tasks() {
       setIsLoading(true);
       
       const blob = await apiClient.downloadFile(
-        API_ENDPOINTS.SAVE_TASKS_EXECUTOR,
+        API_ENDPOINTS.SAVE_TASKS_BY_EXECUTOR,
         { responsibleExecutor: selectedExecutor }
       );
       

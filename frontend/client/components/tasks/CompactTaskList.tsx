@@ -1,4 +1,4 @@
-// frontend/client/components/CompactTaskList.tsx
+// frontend/client/components/tasks/CompactTaskList.tsx
 import { useState } from "react";
 
 interface CompactTaskListProps {
