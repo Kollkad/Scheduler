@@ -9,7 +9,7 @@ import { PageContainer } from "@/components/PageContainer";
 import { RainbowMeanings } from "@/components/RainbowMeanings";
 import { ReusableDataTable } from "@/components/tables/ReusableDataTable";
 import { SettingsForm } from "@/components/sorter";
-import { UploadFilesModal } from "@/components/UploadFilesModal";
+import { UploadFilesModal } from "@/components/modals/UploadFilesModal";
 import { useAnalysis } from "@/contexts/AnalysisContext";
 import { featureFlags } from '@/config/featureFlags';
 import { rainbowChartConfig } from '@/config/chartConfig';

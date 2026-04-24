@@ -1,4 +1,4 @@
-// NotificationModal.tsx
+// frontend/client/components/modals/NotificationModal.tsx
 import { useState, useEffect, useRef } from "react";
 import { X, Copy } from "lucide-react";
 

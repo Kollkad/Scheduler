@@ -1,5 +1,5 @@
-// TabsContainer.tsx
-import { useState, ReactNode } from "react";
+// client\components\TabsContainer.tsx
+import { useState, ReactNode, useEffect } from "react";
 
 interface Tab {
   id: string;
@@ -10,10 +10,18 @@ interface Tab {
 interface TabsContainerProps {
   tabs: Tab[];
   defaultTab?: string;
+  onTabChange?: (tabId: string) => void;
 }
 
-export function TabsContainer({ tabs, defaultTab }: TabsContainerProps) {
+export function TabsContainer({ tabs, defaultTab, onTabChange }: TabsContainerProps) {
   const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id);
+
+  // Уведомление родителя о смене вкладки
+  useEffect(() => {
+    if (onTabChange) {
+      onTabChange(activeTab);
+    }
+  }, [activeTab, onTabChange]);
 
   return (
     <div className="w-full">

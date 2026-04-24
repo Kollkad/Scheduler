@@ -5,7 +5,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader, Check, X, AlertCircle, Eraser} from "lucide-react";
 import { PageContainer } from "@/components/PageContainer";
 import { FieldGroup } from "@/components/FieldGroup";
-import { TaskEditModal } from "@/components/TaskEditModal";
+import { TaskEditModal } from "@/components/modals/TaskEditModal";
 import { apiClient } from "@/services/api/client";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { Button } from "@/components/ui/button";

@@ -8,6 +8,15 @@ export const API_ENDPOINTS = {
   
   // ==================== SEARCH ====================
   SEARCH_CASES: '/api/search/cases',
+
+  // ==================== DATA EXCHANGE ====================
+  EXCHANGE_INFO: '/api/exchange/info',
+  EXCHANGE_EXPORT_ALL: '/api/exchange/export/all',
+  EXCHANGE_EXPORT_OVERRIDES: '/api/exchange/export/user-overrides',
+  EXCHANGE_EXPORT_MY_OVERRIDES: '/api/exchange/export/my-overrides',
+  EXCHANGE_IMPORT_ALL: '/api/exchange/import/all',
+  EXCHANGE_IMPORT_OVERRIDES: '/api/exchange/import/user-overrides',
+  EXCHANGE_CLEAR: '/api/exchange/clear-app-data',
   
   // ==================== RAINBOW ====================
   RAINBOW_ANALYZE: '/api/rainbow/analyze',

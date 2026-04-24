@@ -1,4 +1,4 @@
-// frontend/client/components/TaskEditModal.tsx
+// frontend/client/components/modals/TaskEditModal.tsx
 
 import { useState, useEffect, useRef } from "react";
 import { X, Pencil } from "lucide-react";

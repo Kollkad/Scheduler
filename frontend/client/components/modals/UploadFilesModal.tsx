@@ -1,4 +1,4 @@
-// frontend/client/components/UploadFilesModal.tsx
+// frontend/client/components/modals/UploadFilesModal.tsx
 import { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -229,7 +229,7 @@ export function UploadFilesModal({
 
         {/* Заголовок */}
         <h2 className="text-xl font-semibold text-text-primary mb-6 pr-8">
-          Загрузка файлов
+          Загрузка файлов для анализа
         </h2>
 
         {/* Кнопки загрузки файлов */}
@@ -425,7 +425,7 @@ export function UploadFilesModal({
               size="rounded"
               className="w-4/5"
             >
-              Начать расчет
+              Начать анализ
             </Button>
           </div>
         )}

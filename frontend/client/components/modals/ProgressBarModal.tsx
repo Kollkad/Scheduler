@@ -1,4 +1,4 @@
-// client\components\ProgressBarModal.tsx
+// frontend/client\components\modals/ProgressBarModal.tsx
 import { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { useAnalysis } from "@/contexts/AnalysisContext";

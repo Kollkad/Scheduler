@@ -1,20 +1,23 @@
-// Header.tsx
+// frontend\client\components\Header.tsx
+
 import { Search, X, CircleUserRound } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useState, useRef, useEffect } from "react"; 
-import { UploadFilesModal } from "./UploadFilesModal";
-import { SavingModal } from "./SavingModal";
+import { UploadFilesModal } from "@/components/modals/UploadFilesModal";
+import { SavingModal } from "@/components/modals/SavingModal";
+import { DataExchangeModal } from "@/components/modals/DataExchangeModal";
 import { useCaseSearch } from "@/hooks/useCaseSearch";
 import { useNavigate } from "react-router-dom";
 import { useAnalysis } from "@/contexts/AnalysisContext"; 
-import { ProgressBarModal } from "./ProgressBarModal";
+import { ProgressBarModal } from "@/components/modals/ProgressBarModal";
 import { useAdmin } from '@/hooks/useAdmin';
 
 export function Header() {
   const { isAdmin, loading: adminLoading } = useAdmin();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isSavingModalOpen, setIsSavingModalOpen] = useState(false);
+  const [isExchangeModalOpen, setIsExchangeModalOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -56,6 +59,7 @@ export function Header() {
       setIsProgressModalOpen(false);
     }
   };
+
   // "Загрузить файлы"
   const handleUploadClick = () => {
     if (isAnalyzing) {
@@ -114,6 +118,14 @@ export function Header() {
         </div>
 
         <div className="flex items-center space-x-3 ml-6">
+          <Button
+            variant="grayOutline"
+            size="rounded"
+            onClick={() => setIsSavingModalOpen(true)}
+          >
+            Сохранить файлы
+          </Button>
+
           {!adminLoading && isAdmin && (
             <Button
               variant="green"
@@ -123,14 +135,16 @@ export function Header() {
               Загрузить файлы
             </Button>
           )}
-                    
+          
+
           <Button
-            variant="grayOutline"
+            variant="green"
             size="rounded"
-            onClick={() => setIsSavingModalOpen(true)}
+            onClick={() => setIsExchangeModalOpen(true)}
           >
-            Выгрузить данные
+            Обновить данные
           </Button>
+
           <button
             onClick={() => navigate('/profile')}
             className="p-0 transition-colors hover:opacity-70"
@@ -149,6 +163,10 @@ export function Header() {
         isOpen={isSavingModalOpen}
         onClose={() => setIsSavingModalOpen(false)}
       />
+      <DataExchangeModal
+        isOpen={isExchangeModalOpen}
+        onClose={() => setIsExchangeModalOpen(false)}
+      />
       <ProgressBarModal
         isOpen={isProgressModalOpen}
         onClose={() => setIsProgressModalOpen(false)}
@@ -156,3 +174,4 @@ export function Header() {
     </header>
   );
 }
+

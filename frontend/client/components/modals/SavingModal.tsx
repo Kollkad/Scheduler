@@ -1,4 +1,4 @@
-// client/components/SavingModal.tsx
+// frontend/client/components/modals/SavingModal.tsx
 import { useState, useRef, useEffect } from "react";
 import { X, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ export function SavingModal({ isOpen, onClose }: SavingModalProps) {
   const [availableData, setAvailableData] = useState<AvailableDataStatus | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Опции выбора типа данных для выгрузки
+  // Опции выбора типа данных для сохранения
   const dataTypeOptions: SelectOption[] = [
     { value: 'detailed-report', label: 'Детальный отчет' },
     { value: 'documents-report', label: 'Отчет документов' },
@@ -148,8 +148,8 @@ export function SavingModal({ isOpen, onClose }: SavingModalProps) {
       }, 100);
       
     } catch (error) {
-      console.error('Ошибка загрузки файла:', error);
-      alert('Ошибка при загрузке файла. Проверьте консоль для подробностей.');
+      console.error('Ошибка сохранения файла:', error);
+      alert('Ошибка при сохранении файла. Проверьте консоль для подробностей.');
     } finally {
       setIsSaving(false);
     }
@@ -190,13 +190,13 @@ export function SavingModal({ isOpen, onClose }: SavingModalProps) {
 
         {/* Заголовок */}
         <h2 className="text-xl font-semibold text-text-primary mb-6 pr-8">
-          Выгрузка данных
+          Сохранение Excel-файлов
         </h2>
 
         {/* Выбор типа данных */}
         <div className="space-y-4 mb-6">
           <label className="block text-sm font-medium text-text-secondary mb-2">
-            Выберите тип данных для выгрузки:
+            Выберите тип данных для сохранения:
           </label>
           
           <SmartSelect
@@ -267,7 +267,7 @@ export function SavingModal({ isOpen, onClose }: SavingModalProps) {
         {statusInfo && !statusInfo.loaded && (
           <div className="mt-3 text-center">
             <p className="text-xs text-text-primary">
-              Выгрузка недоступна: данные не загружены
+              Сохранение недоступно: данные не загружены
             </p>
           </div>
         )}
