@@ -1,31 +1,29 @@
-import React from 'react';
+// frontend/client/components/ui/CaseLifecycleTimeline.tsx
 
-const LAWSUIT_STAGES = [
-  { key: 'firstStatusChanged', label: 'Подготовка документов' },
-  { key: 'courtReaction', label: 'Ожидание реакции суда' },
-  { key: 'underConsideration', label: 'На рассмотрении' },
-  { key: 'decisionMade', label: 'Решение вынесено' },
-  { key: 'executionDocumentReceived', label: 'ИД получен' },
-  { key: 'closed', label: 'Закрыто' }
-] as const;
+import { useState, useEffect } from "react";
+import { apiClient } from "@/services/api/client";
 
-const COURT_ORDER_STAGES = [
-  { key: 'firstStatusChanged', label: 'Подготовка документов' },
-  { key: 'courtReaction', label: 'Ожидание реакции суда' },
-  { key: 'executionDocumentReceived', label: 'ИД получен' },
-  { key: 'closed', label: 'Закрыто' }
-] as const;
-
-type ProductionType = 'lawsuit' | 'courtOrder';
+interface StageItem {
+  stageCode: string;
+  stageName: string;
+}
 
 interface CaseLifecycleTimelineProps {
   stageCode: string;
-  productionType?: ProductionType;
+  productionType?: 'lawsuit' | 'courtOrder';
   className?: string;
 }
 
-export function CaseLifecycleTimeline({ stageCode, productionType = 'lawsuit', className = '' }: CaseLifecycleTimelineProps) {
-  if (stageCode === 'exceptions') {
+export function CaseLifecycleTimeline({ 
+  stageCode, 
+  productionType = 'lawsuit', 
+  className = '' 
+}: CaseLifecycleTimelineProps) {
+  const [stages, setStages] = useState<StageItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Проверка на исключения — показывается отдельное сообщение вместо линии жизни
+  if (stageCode && stageCode.includes('exceptions')) {
     return (
       <div className={`bg-bg-default-light-field border border-border-default rounded-lg p-4 text-center ${className}`}>
         <p className="text-text-secondary text-sm">Дело входит в ряд исключений из общих сроков</p>
@@ -33,8 +31,30 @@ export function CaseLifecycleTimeline({ stageCode, productionType = 'lawsuit', c
     );
   }
 
-  const STAGES = productionType === 'courtOrder' ? COURT_ORDER_STAGES : LAWSUIT_STAGES;
-  const currentIndex = STAGES.findIndex(stage => stage.key === stageCode);
+  // Загрузка этапов с бэкенда (исключения отфильтровываются)
+  useEffect(() => {
+    const type = productionType === 'courtOrder' ? 'order' : 'lawsuit';
+    
+    apiClient.get<{ success: boolean; stages: StageItem[] }>(
+      `/api/case/stages/${type}`
+    ).then(data => {
+      if (data.success) {
+        const filteredStages = data.stages.filter(
+          stage => !stage.stageCode.includes('exceptions')
+        );
+        setStages(filteredStages);
+      } else {
+        setStages([]);
+      }
+    }).catch(() => setStages([]))
+    .finally(() => setLoading(false));
+  }, [productionType]);
+
+  if (loading || stages.length === 0) {
+    return null;
+  }
+
+  const currentIndex = stages.findIndex(stage => stage.stageCode === stageCode);
   if (currentIndex === -1) return null;
 
   return (
@@ -49,19 +69,19 @@ export function CaseLifecycleTimeline({ stageCode, productionType = 'lawsuit', c
           <div 
             className="absolute top-1/2 left-0 h-3 bg-green rounded-full -translate-y-1/2 transition-all duration-300"
             style={{ 
-              width: `calc(${(currentIndex / (STAGES.length - 1)) * 100}%)`
+              width: `calc(${(currentIndex / (stages.length - 1)) * 100}%)`
             }}
           />
 
-          {/* Точки*/}
+          {/* Точки */}
           <div className="absolute inset-0">
-            {STAGES.map((stage, index) => {
+            {stages.map((stage, index) => {
               const isActive = index <= currentIndex;
-              const leftPosition = `${(index / (STAGES.length - 1)) * 100}%`;
+              const leftPosition = `${(index / (stages.length - 1)) * 100}%`;
               
               return (
                 <div
-                  key={stage.key}
+                  key={stage.stageCode}
                   className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2"
                   style={{ left: leftPosition }}
                 >
@@ -78,13 +98,13 @@ export function CaseLifecycleTimeline({ stageCode, productionType = 'lawsuit', c
 
         {/* Подписи */}
         <div className="relative h-8 mt-4">
-          {STAGES.map((stage, index) => {
+          {stages.map((stage, index) => {
             const isActive = index <= currentIndex;
-            const leftPosition = `${(index / (STAGES.length - 1)) * 100}%`;
+            const leftPosition = `${(index / (stages.length - 1)) * 100}%`;
             
             return (
               <div
-                key={stage.key}
+                key={stage.stageCode}
                 className="absolute -translate-x-1/2 text-center"
                 style={{ left: leftPosition }}
               >
@@ -93,7 +113,7 @@ export function CaseLifecycleTimeline({ stageCode, productionType = 'lawsuit', c
                     isActive ? 'text-text-primary font-medium' : 'text-text-tertiary'
                   }`}
                 >
-                  {stage.label}
+                  {stage.stageName}
                 </span>
               </div>
             );

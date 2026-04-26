@@ -186,6 +186,8 @@ class TaskOverrideManager:
             updated_task["isCompleted"] = is_completed
             if is_completed and not updated_task.get("executionDateTimeFact"):
                 updated_task["executionDateTimeFact"] = datetime.now()
+            else:
+                updated_task["executionDateTimeFact"] = None
 
         # Обработка переноса срока
         if shift_code is not None:

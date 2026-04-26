@@ -113,13 +113,14 @@ export default function TaskDetail() {
             { id: 'responsibleExecutor', label: 'Ответственный исполнитель', value: taskData.responsibleExecutor, type: 'text' },
             { id: 'monitoringStatus', label: 'Статус мониторинга', value: taskData.monitoringStatus, type: 'text' },
             { id: 'createdDate', label: 'Дата создания', value: formatDate(taskData.createdDate), type: 'text' },
+            { id: 'executionDateTimeFact', label: 'Дата исполнения (факт)', value: formatDate(taskData.executionDateTimeFact), type: 'text' },
         ];
 
         // Плановая дата включается только если задача не имеет переноса срока
         if (!taskData.hasOverride || !taskData.originalPlannedDate) {
             fields.push({ 
                 id: 'executionDatePlan', 
-                label: 'Плановая дата исполнения', 
+                label: 'Дата исполнения (план)', 
                 value: formatDate(taskData.executionDatePlan), 
                 type: 'text' 
             });

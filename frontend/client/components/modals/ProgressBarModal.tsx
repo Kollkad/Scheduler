@@ -1,4 +1,5 @@
-// frontend/client\components\modals/ProgressBarModal.tsx
+// frontend/client/components/modals/ProgressBarModal.tsx
+
 import { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { useAnalysis } from "@/contexts/AnalysisContext";
@@ -11,6 +12,25 @@ interface ProgressBarModalProps {
 export function ProgressBarModal({ isOpen, onClose }: ProgressBarModalProps) {
   const { progress, isAnalyzing, analysisStatus } = useAnalysis();
   const modalRef = useRef<HTMLDivElement>(null);
+  const [showCompletion, setShowCompletion] = useState(false);
+
+  // Сброс флага завершения при каждом открытии модального окна
+  useEffect(() => {
+    if (isOpen) {
+      setShowCompletion(false);
+    }
+  }, [isOpen]);
+
+  // Показ сообщения о завершении только если анализ закончился во время этой сессии
+  useEffect(() => {
+    if (isOpen && !isAnalyzing && analysisStatus.isComplete) {
+      setShowCompletion(true);
+      const timer = setTimeout(() => {
+        onClose();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, isAnalyzing, analysisStatus.isComplete, onClose]);
 
   // Обработчик клика вне модального окна и нажатия Escape
   useEffect(() => {
@@ -36,16 +56,6 @@ export function ProgressBarModal({ isOpen, onClose }: ProgressBarModalProps) {
       document.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen, onClose]);
-
-  // Автоматическое закрытие модального окна после завершения анализа
-  useEffect(() => {
-    if (isOpen && !isAnalyzing && analysisStatus.isComplete) {
-      const timer = setTimeout(() => {
-        onClose();
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, isAnalyzing, analysisStatus.isComplete, onClose]);
 
   if (!isOpen) return null;
 
@@ -102,7 +112,7 @@ export function ProgressBarModal({ isOpen, onClose }: ProgressBarModalProps) {
         )}
 
         {/* Сообщение о завершении анализа */}
-        {analysisStatus.isComplete && (
+        {showCompletion && (
           <div className="mt-4 p-3 bg-bg-light-green border border-green rounded-lg">
             <p className="text-sm font-medium text-green-dark text-center">
               ✅ Анализ успешно завершен!

@@ -88,3 +88,42 @@ async def get_case_details(case_code: str):
         print(f"Критическая ошибка в get_case_details: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка получения данных дела: {str(e)}")
 
+
+@router.get("/stages/{production_type}")
+async def get_production_stages(production_type: str):
+    """
+    Возвращает этапы для указанного типа производства в правильном порядке.
+
+    Args:
+        production_type: "lawsuit" или "order"
+
+    Returns:
+        dict: Список этапов {stageCode, stageName}
+    """
+    try:
+        stages_df = normalized_manager.get_stages_data()
+
+        if production_type == "lawsuit":
+            filtered = stages_df[stages_df["stageCode"].str.endswith("L")]
+        elif production_type == "order":
+            filtered = stages_df[stages_df["stageCode"].str.endswith("O")]
+        else:
+            raise HTTPException(status_code=400, detail=f"Неизвестный тип производства: {production_type}")
+
+        if filtered.empty:
+            raise HTTPException(status_code=404, detail="Этапы не найдены")
+
+        stages_list = filtered[["stageCode", "stageName"]].to_dict(orient="records")
+
+        return {
+            "success": True,
+            "stages": stages_list,
+            "message": f"Найдено {len(stages_list)} этапов"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка получения этапов: {str(e)}")
+
+

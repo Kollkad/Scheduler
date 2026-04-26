@@ -292,14 +292,14 @@ export function DynamicCaseDetail() {
       </div>
 
       {/* Жизненная линия дела */}
-      {caseData.stageCode && (
-        <div className="mb-8">
-          <CaseLifecycleTimeline 
-            stageCode={caseData.stageCode} 
-            productionType={getProductionType()}
-          />
-        </div>
-      )}
+      {caseData?.data?.stageCode && (
+      <div className="mb-8">
+        <CaseLifecycleTimeline 
+          stageCode={caseData.data.stageCode} 
+          productionType={getProductionType()}
+        />
+      </div>
+    )}
 
       {/* Вкладки с группами полей */}
       {tabs.length > 0 ? (

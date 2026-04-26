@@ -255,7 +255,8 @@ def list_reports(report_type: Optional[str] = None) -> List[dict]:
                 continue
 
             # Определение типа репорта из имени файла
-            file_report_type = file.stem.rsplit('_', 3)[0] if '_' in file.stem else None
+            parts = file.stem.rsplit('_', 2)
+            file_report_type = parts[0] if len(parts) == 3 else None
 
             if report_type and file_report_type != report_type:
                 continue

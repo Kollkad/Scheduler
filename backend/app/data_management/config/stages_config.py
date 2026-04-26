@@ -13,24 +13,25 @@ DOCUMENT_STAGES = [
     Stage(stageCode="transferredDocumentD", stageName="Передача документа", fileType="documents_report"),
 ]
 
+# Важен хронологический порядок
 # Этапы для дел искового производства (из детального отчета)
 LAWSUIT_STAGES = [
-    Stage(stageCode="exceptionsL", stageName="Исключение", fileType="detailed_report"),
-    Stage(stageCode="closedL", stageName="Закрыто", fileType="detailed_report"),
-    Stage(stageCode="executionDocumentReceivedL", stageName="ИД получен", fileType="detailed_report"),
-    Stage(stageCode="decisionMadeL", stageName="Решение вынесено", fileType="detailed_report"),
-    Stage(stageCode="underConsiderationL", stageName="Рассмотрение дела", fileType="detailed_report"),
-    Stage(stageCode="courtReactionL", stageName="Реакция суда", fileType="detailed_report"),
     Stage(stageCode="firstStatusChangedL", stageName="Подготовка документов", fileType="detailed_report"),
+    Stage(stageCode="courtReactionL", stageName="Ожидание реакции суда", fileType="detailed_report"),
+    Stage(stageCode="underConsiderationL", stageName="Рассмотрение дела", fileType="detailed_report"),
+    Stage(stageCode="decisionMadeL", stageName="Решение вынесено", fileType="detailed_report"),
+    Stage(stageCode="executionDocumentReceivedL", stageName="ИД получен", fileType="detailed_report"),
+    Stage(stageCode="closedL", stageName="Закрыто", fileType="detailed_report"),
+    Stage(stageCode="exceptionsL", stageName="Исключение", fileType="detailed_report"),
 ]
 
 # Этапы для дел приказного производства (из детального отчета)
 ORDER_STAGES = [
-    Stage(stageCode="exceptionsO", stageName="Исключение", fileType="detailed_report"),
-    Stage(stageCode="closedO", stageName="Закрыто", fileType="detailed_report"),
-    Stage(stageCode="executionDocumentReceivedO", stageName="ИД получен", fileType="detailed_report"),
-    Stage(stageCode="courtReactionO", stageName="Реакция суда", fileType="detailed_report"),
     Stage(stageCode="firstStatusChangedO", stageName="Подготовка документов", fileType="detailed_report"),
+    Stage(stageCode="courtReactionO", stageName="Ожидание реакции суда", fileType="detailed_report"),
+    Stage(stageCode="executionDocumentReceivedO", stageName="ИД получен", fileType="detailed_report"),
+    Stage(stageCode="closedO", stageName="Закрыто", fileType="detailed_report"),
+    Stage(stageCode="exceptionsO", stageName="Исключение", fileType="detailed_report"),
 ]
 
 # Полный список этапов
