@@ -23,29 +23,23 @@ router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
 @router.get("/calculate")
 async def calculate_tasks(
-    executor: Optional[str] = Query(None, description="Фильтр по ответственному исполнителю"),
     current_user: UserSession = Depends(get_current_user)
 ):
     """
     Расчет всех задач на основе загруженных данных.
 
     Выполняет анализ данных и формирование задач для всех доступных
-    типов производств с возможностью фильтрации по исполнителю.
+    типов производств.
     Для расчета необходимы предварительно выполненные анализы:
     - исковое производство (/api/terms/v3/lawsuit/analyze_lawsuit)
     - приказное производство (/api/terms/v3/order/analyze_order)
     - анализ документов (/api/documents/v3/analyze_documents)
-
-    Args:
-        executor (str, optional): Ответственный исполнитель для фильтрации задач
 
     Returns:
         dict: Результат расчета задач с статистикой в формате:
               {
                   "success": bool,
                   "totalTasks": int,
-                  "filteredTasks": int,
-                  "executor": str or None,
                   "data": List[Dict],
                   "message": str
               }
@@ -59,8 +53,6 @@ async def calculate_tasks(
             raise HTTPException(status_code=401, detail="Требуется авторизация")
         created_by = current_user.login
         check_results_df = normalized_manager.get_check_results_data()
-        cases_df = normalized_manager.get_cases_data()
-        documents_df = normalized_manager.get_documents_data()
 
         if check_results_df.empty:
             raise HTTPException(
@@ -73,26 +65,9 @@ async def calculate_tasks(
         all_tasks = task_analyzer.analyze_all_tasks(created_by=created_by)
         print(f"✅ Рассчитано новых задач: {len(all_tasks)}")
 
-        if executor:
-            tasks_df = pd.DataFrame(all_tasks)
-            tasks_df = _merge_with_check_results(tasks_df, check_results_df)
-            tasks_df = _merge_with_cases(tasks_df, cases_df)
-            filtered_tasks = tasks_df[tasks_df["responsibleExecutor"] == executor].to_dict('records')
-            print(f"✅ Отфильтровано задач для {executor}: {len(filtered_tasks)} из {len(all_tasks)}")
-            return {
-                "success": True,
-                "totalTasks": len(all_tasks),
-                "filteredTasks": len(filtered_tasks),
-                "executor": executor,
-                "data": filtered_tasks,
-                "message": f"Рассчитано {len(filtered_tasks)} задач для {executor}"
-            }
-
         return {
             "success": True,
             "totalTasks": len(all_tasks),
-            "filteredTasks": len(all_tasks),
-            "executor": None,
             "data": all_tasks,
             "message": f"Рассчитано {len(all_tasks)} задач"
         }
@@ -350,7 +325,7 @@ async def get_task_details(task_code: str):
 
         task_df = task_match.copy()
 
-        # 1. Присоединяем check_results
+        # 1. Присоединяем check_results для получения targetId, checkCode и monitoringStatus
         if not check_results_df.empty:
             task_df = task_df.merge(
                 check_results_df[["checkResultCode", "targetId", "checkCode", "monitoringStatus", "executionDatePlan"]],
@@ -368,41 +343,25 @@ async def get_task_details(task_code: str):
             task_df["failedCheck"] = task_df["checkName"].fillna("")
             task_df["caseStage"] = task_df["stageCode"].fillna("Не указан")
 
-        # 3. Присоединяем cases_df
-        if not cases_df.empty and "targetId" in task_df.columns:
-            task_df = task_df.merge(
-                cases_df[[COLUMNS["CASE_CODE"], COLUMNS["RESPONSIBLE_EXECUTOR"]]],
-                left_on="targetId",
-                right_on=COLUMNS["CASE_CODE"],
-                how="left"
-            )
-            task_df["caseCode"] = task_df[COLUMNS["CASE_CODE"]].fillna("")
-            task_df["responsibleExecutor"] = task_df[COLUMNS["RESPONSIBLE_EXECUTOR"]].fillna("")
-            task_df["sourceType"] = "detailed"
+        # 3. Джойним исполнителя и код дела через _merge_with_cases
+        task_df = _merge_with_cases(task_df, cases_df)
+        task_df["caseCode"] = task_df["caseCode"].fillna("").replace("Неизвестно", "")
+        task_df["sourceType"] = "detailed"
+        task_df.loc[task_df["caseCode"] == "", "sourceType"] = ""
 
-        # 4. Присоединяем documents_df (если не нашли в cases_df)
-        if not documents_df.empty and "targetId" in task_df.columns:
-            doc_cols = [COLUMNS["TRANSFER_CODE"], COLUMNS["DOCUMENT_CASE_CODE"],
-                        COLUMNS["DOCUMENT_TYPE"], COLUMNS["DEPARTMENT_CATEGORY"],
-                        COLUMNS["DOCUMENT_REQUEST_CODE"]]
-            available = [c for c in doc_cols if c in documents_df.columns]
-            if available:
-                task_df = task_df.merge(
-                    documents_df[available],
-                    left_on="targetId",
-                    right_on=COLUMNS["TRANSFER_CODE"],
-                    how="left",
-                    suffixes=("", "_doc")
-                )
-                if task_df["caseCode"].isna().all():
-                    task_df["caseCode"] = task_df[COLUMNS["DOCUMENT_CASE_CODE"]].fillna("")
-                task_df["documentType"] = task_df.get(COLUMNS["DOCUMENT_TYPE"], "")
-                task_df["department"] = task_df.get(COLUMNS["DEPARTMENT_CATEGORY"], "")
-                task_df["requestCode"] = task_df.get(COLUMNS["DOCUMENT_REQUEST_CODE"], "")
-                task_df["sourceType"] = task_df["sourceType"].fillna("documents")
+        # 4. Джойним данные документов через _merge_with_documents
+        task_df = _merge_with_documents(task_df, documents_df)
 
-        # Заполнение пропусков + пользовательские правки
+        # Запасной caseCode из документов, если не нашли в делах
+        if COLUMNS["DOCUMENT_CASE_CODE"] in task_df.columns:
+            task_df["caseCode"] = task_df["caseCode"].replace("", pd.NA).fillna(
+                task_df[COLUMNS["DOCUMENT_CASE_CODE"]]
+            ).fillna("")
+            task_df["sourceType"] = task_df["sourceType"].replace("", pd.NA).fillna("documents")
+
+        # 5. Пользовательские правки
         task_df = _merge_with_overrides(task_df)
+
         task_data = task_df.iloc[0].to_dict()
         task_data["caseCode"] = task_data.get("caseCode", "")
         task_data["responsibleExecutor"] = task_data.get("responsibleExecutor", "")
@@ -490,9 +449,9 @@ def _merge_with_cases(tasks_df: pd.DataFrame, cases_df: pd.DataFrame) -> pd.Data
     """
     if cases_df.empty or "targetId" not in tasks_df.columns:
         if "responsibleExecutor" not in tasks_df.columns:
-            tasks_df["responsibleExecutor"] = "unknown"
+            tasks_df["responsibleExecutor"] = "Неизвестно"
         if "caseCode" not in tasks_df.columns:
-            tasks_df["caseCode"] = "unknown"
+            tasks_df["caseCode"] = "Неизвестно"
         return tasks_df
 
     case_columns = [COLUMNS["CASE_CODE"], COLUMNS["RESPONSIBLE_EXECUTOR"]]
@@ -506,14 +465,14 @@ def _merge_with_cases(tasks_df: pd.DataFrame, cases_df: pd.DataFrame) -> pd.Data
     )
 
     if COLUMNS["RESPONSIBLE_EXECUTOR"] in merged.columns:
-        merged["responsibleExecutor"] = merged[COLUMNS["RESPONSIBLE_EXECUTOR"]].fillna("unknown")
+        merged["responsibleExecutor"] = merged[COLUMNS["RESPONSIBLE_EXECUTOR"]].fillna("Неизвестно")
     else:
-        merged["responsibleExecutor"] = "unknown"
+        merged["responsibleExecutor"] = "Неизвестно"
 
     if COLUMNS["CASE_CODE"] in merged.columns:
-        merged["caseCode"] = merged[COLUMNS["CASE_CODE"]].fillna("unknown")
+        merged["caseCode"] = merged[COLUMNS["CASE_CODE"]].fillna("Неизвестно")
     else:
-        merged["caseCode"] = "unknown"
+        merged["caseCode"] = "Неизвестно"
 
     return merged
 
@@ -522,7 +481,7 @@ def _merge_with_documents(tasks_df: pd.DataFrame, documents_df: pd.DataFrame) ->
     """
     Присоединяет к задачам данные документов из отчета документов.
 
-    Добавляет колонки: documentType, department, transferCode, requestCode.
+    Добавляет колонки: documentType, department, transferCode, requestCode, responsibleExecutor.
     Соединение выполняется по targetId = COLUMNS["TRANSFER_CODE"].
 
     Args:
@@ -539,7 +498,8 @@ def _merge_with_documents(tasks_df: pd.DataFrame, documents_df: pd.DataFrame) ->
         COLUMNS["TRANSFER_CODE"],
         COLUMNS["DOCUMENT_TYPE"],
         COLUMNS["DEPARTMENT_CATEGORY"],
-        COLUMNS["DOCUMENT_REQUEST_CODE"]
+        COLUMNS["DOCUMENT_REQUEST_CODE"],
+        COLUMNS["RESPONSIBLE_EXECUTOR"]
     ]
     available = [col for col in doc_columns if col in documents_df.columns]
 
@@ -561,6 +521,15 @@ def _merge_with_documents(tasks_df: pd.DataFrame, documents_df: pd.DataFrame) ->
         merged["transferCode"] = merged[COLUMNS["TRANSFER_CODE"]]
     if COLUMNS["DOCUMENT_REQUEST_CODE"] in merged.columns:
         merged["requestCode"] = merged[COLUMNS["DOCUMENT_REQUEST_CODE"]]
+
+    # Добавляем responsibleExecutor из документов, если не нашли в делах
+    if COLUMNS["RESPONSIBLE_EXECUTOR"] in merged.columns:
+        if "responsibleExecutor" in merged.columns:
+            merged["responsibleExecutor"] = merged["responsibleExecutor"].fillna(
+                merged[COLUMNS["RESPONSIBLE_EXECUTOR"]]
+            )
+        else:
+            merged["responsibleExecutor"] = merged[COLUMNS["RESPONSIBLE_EXECUTOR"]]
 
     return merged
 

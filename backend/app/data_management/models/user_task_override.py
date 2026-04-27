@@ -25,6 +25,7 @@ class UserTaskOverride(BaseModel):
     executionDateTimeFact: Optional[datetime] = None
     shiftCode: Optional[str] = None
     createdBy: str
+    updatedAt: Optional[datetime] = None
 
     class Config:
         from_attributes = True

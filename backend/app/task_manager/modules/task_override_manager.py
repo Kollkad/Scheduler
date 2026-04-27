@@ -210,6 +210,9 @@ class TaskOverrideManager:
             updated_task["executionDatePlan"] = new_planned
             updated_task["shiftCode"] = shift_code
 
+        # Дата обновления
+        updated_task["updatedAt"] = datetime.now()
+
         # Сохраняем оверрайд
         self._normalized_manager.add_user_override(updated_task)
 

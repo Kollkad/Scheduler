@@ -210,8 +210,8 @@ async def collect_user_overrides(
        (если существует) как основу.
     2. Сканирует папку app_data/user_overrides/ на наличие файлов
        user_overrides_{login}.parquet.
-    3. Для каждого файла: удаляет из базы строки с такими же taskCode
-       и добавляет новые записи (приоритет у индивидуальных файлов).
+    3. Для каждого файла: сравнивает записи по taskCode,
+       оставляя запись с более поздним updatedAt.
     4. Сохраняет результат в normalized_manager._user_overrides.
 
     Returns:
@@ -233,7 +233,7 @@ async def collect_user_overrides(
             base_df = pd.DataFrame(columns=[
                 "taskCode", "checkResultCode", "taskText", "reasonText",
                 "createdAt", "isCompleted", "executionDateTimeFact",
-                "executionDatePlan", "shiftCode", "createdBy"
+                "executionDatePlan", "shiftCode", "createdBy", "updatedAt"
             ])
             print("ℹ️ Базовый сводный файл не найден, начинаем с пустого DataFrame")
 
@@ -272,14 +272,26 @@ async def collect_user_overrides(
                 print(f"⚠️ Файл {filename} пуст, пропускаем")
                 continue
 
-            # Удаляем из базы строки с taskCode, которые есть в новом файле
-            new_task_codes = set(new_df["taskCode"].tolist())
-            base_df = base_df[~base_df["taskCode"].isin(new_task_codes)]
+            # Для каждого taskCode из нового файла — разрешаем конфликт по updatedAt
+            has_updated_at = "updatedAt" in base_df.columns and "updatedAt" in new_df.columns
 
-            # Добавляем новые записи
-            base_df = pd.concat([base_df, new_df], ignore_index=True)
+            if has_updated_at:
+                # Объединяем базу и новый файл по taskCode
+                merged = pd.concat([base_df, new_df], ignore_index=True)
 
-            print(f"✅ Обработан файл {filename}: {len(new_df)} записей (login: {login})")
+                # Для каждого taskCode оставляем запись с максимальным updatedAt
+                merged["updatedAt"] = pd.to_datetime(merged["updatedAt"], errors="coerce")
+                idx = merged.groupby("taskCode")["updatedAt"].idxmax()
+                base_df = merged.loc[idx].reset_index(drop=True)
+
+                print(f"✅ Обработан файл {filename}: {len(new_df)} записей, конфликты разрешены по updatedAt (login: {login})")
+            else:
+                # Старое поведение: новый перезаписывает старый
+                new_task_codes = set(new_df["taskCode"].tolist())
+                base_df = base_df[~base_df["taskCode"].isin(new_task_codes)]
+                base_df = pd.concat([base_df, new_df], ignore_index=True)
+
+                print(f"✅ Обработан файл {filename}: {len(new_df)} записей (login: {login})")
 
         # === Шаг 4: Сохраняем результат в менеджер ===
         normalized_manager.set_user_overrides_data(base_df)
@@ -318,8 +330,7 @@ async def check_override_violations(
     try:
         tasks_df = normalized_manager.get_tasks_data()
         overrides_df = normalized_manager.get_user_overrides_data()
-        checks_df = normalized_manager.get_checks_data()
-        stages_df = normalized_manager.get_stages_data()
+        check_results_df = normalized_manager.get_check_results_data()
         cases_df = normalized_manager.get_cases_data()
         documents_df = normalized_manager.get_documents_data()
 
@@ -334,7 +345,7 @@ async def check_override_violations(
             }
 
         # Находим выполненные оверрайды
-        completed_overrides = overrides_df[overrides_df["isCompleted"] == True]
+        completed_overrides = overrides_df[overrides_df["isCompleted"] == True].copy()
 
         if completed_overrides.empty:
             return {
@@ -344,7 +355,7 @@ async def check_override_violations(
             }
 
         # Находим задачи, которые снова появились
-        violated = tasks_df[tasks_df["taskCode"].isin(completed_overrides["taskCode"])]
+        violated = tasks_df[tasks_df["taskCode"].isin(completed_overrides["taskCode"])].copy()
 
         if violated.empty:
             return {
@@ -353,60 +364,85 @@ async def check_override_violations(
                 "message": "Нарушений не найдено. Все выполненные задачи отсутствуют в новых."
             }
 
-        # Обогащение check_results данными о fileType через цепочку checkCode → stageCode → fileType
-        if not checks_df.empty and "checkCode" in violated.columns:
-            # Присоединяем stageCode из checks_df
+        # === Шаг 1: Получаем targetId из check_results ===
+        if not check_results_df.empty and "checkResultCode" in violated.columns:
             violated = violated.merge(
-                checks_df[["checkCode", "stageCode"]],
-                on="checkCode",
+                check_results_df[["checkResultCode", "targetId"]],
+                on="checkResultCode",
                 how="left"
             )
 
-            # Присоединяем fileType из stages_df
-            if not stages_df.empty and "stageCode" in violated.columns:
+        # === Шаг 2: Ищем исполнителя через дела (targetId = caseCode) ===
+        if not cases_df.empty and "targetId" in violated.columns:
+            case_cols = [COLUMNS["CASE_CODE"], COLUMNS["RESPONSIBLE_EXECUTOR"]]
+            available = [c for c in case_cols if c in cases_df.columns]
+            if available:
                 violated = violated.merge(
-                    stages_df[["stageCode", "fileType"]],
-                    on="stageCode",
-                    how="left"
+                    cases_df[available],
+                    left_on="targetId",
+                    right_on=COLUMNS["CASE_CODE"],
+                    how="left",
+                    suffixes=("", "_case")
                 )
 
-        # Добавление responsibleExecutor в зависимости от fileType
-        if "fileType" in violated.columns:
-            # Для дел (detailed_report)
-            detailed_mask = violated["fileType"] == "detailed_report"
-            if detailed_mask.any() and not cases_df.empty and "targetId" in violated.columns:
-                case_cols = [COLUMNS["CASE_CODE"], COLUMNS["RESPONSIBLE_EXECUTOR"]]
-                available = [c for c in case_cols if c in cases_df.columns]
-                if available:
-                    violated = violated.merge(
-                        cases_df[available],
-                        left_on="targetId",
-                        right_on=COLUMNS["CASE_CODE"],
-                        how="left",
-                        suffixes=("", "_case")
-                    )
-                    violated.loc[detailed_mask, "responsibleExecutor"] = violated.loc[detailed_mask, COLUMNS["RESPONSIBLE_EXECUTOR"]]
+        # === Шаг 3: Ищем исполнителя через документы (targetId = transferCode) ===
+        if not documents_df.empty and "targetId" in violated.columns:
+            doc_cols = [COLUMNS["TRANSFER_CODE"], COLUMNS["RESPONSIBLE_EXECUTOR"]]
+            available = [c for c in doc_cols if c in documents_df.columns]
+            if available:
+                violated = violated.merge(
+                    documents_df[available],
+                    left_on="targetId",
+                    right_on=COLUMNS["TRANSFER_CODE"],
+                    how="left",
+                    suffixes=("", "_doc")
+                )
 
-            # Для документов (documents_report)
-            documents_mask = violated["fileType"] == "documents_report"
-            if documents_mask.any() and not documents_df.empty and "targetId" in violated.columns:
-                doc_cols = [COLUMNS["TRANSFER_CODE"], COLUMNS["RESPONSIBLE_EXECUTOR"]]
-                available = [c for c in doc_cols if c in documents_df.columns]
-                if available:
-                    violated = violated.merge(
-                        documents_df[available],
-                        left_on="targetId",
-                        right_on=COLUMNS["TRANSFER_CODE"],
-                        how="left",
-                        suffixes=("", "_doc")
-                    )
-                    if COLUMNS["RESPONSIBLE_EXECUTOR"] in violated.columns:
-                        violated.loc[documents_mask, "responsibleExecutor"] = violated.loc[documents_mask, COLUMNS["RESPONSIBLE_EXECUTOR"]]
+        # === Шаг 4: Берём первого непустого исполнителя ===
+        if COLUMNS["RESPONSIBLE_EXECUTOR"] in violated.columns:
+            doc_executor_col = f"{COLUMNS['RESPONSIBLE_EXECUTOR']}_doc"
+            if doc_executor_col in violated.columns:
+                violated["responsibleExecutor"] = (
+                    violated[COLUMNS["RESPONSIBLE_EXECUTOR"]]
+                    .fillna(violated[doc_executor_col])
+                )
+            else:
+                violated["responsibleExecutor"] = violated[COLUMNS["RESPONSIBLE_EXECUTOR"]]
+        else:
+            violated["responsibleExecutor"] = None
 
-        # Заполнение пропусков
-        if "responsibleExecutor" not in violated.columns:
-            violated["responsibleExecutor"] = "Неизвестно"
         violated["responsibleExecutor"] = violated["responsibleExecutor"].fillna("Неизвестно")
+
+        # === Шаг 5: Джойним оверрайды для информации о том, кто и когда отметил выполненным ===
+        if not overrides_df.empty and "taskCode" in violated.columns:
+            override_info_cols = ["taskCode", "isCompleted", "createdBy", "updatedAt"]
+            available_override = [c for c in override_info_cols if c in overrides_df.columns]
+            if available_override:
+                violated = violated.merge(
+                    overrides_df[available_override],
+                    on="taskCode",
+                    how="left",
+                    suffixes=("", "_override")
+                )
+                # Переименовываем для ясности в репорте
+                if "isCompleted_override" in violated.columns:
+                    violated["overrideIsCompleted"] = violated["isCompleted_override"]
+                    violated = violated.drop(columns=["isCompleted_override"])
+                if "createdBy_override" in violated.columns:
+                    violated["overrideCreatedBy"] = violated["createdBy_override"]
+                    violated = violated.drop(columns=["createdBy_override"])
+                if "updatedAt_override" in violated.columns:
+                    violated["updatedAt"] = violated["updatedAt_override"]
+                    violated = violated.drop(columns=["updatedAt_override"])
+
+        # === Шаг 6: Оставляем только нужные колонки для репорта ===
+        report_columns = [
+            "taskCode", "taskText", "reasonText", "createdAt", "createdBy",
+            "targetId", "monitoringStatus", "responsibleExecutor",
+            "updatedAt", "overrideIsCompleted", "overrideCreatedBy"
+        ]
+        available_report_cols = [c for c in report_columns if c in violated.columns]
+        violated = violated[available_report_cols]
 
         # Создаём репорт
         from backend.app.reporting.modules.report_builder import build_report

@@ -63,7 +63,7 @@ class NormalizedDataManager:
         self._user_overrides = pd.DataFrame(columns=[
             "taskCode", "checkResultCode", "taskText", "reasonText",
             "createdAt", "isCompleted", "executionDateTimeFact", "executionDatePlan",
-            "shiftCode", "createdBy"
+            "shiftCode", "createdBy", "updatedAt"
         ])
 
         self._initialized = True
@@ -443,7 +443,7 @@ class NormalizedDataManager:
             self._user_overrides = pd.DataFrame(columns=[
                 "taskCode", "checkResultCode", "taskText", "reasonText",
                 "createdAt", "isCompleted", "executionDateTimeFact", "executionDatePlan",
-                "shiftCode", "createdBy"
+                "shiftCode", "createdBy", "updatedAt"
             ])
 
         print(f"🧹 Очищены данные: {data_type}")
