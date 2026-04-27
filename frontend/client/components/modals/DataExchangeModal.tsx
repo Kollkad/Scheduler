@@ -20,6 +20,13 @@ interface ExchangeInfo {
   overrides_metadata: ExchangeMetadata;
 }
 
+interface UserInfo {
+  login: string;
+  email?: string;
+  name?: string;
+  role: string;
+}
+
 interface DataExchangeModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -31,21 +38,34 @@ export function DataExchangeModal({ isOpen, onClose }: DataExchangeModalProps) {
     analysisData: false,
     taskOverrides: false,
     myOverrides: false,
+    collectOverrides: false,
+    checkViolations: false,
   });
+  const [userRole, setUserRole] = useState<string>("");
   const [exchangeInfo, setExchangeInfo] = useState<ExchangeInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Загрузка информации о данных в папке обмена при открытии
+  // Проверка роли
+  const isManagerOrAbove = userRole === "Руководитель" || userRole === "Администратор";
+
+  // Загрузка информации о данных в папке обмена и роли пользователя при открытии
   useEffect(() => {
     if (isOpen) {
       loadExchangeInfo();
+      loadUserRole();
     }
   }, [isOpen]);
 
   // Сброс чекбоксов при смене вкладки
   useEffect(() => {
-    setCheckboxes({ analysisData: false, taskOverrides: false, myOverrides: false });
+    setCheckboxes({
+      analysisData: false,
+      taskOverrides: false,
+      myOverrides: false,
+      collectOverrides: false,
+      checkViolations: false,
+    });
   }, [activeTab]);
 
   // Закрытие по клику вне модального окна и по Escape
@@ -85,9 +105,30 @@ export function DataExchangeModal({ isOpen, onClose }: DataExchangeModalProps) {
     }
   };
 
+  // Загружает роль текущего пользователя
+  const loadUserRole = async () => {
+    try {
+      const response = await apiClient.get<UserInfo>(API_ENDPOINTS.USER_INFO);
+      if (response.role) {
+        setUserRole(response.role);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки роли пользователя:', error);
+    }
+  };
+
   // Обработчик изменения чекбокса
   const handleCheckboxChange = (name: keyof typeof checkboxes) => {
-    setCheckboxes(prev => ({ ...prev, [name]: !prev[name] }));
+    setCheckboxes(prev => {
+      const newState = { ...prev, [name]: !prev[name] };
+
+      // Если снимаем «Актуализировать ответы на задачи» — снимаем и вложенный
+      if (name === "collectOverrides" && !newState.collectOverrides) {
+        newState.checkViolations = false;
+      }
+
+      return newState;
+    });
   };
 
   // Выполняет экспорт или импорт в зависимости от вкладки
@@ -115,6 +156,12 @@ export function DataExchangeModal({ isOpen, onClose }: DataExchangeModalProps) {
         if (checkboxes.taskOverrides) {
           await apiClient.post(API_ENDPOINTS.EXCHANGE_IMPORT_OVERRIDES);
         }
+        if (checkboxes.collectOverrides) {
+          await apiClient.post(API_ENDPOINTS.EXCHANGE_COLLECT_OVERRIDES);
+          if (checkboxes.checkViolations) {
+            await apiClient.post(API_ENDPOINTS.EXCHANGE_CHECK_VIOLATIONS);
+          }
+        }
       }
       onClose();
     } catch (error) {
@@ -125,7 +172,12 @@ export function DataExchangeModal({ isOpen, onClose }: DataExchangeModalProps) {
     }
   };
 
-  const hasSelection = checkboxes.analysisData || checkboxes.taskOverrides || checkboxes.myOverrides;
+  const hasSelection =
+    checkboxes.analysisData ||
+    checkboxes.taskOverrides ||
+    checkboxes.myOverrides ||
+    checkboxes.collectOverrides;
+
   const isExport = activeTab === "export";
 
   // Форматирование даты из ISO строки
@@ -162,6 +214,34 @@ export function DataExchangeModal({ isOpen, onClose }: DataExchangeModalProps) {
               />
               <span className="text-sm text-text-primary">Загрузить ответы на задачи</span>
             </label>
+
+            {/* Только для руководителей и администраторов */}
+            {isManagerOrAbove && (
+              <>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={checkboxes.collectOverrides}
+                    onChange={() => handleCheckboxChange('collectOverrides')}
+                    className="w-4 h-4 text-blue focus:ring-blue rounded"
+                  />
+                  <span className="text-sm text-text-primary">Актуализировать ответы на задачи</span>
+                </label>
+
+                {/* Вложенный чекбокс — виден только если выбран collectOverrides */}
+                {checkboxes.collectOverrides && (
+                  <label className="flex items-center gap-2 cursor-pointer ml-6">
+                    <input
+                      type="checkbox"
+                      checked={checkboxes.checkViolations}
+                      onChange={() => handleCheckboxChange('checkViolations')}
+                      className="w-4 h-4 text-blue focus:ring-blue rounded"
+                    />
+                    <span className="text-sm text-text-secondary">Провести проверку выполнения задач</span>
+                  </label>
+                )}
+              </>
+            )}
           </div>
 
           {/* Инфо-блок */}

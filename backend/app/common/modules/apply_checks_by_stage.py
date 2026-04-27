@@ -12,6 +12,7 @@
 import pandas as pd
 from datetime import date, datetime
 from typing import Dict, Callable, Optional
+import hashlib
 
 
 def apply_checks_by_stage(
@@ -111,11 +112,12 @@ def apply_checks_by_stage(
     result_df["checkedAt"] = checked_at
 
     # Генерация уникальных кодов результатов проверок
-    result_df["checkResultCode"] = (
-        "RC-" +
-        result_df["stageCode"].str.upper() + "-" +
-        (result_df.groupby("stageCode").cumcount() + 1).astype(str).str.zfill(7)
-    )
+    def _generate_check_result_code(row):
+        raw = f"{row['stageCode']}_{row['targetId']}_{row['checkCode']}"
+        hash_hex = hashlib.sha256(raw.encode()).hexdigest()[:10].upper()
+        return f"RC-{hash_hex}"
+
+    result_df["checkResultCode"] = result_df.apply(_generate_check_result_code, axis=1)
 
     output_columns = [
         "checkResultCode", "checkCode", "targetId",

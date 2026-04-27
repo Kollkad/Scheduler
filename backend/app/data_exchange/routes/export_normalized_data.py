@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from backend.app.data_exchange.modules.data_io import (
     save_dataframe,
     save_metadata,
-    build_metadata, get_user_exchange_folder
+    build_metadata, get_user_overrides_folder
 )
 from backend.app.data_management.modules.normalized_data_manager import normalized_manager
 from backend.app.administration_settings.modules.authorization_logic import get_current_user
@@ -127,7 +127,7 @@ async def export_my_overrides(
     """
     Выгружает пользовательские переопределения текущего сотрудника.
 
-    Сохраняет в app_data/users/:
+    Сохраняет в app_data/user_overrides/:
     - user_overrides_{login}.parquet — только оверрайды этого пользователя
     - metadata_{login}.json — метаданные экспорта
 
@@ -147,11 +147,11 @@ async def export_my_overrides(
         if df.empty:
             raise HTTPException(status_code=400, detail=f"Нет переопределений для пользователя {login}.")
 
-        # Сохранение в app_data/users/
-        user_folder = get_user_exchange_folder(login)
+        # Сохранение в app_data/user_overrides/
+        user_folder = get_user_overrides_folder()
         filename = f"user_overrides_{login}.parquet"
         save_problems = should_save_date_problems(current_user.role)
-        save_dataframe(df, filename, save_problems=save_problems)
+        save_dataframe(df, filename, save_problems=save_problems, folder=user_folder)
 
         # Сохранение метаданных
         files_info = {filename: {"rows": len(df), "columns": len(df.columns)}}

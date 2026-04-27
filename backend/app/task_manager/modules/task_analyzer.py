@@ -40,7 +40,6 @@ class TaskAnalyzer:
             List[Dict]: Список всех сформированных задач
         """
         all_tasks = []
-        task_formatter.reset_counter()
 
         # Получение данных из нормализованного менеджера
         check_results_df = normalized_manager.get_check_results_data()
@@ -187,7 +186,8 @@ class TaskAnalyzer:
                         check_result_code=row["checkResultCode"],
                         task_text=task_text,
                         reason_text=reason_text,
-                        created_by=created_by
+                        created_by=created_by,
+                        check_code=check_code
                     )
                     tasks.append(task)
 
@@ -274,7 +274,8 @@ class TaskAnalyzer:
                         check_result_code=row["checkResultCode"],
                         task_text=task_config.get("task_text", ""),
                         reason_text=task_config.get("reason_text", ""),
-                        created_by=created_by
+                        created_by=created_by,
+                        check_code=check_code
                     )
                     tasks.append(task)
 

@@ -43,19 +43,23 @@ def get_exchange_folder() -> Path:
     return exchange_dir
 
 
-def get_user_exchange_folder(login: str) -> Path:
+def get_user_overrides_folder() -> Path:
     """
-    Возвращает путь к папке обмена для конкретного пользователя.
+    Возвращает путь к папке с пользовательскими переопределениями задач.
 
-    Args:
-        login: Логин пользователя
+    Папка создается автоматически, если не существует.
+    Путь: {working_dir}/app_data/user_overrides/
 
     Returns:
-        Path: Путь к папке {app_data}/{login}/
+        Path: Путь к папке app_data/user_overrides/
+
+    Raises:
+        ValueError: Если не удалось определить рабочую директорию
     """
-    user_dir = get_exchange_folder() / login
-    user_dir.mkdir(parents=True, exist_ok=True)
-    return user_dir
+    exchange_dir = get_exchange_folder()
+    user_overrides_dir = exchange_dir / "user_overrides"
+    user_overrides_dir.mkdir(parents=True, exist_ok=True)
+    return user_overrides_dir
 
 
 def retry_operation(

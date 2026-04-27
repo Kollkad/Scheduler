@@ -21,6 +21,8 @@ export const API_ENDPOINTS = {
   EXCHANGE_IMPORT_ALL: '/api/exchange/import/all',
   EXCHANGE_IMPORT_OVERRIDES: '/api/exchange/import/user-overrides',
   EXCHANGE_CLEAR: '/api/exchange/clear-app-data',
+  EXCHANGE_CHECK_VIOLATIONS: '/api/exchange/import/user-overrides/check-violations',
+  EXCHANGE_COLLECT_OVERRIDES: '/api/exchange/import/user-overrides/collect',
   
   // ==================== RAINBOW ====================
   RAINBOW_ANALYZE: '/api/rainbow/analyze',
