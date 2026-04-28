@@ -10,8 +10,8 @@ export const API_ENDPOINTS = {
   SEARCH_CASES: '/api/search/cases',
 
   // ==================== REPORTS ====================
-  REPORTS_LIST: '/api/reports',
-  REPORTS_DOWNLOAD: '/api/reports',
+  REPORTS_LIST: '/api/reports/',
+  REPORTS_DOWNLOAD: '/api/reports/',
 
   // ==================== DATA EXCHANGE ====================
   EXCHANGE_INFO: '/api/exchange/info',

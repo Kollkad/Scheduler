@@ -400,6 +400,12 @@ class NormalizedDataManager:
                 self._user_overrides["taskCode"] != override["taskCode"]
                 ]
 
+        # Выравниваем колонки: добавляем отсутствующие как None
+        for col in self._user_overrides.columns:
+            if col not in new_row.columns:
+                new_row[col] = None
+        new_row = new_row[self._user_overrides.columns]
+
         # Добавляем новую запись
         if self._user_overrides.empty:
             self._user_overrides = new_row
