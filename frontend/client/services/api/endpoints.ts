@@ -5,6 +5,10 @@ export const API_ENDPOINTS = {
   AUTH_LOGIN: '/api/auth/login',
   AUTH_LOGOUT: '/api/auth/logout',
   USER_INFO: '/api/auth/user-info',
+
+  // ==================== DOCS ====================
+  DOCS_LIST: '/api/docs/list',
+  DOCS_FILE: '/api/docs',
   
   // ==================== SEARCH ====================
   SEARCH_CASES: '/api/search/cases',
@@ -74,6 +78,7 @@ export const API_ENDPOINTS = {
   CASE_DETAILS: '/api/case',
   FILTERED_CASES: '/api/terms/v3/lawsuit/filtered-cases',
   CASE_STAGES: '/api/case/stages',
+  CASE_STAGES_WITH_CHECKS: '/api/case/stages',
 
   // ==================== SAVING ENDPOINTS ====================
   SAVE_DETAILED_REPORT: '/api/save/detailed-report',

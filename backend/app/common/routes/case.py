@@ -126,4 +126,56 @@ async def get_production_stages(production_type: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка получения этапов: {str(e)}")
 
+@router.get("/stages/{production_type}/with-checks")
+async def get_production_stages_with_checks(production_type: str):
+    """
+    Возвращает этапы с вложенными проверками для указанного типа производства.
+
+    Args:
+        production_type: "lawsuit" или "order"
+
+    Returns:
+        dict: Список этапов с проверками [{stageCode, stageName, checks: [{checkCode, checkName}]}]
+    """
+    try:
+        stages_df = normalized_manager.get_stages_data()
+        checks_df = normalized_manager.get_checks_data()
+
+        if production_type == "lawsuit":
+            suffix = "L"
+        elif production_type == "order":
+            suffix = "O"
+        else:
+            raise HTTPException(status_code=400, detail=f"Неизвестный тип производства: {production_type}")
+
+        # Фильтруем этапы по суффиксу
+        filtered_stages = stages_df[stages_df["stageCode"].str.endswith(suffix)]
+
+        if filtered_stages.empty:
+            raise HTTPException(status_code=404, detail="Этапы не найдены")
+
+        # Для каждого этапа находим проверки
+        result = []
+        for _, stage in filtered_stages.iterrows():
+            stage_code = stage["stageCode"]
+            stage_checks = checks_df[checks_df["stageCode"] == stage_code]
+
+            result.append({
+                "stageCode": stage_code,
+                "stageName": stage["stageName"],
+                "checks": stage_checks[["checkCode", "checkName"]].to_dict(orient="records")
+            })
+
+        return {
+            "success": True,
+            "stages": result,
+            "message": f"Найдено {len(result)} этапов с проверками"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка получения этапов с проверками: {str(e)}")
+
+
 

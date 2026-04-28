@@ -105,7 +105,7 @@ TASK_MAPPINGS = {
             {
                 "conditions": ["false", "overdue"],
                 "failed_check_name": "courtReactionL",
-                "task_text": "Отобразить реакцию суда",
+                "task_text": "Фиксировать реакцию суда(новая дата, 'решение вынесено')",
                 "reason_text": "Задача ставится если 'Дата вынесения определения суда' отсутствует и от 'Дата подачи иска/заявления' прошло более 7 рабочих дней.",
                 "source": "detailed_report"
             }

@@ -1,6 +1,6 @@
 // frontend/client/pages/Tasks.tsx
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { PageContainer } from "@/components/PageContainer";
 import { SettingsForm } from "@/components/sorter/SettingsForm";
@@ -10,18 +10,19 @@ import { sorterConfig } from "@/config/sorterConfig";
 import { Button } from "@/components/ui/button";
 import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { apiClient } from "@/services/api/client";
-import { CompactTaskList } from "@/components/tasks/CompactTaskList";
-import { savingService, SaveDataType } from "@/services/saving/SavingService";
+import { TaskCardList } from "@/components/tasks/TaskCardList";
+import { DefaultChart } from "@/components/DefaultChart";
 import { useTableFiltersWithUrl } from "@/hooks/useTableFiltersWithUrl";
 import { TaskItem, TasksListResponse } from "@/services/api/taskTypes";
-import { TaskCardList } from "@/components/tasks/TaskCardList";
 
 export default function Tasks() {
   const navigate = useNavigate();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
 
+  // Состояния
   const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [allTasks, setAllTasks] = useState<TaskItem[]>([]); 
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [filteredCount, setFilteredCount] = useState<number>(0);
@@ -34,6 +35,55 @@ export default function Tasks() {
 
   const selectedExecutor = filters["responsibleExecutor"] || "";
 
+  // При монтировании загружаем все задачи для общего графика
+  useEffect(() => {
+    const loadAllTasks = async () => {
+      try {
+        const url = `${API_ENDPOINTS.TASKS_LIST}?filters=${encodeURIComponent(JSON.stringify({}))}`;
+        const response = await apiClient.get<TasksListResponse>(url);
+        if (response?.success) {
+          setAllTasks(mapBackendDataTasks(response.tasks || []));
+        }
+      } catch (e) {
+        console.error("Ошибка загрузки всех задач:", e);
+      }
+    };
+    loadAllTasks();
+  }, []);
+
+  // Данные для графика распределения задач
+  // По умолчанию показывает общий график (allTasks).
+  // После успешного поиска переключается на задачи сотрудника (tasks).
+  const chartData = useMemo(() => {
+    const sourceData = reportStatus === "ready" ? tasks : allTasks;
+    if (!sourceData.length) return [];
+
+    const taskCountMap = new Map<string, number>();
+    sourceData.forEach(task => {
+      const taskText = task.taskText || "Без названия";
+      taskCountMap.set(taskText, (taskCountMap.get(taskText) || 0) + 1);
+    });
+
+    let items = Array.from(taskCountMap.entries()).map(([label, value]) => ({
+      label,
+      value,
+      color: "#86efac",
+    }));
+
+    // Сортировка по убыванию количества
+    items.sort((a, b) => b.value - a.value);
+
+    // Если больше 10 категорий — объединяем остальные в "Остальные"
+    if (items.length > 10) {
+      const topItems = items.slice(0, 9);
+      const otherValue = items.slice(9).reduce((sum, item) => sum + item.value, 0);
+      items = [...topItems, { label: "Остальные", value: otherValue, color: "#86efac" }];
+    }
+
+    return items;
+  }, [tasks, allTasks, reportStatus]);
+
+  // Сброс всех фильтров и задач
   const handleClearAll = () => {
     setFilters({});
     setTasks([]);
@@ -43,13 +93,14 @@ export default function Tasks() {
     navigate("/tasks", { replace: true });
   };
 
+  // Переход к деталям задачи при клике
   const handleTaskClick = (task: TaskItem) => {
     if (task.taskCode) {
       navigate(`/task/${task.taskCode}`);
     }
   };
 
-  // Настройка полей формы: используется только фильтр по исполнителю
+  // Поля формы: только фильтр по исполнителю
   const formFields = sorterConfig.rainbow.fields
     .filter((f) => f.id === "responsibleExecutor")
     .map((f) => ({ ...f, options: [] }));
@@ -58,7 +109,7 @@ export default function Tasks() {
     setFilters(newFilters);
   };
 
-  // Функция выполняет запрос задач с фильтрацией по столбцу и значению
+  // Поиск задач по выбранному сотруднику
   const handleFindTasks = async () => {
     const executor = filters["responsibleExecutor"];
     if (!executor) return;
@@ -67,7 +118,6 @@ export default function Tasks() {
     setReportStatus("loading");
 
     try {
-      // Использование нового эндпоинта с filters
       const filtersParam = {
         responsibleExecutor: executor
       };
@@ -96,7 +146,7 @@ export default function Tasks() {
     }
   };
 
-  // Функция сохраняет задачи в Excel через эндпоинт с параметром исполнителя
+  // Сохранение задач выбранного сотрудника в Excel
   const handleSaveTasks = async () => {
     if (!selectedExecutor || tasks.length === 0) return;
 
@@ -126,7 +176,7 @@ export default function Tasks() {
     }
   };
 
-  // Кнопки управления формой поиска
+  // Кнопки формы поиска
   const formButtons = [
     {
       type: "secondary" as const,
@@ -175,6 +225,14 @@ export default function Tasks() {
         <p className="text-text-secondary">Выберите сотрудника для просмотра его задач</p>
       </div>
 
+      {/* График распределения задач */}
+      {chartData.length > 0 && (
+        <div className="mb-6">
+          <DefaultChart data={chartData} />
+        </div>
+      )}
+
+      {/* Форма поиска по сотруднику */}
       <SettingsForm
         title="Поиск задач по сотруднику"
         fields={formFields}
@@ -183,6 +241,7 @@ export default function Tasks() {
         initialValues={filters}
       />
 
+      {/* Информация о количестве найденных задач и переключатель вида */}
       <div className="mt-4 flex items-center justify-between">
         <div className="flex items-center gap-2 text-text-secondary">
           {tasks.length > 0 && (
@@ -211,6 +270,7 @@ export default function Tasks() {
         </div>
       </div>
 
+      {/* Таблица / карточки задач */}
       <div className="mt-6">
         {reportStatus === "idle" && (
           <div className="text-text-secondary text-center py-6">

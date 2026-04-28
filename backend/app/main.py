@@ -29,6 +29,7 @@ from backend.app.data_exchange.routes import export_normalized_data
 from backend.app.data_exchange.routes import import_normalized_data
 from backend.app.data_exchange.routes import clear_exchange_folder
 from backend.app.reporting.routes import report_routes
+from backend.app.common.routes.docs import router as docs_router
 
 logger = logging.getLogger("uvicorn")
 
@@ -67,6 +68,7 @@ app.include_router(export_normalized_data.router)
 app.include_router(import_normalized_data.router)
 app.include_router(clear_exchange_folder.router)
 app.include_router(report_routes.router)
+app.include_router(docs_router)
 
 # При наличии - используются статичные файлы фронта
 frontend_path = Path(__file__).parent.parent.parent / "frontend" / "dist" / "spa"
