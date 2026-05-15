@@ -7,8 +7,8 @@ import { API_ENDPOINTS } from "@/services/api/endpoints";
 import { TaskCardList } from "@/components/tasks/TaskCardList";
 import { DefaultChart } from "@/components/DefaultChart";
 import { Task } from "@/services/api/taskTypes";
-import { TaskFilterDropdown } from "@/components/tasks/TaskFilterDropdown";
-import type { TaskFilter } from "@/components/tasks/TaskFilterDropdown";
+import { TaskFilterButton } from "@/components/tasks/TaskFilterButton";
+import type { TaskFilter } from "@/components/tasks/TaskFilterButton";
 
 interface ProfileTasksTabProps {
   userName: string;
@@ -18,8 +18,9 @@ export function ProfileTasksTab({ userName }: ProfileTasksTabProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [taskFilter, setTaskFilter] = useState<TaskFilter>("all");
+  const [selectedTaskText, setSelectedTaskText] = useState<string | null>(null);
+  const [selectedTaskTexts, setSelectedTaskTexts] = useState<string[]>([]);
 
-  // Загрузка задач при изменении имени пользователя
   useEffect(() => {
     if (!userName) return;
     
@@ -40,8 +41,27 @@ export function ProfileTasksTab({ userName }: ProfileTasksTabProps) {
       .finally(() => setLoading(false));
   }, [userName]);
 
-  // Фильтрация задач
+  // Все уникальные тексты задач (для фильтрации)
+  const taskTextOptions = useMemo(() => {
+    const texts = new Set<string>();
+    tasks.forEach(t => texts.add(t.taskText || "Без названия"));
+    return Array.from(texts).sort();
+  }, [tasks]);
+
   const filteredTasks = useMemo(() => {
+    let filtered = tasks;
+
+    // Фильтр по тексту задачи из графика (одиночный)
+    if (selectedTaskText) {
+      filtered = filtered.filter(t => (t.taskText || "Без названия") === selectedTaskText);
+    }
+
+    // Фильтр по текстам задач из чекбоксов
+    if (selectedTaskTexts.length > 0) {
+      filtered = filtered.filter(t => selectedTaskTexts.includes(t.taskText || "Без названия"));
+    }
+
+    // Фильтр по сроку (сортировка)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
@@ -50,40 +70,36 @@ export function ProfileTasksTab({ userName }: ProfileTasksTabProps) {
 
     switch (taskFilter) {
       case "overdue":
-        return tasks.filter(t => {
+        return filtered.filter(t => {
           if (!t.executionDatePlan || t.isCompleted) return false;
           const planDate = new Date(t.executionDatePlan);
           planDate.setHours(0, 0, 0, 0);
           return planDate < today;
         });
       case "today":
-        return tasks.filter(t => {
+        return filtered.filter(t => {
           if (!t.executionDatePlan) return false;
           const planDate = new Date(t.executionDatePlan);
           planDate.setHours(0, 0, 0, 0);
           return planDate.getTime() === today.getTime();
         });
-      
       case "week":
-        return tasks.filter(t => {
+        return filtered.filter(t => {
           if (!t.executionDatePlan) return false;
           const planDate = new Date(t.executionDatePlan);
           planDate.setHours(0, 0, 0, 0);
           return planDate >= today && planDate <= weekLater;
         });
-      
       case "completed":
-        return tasks.filter(t => t.isCompleted);
-      
+        return filtered.filter(t => t.isCompleted);
       case "shifted":
-        return tasks.filter(t => t.hasOverride && t.shiftName);
-      
+        return filtered.filter(t => t.hasOverride && t.shiftName);
       default:
-        return tasks;
+        return filtered;
     }
-  }, [tasks, taskFilter]);
+  }, [tasks, taskFilter, selectedTaskText, selectedTaskTexts]);
 
-  // Подготовка данных для диаграммы распределения задач
+  // Данные для графика
   const chartData = useMemo(() => {
     if (!filteredTasks.length) return [];
 
@@ -110,6 +126,15 @@ export function ProfileTasksTab({ userName }: ProfileTasksTabProps) {
     return items;
   }, [filteredTasks]);
 
+  // Сброс всех фильтров
+  const handleResetAll = () => {
+    setSelectedTaskText(null);
+    setSelectedTaskTexts([]);
+    setTaskFilter("all");
+  };
+
+  const hasActiveFilters = selectedTaskText || selectedTaskTexts.length > 0 || taskFilter !== "all";
+
   if (loading) {
     return (
       <div className="flex justify-center py-8">
@@ -120,25 +145,45 @@ export function ProfileTasksTab({ userName }: ProfileTasksTabProps) {
 
   return (
     <div className="space-y-8">
-      {/* Статистика */}
-      <p className="text-sm text-text-secondary mb-4">
-        Всего задач: {tasks.length}
-        {taskFilter !== "all" && ` (показано: ${filteredTasks.length})`}
-      </p>
-
       {/* Диаграмма распределения задач */}
       {chartData.length > 0 && (
         <div>
-          <DefaultChart data={chartData} />
+          <DefaultChart 
+            data={chartData} 
+            onBarClick={(item) => setSelectedTaskText(item.label)} 
+          />
         </div>
       )}
 
-      {/* Список задач */}
-      <div className="flex items-center gap-2 mb-4">
-        <h3 className="text-base font-medium text-text-primary">Список задач</h3>
-        <TaskFilterDropdown value={taskFilter} onChange={setTaskFilter} />
+      <div>
+        {/* Заголовок списка + фильтр */}
+        <div className="flex items-center gap-2 mb-1">
+          <h3 className="text-lg font-medium text-text-primary">Список задач</h3>
+          <TaskFilterButton
+            filter={taskFilter}
+            onFilterChange={setTaskFilter}
+            taskTextOptions={taskTextOptions}
+            selectedTaskTexts={selectedTaskTexts}
+            onTaskTextsChange={setSelectedTaskTexts}
+            onReset={handleResetAll}
+          />
+        </div>
+
+        {/* Количество задач */}
+        <p className="text-sm text-text-primary mb-4">
+          Найдено задач: {filteredTasks.length}
+          {hasActiveFilters && (
+            <button 
+              onClick={handleResetAll}
+              className="text-xs text-blue hover:underline ml-2"
+            >
+              Сбросить фильтры
+            </button>
+          )}
+        </p>
       </div>
 
+      {/* Список задач */}
       {filteredTasks.length > 0 ? (
         <TaskCardList tasks={filteredTasks} />
       ) : (

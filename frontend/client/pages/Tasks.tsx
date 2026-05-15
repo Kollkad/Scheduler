@@ -21,8 +21,8 @@ export default function Tasks() {
   const searchParams = new URLSearchParams(location.search);
 
   // Состояния
-  const [tasks, setTasks] = useState<TaskItem[]>([]);
-  const [allTasks, setAllTasks] = useState<TaskItem[]>([]); 
+  const [tasks, setTasks] = useState<TaskItem[]>([]);           // задачи выбранного сотрудника
+  const [allTasks, setAllTasks] = useState<TaskItem[]>([]);     // все задачи (для общего графика)
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [filteredCount, setFilteredCount] = useState<number>(0);
@@ -82,6 +82,24 @@ export default function Tasks() {
 
     return items;
   }, [tasks, allTasks, reportStatus]);
+
+  // Количество задач после применения табличных фильтров
+  const tableFilteredCount = useMemo(() => {
+    if (!filterConfig || tasks.length === 0) return tasks.length;
+    
+    let filtered = [...tasks];
+    
+    Object.entries(filterConfig).forEach(([column, values]) => {
+      if (values && values.length > 0) {
+        filtered = filtered.filter(item => {
+          const val = String(item[column] ?? "").toLowerCase();
+          return values.some(v => val.includes(String(v).toLowerCase()));
+        });
+      }
+    });
+    
+    return filtered.length;
+  }, [tasks, filterConfig]);
 
   // Сброс всех фильтров и задач
   const handleClearAll = () => {
@@ -244,9 +262,9 @@ export default function Tasks() {
       {/* Информация о количестве найденных задач и переключатель вида */}
       <div className="mt-4 flex items-center justify-between">
         <div className="flex items-center gap-2 text-text-secondary">
-          {tasks.length > 0 && (
+          {reportStatus === "ready" && (
             <span>
-              Найдено <span className="font-bold">{filteredCount}</span> задач для{" "}
+              Найдено <span className="font-bold">{tableFilteredCount}</span> задач для{" "}
               <span className="font-bold">{selectedExecutor}</span>
             </span>
           )}
