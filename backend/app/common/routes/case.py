@@ -5,9 +5,9 @@
 Предоставляет API для получения детальной информации по делам,
 включая поиск, преобразование данных и автоматическую категоризацию полей.
 """
+from typing import Optional
 
-from fastapi import APIRouter, HTTPException
-from typing import Dict, Any
+from fastapi import APIRouter, HTTPException, Query
 import pandas as pd
 
 from backend.app.common.config.column_names import COLUMNS
@@ -17,6 +17,7 @@ from backend.app.common.modules.field_grouping import (
 )
 from backend.app.common.config.special_fields_case import SPECIAL_FIELDS
 from backend.app.data_management.modules.normalized_data_manager import normalized_manager
+from backend.app.task_manager.routes.tasks import _merge_with_check_results, _merge_with_cases, _merge_with_overrides
 
 router = APIRouter(prefix="/api/case", tags=["case"])
 
@@ -88,6 +89,68 @@ async def get_case_details(case_code: str):
         print(f"Критическая ошибка в get_case_details: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка получения данных дела: {str(e)}")
 
+
+@router.get("/list/with-tasks")
+async def get_cases_with_tasks(
+    executor: Optional[str] = Query(None, description="Фильтр по ответственному исполнителю")
+):
+    """
+    Возвращает список дел с вложенными задачами.
+    При указании executor возвращает только дела этого исполнителя.
+    """
+    try:
+        cases_df = normalized_manager.get_cases_data()
+        tasks_df = normalized_manager.get_tasks_data()
+        check_results_df = normalized_manager.get_check_results_data()
+
+        if cases_df.empty:
+            return {
+                "success": True,
+                "cases": [],
+                "tasks": [],
+                "message": "Нет загруженных дел"
+            }
+
+        # Фильтрация по исполнителю
+        if executor and COLUMNS["RESPONSIBLE_EXECUTOR"] in cases_df.columns:
+            cases_df = cases_df[cases_df[COLUMNS["RESPONSIBLE_EXECUTOR"]] == executor]
+
+        # Дела: нужные колонки
+        case_cols = [COLUMNS["CASE_CODE"], COLUMNS["CURRENT_PERIOD_COLOR"], COLUMNS["RESPONSIBLE_EXECUTOR"], COLUMNS["CASE_STATUS"]]
+        available_case_cols = [c for c in case_cols if c in cases_df.columns]
+        if "stageCode" in cases_df.columns:
+            available_case_cols.append("stageCode")
+
+        cases_list = cases_df[available_case_cols].rename(columns={
+            COLUMNS["CASE_CODE"]: "caseCode",
+            COLUMNS["CURRENT_PERIOD_COLOR"]: "currentPeriodColor",
+            COLUMNS["RESPONSIBLE_EXECUTOR"]: "responsibleExecutor",
+            COLUMNS["CASE_STATUS"]: "caseStatus"
+        }).fillna("").to_dict(orient="records")
+
+        # Задачи
+        tasks_list = []
+        if not tasks_df.empty and not check_results_df.empty:
+            tasks_enriched = _merge_with_check_results(tasks_df.copy(), check_results_df)
+            tasks_enriched = _merge_with_cases(tasks_enriched, cases_df)
+            tasks_enriched = _merge_with_overrides(tasks_enriched)
+
+            task_cols = ["taskCode", "taskText", "isCompleted", "caseCode"]
+            available = [c for c in task_cols if c in tasks_enriched.columns]
+            tasks_enriched = tasks_enriched[available].infer_objects(copy=False).fillna("")
+            tasks_list = tasks_enriched.to_dict(orient="records")
+
+        return {
+            "success": True,
+            "cases": cases_list,
+            "tasks": tasks_list,
+            "totalCases": len(cases_list),
+            "message": f"Найдено {len(cases_list)} дел"
+        }
+
+    except Exception as e:
+        print(f"❌ Ошибка получения дел с задачами: {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
 
 @router.get("/stages/{production_type}")
 async def get_production_stages(production_type: str):

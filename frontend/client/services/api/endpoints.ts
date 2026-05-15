@@ -76,6 +76,7 @@ export const API_ENDPOINTS = {
 
   // ==================== CASE DETAILS ====================
   CASE_DETAILS: '/api/case',
+  CASE_WITH_TASKS: '/api/case/list/with-tasks',
   FILTERED_CASES: '/api/terms/v3/lawsuit/filtered-cases',
   CASE_STAGES: '/api/case/stages',
   CASE_STAGES_WITH_CHECKS: '/api/case/stages',

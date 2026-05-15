@@ -18,7 +18,7 @@ export function TaskCard({ task }: TaskCardProps) {
   };
 
   return (
-    <div className="bg-white rounded-lg border border-border p-4 flex flex-col h-full">
+    <div className="bg-white rounded-2xl border border-border p-4 flex flex-col h-full">
       {/* Верхняя часть — заполняет доступное пространство */}
       <div className="flex-1">
         {/* Заголовок с иконкой статуса */}

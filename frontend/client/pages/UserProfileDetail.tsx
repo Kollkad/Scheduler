@@ -92,7 +92,7 @@ export function UserProfileDetail() {
               content = <ProfileTasksTab userName={user.name} />;
               break;
             case "cases":
-              content = <ProfileCasesTab />;
+              content = <ProfileCasesTab userName={user?.name || ""} />;
               break;
             case "documents":
               content = <ProfileDocumentsTab />;
