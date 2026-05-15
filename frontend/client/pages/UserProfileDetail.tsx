@@ -1,7 +1,7 @@
 // frontend/client/pages/UserProfileDetail.tsx
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Loader, RefreshCw, Copy } from "lucide-react";
 import { PageContainer } from "@/components/PageContainer";
 import { TabsContainer } from "@/components/TabsContainer";
@@ -25,6 +25,7 @@ interface UserInfo {
 
 export function UserProfileDetail() {
   const navigate = useNavigate();
+  const { tabId } = useParams<{ tabId?: string }>();
   const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloginLoading, setReloginLoading] = useState(false);
@@ -82,36 +83,43 @@ export function UserProfileDetail() {
     );
   }
 
+  // Формируем вкладки без контента — только id и label
   const visibleTabs = user
     ? profileTabs
         .filter(tab => isTabVisible(tab, user.role))
-        .map(tab => {
-          let content;
-          switch (tab.id) {
-            case "tasks":
-              content = <ProfileTasksTab userName={user.name} />;
-              break;
-            case "cases":
-              content = <ProfileCasesTab userName={user?.name || ""} />;
-              break;
-            case "documents":
-              content = <ProfileDocumentsTab />;
-              break;
-            case "reports":
-              content = <ProfileReportsTab />;
-              break;
-            case "anonymization":
-              content = <ProfileAnonymizationTab />;
-              break;
-            case "administration":
-              content = <ProfileAdministrationTab />;
-              break;
-            default:
-              content = null;
-          }
-          return { id: tab.id, label: tab.label, content };
-        })
+        .map(tab => ({ id: tab.id, label: tab.label }))
     : [];
+
+  // Определяем активную вкладку из URL или первую доступную
+  const activeTabId = tabId && visibleTabs.some(t => t.id === tabId)
+    ? tabId
+    : visibleTabs[0]?.id || "";
+
+  // Контент только для активной вкладки
+  const activeContent = (() => {
+    if (!user) return null;
+    switch (activeTabId) {
+      case "tasks":
+        return <ProfileTasksTab userName={user.name} />;
+      case "cases":
+        return <ProfileCasesTab userName={user.name || ""} />;
+      case "documents":
+        return <ProfileDocumentsTab />;
+      case "reports":
+        return <ProfileReportsTab />;
+      case "anonymization":
+        return <ProfileAnonymizationTab />;
+      case "administration":
+        return <ProfileAdministrationTab />;
+      default:
+        return null;
+    }
+  })();
+
+  // Обработчик смены вкладки — меняет URL
+  const handleTabChange = (newTabId: string) => {
+    navigate(`/profile/${newTabId}`, { replace: true });
+  };
 
   return (
     <PageContainer>
@@ -176,10 +184,22 @@ export function UserProfileDetail() {
 
       {/* Вкладки */}
       {visibleTabs.length > 0 ? (
-        <TabsContainer tabs={visibleTabs} defaultTab={visibleTabs[0].id} />
+        <TabsContainer
+          tabs={visibleTabs.map(tab => ({ ...tab, content: null }))}
+          defaultTab={activeTabId}
+          activeTab={activeTabId}
+          onTabChange={handleTabChange}
+        />
       ) : (
         <div className="text-center text-text-secondary py-8">
           {user ? "Нет доступных разделов" : "Вкладки появятся после входа"}
+        </div>
+      )}
+
+      {/* Контент активной вкладки */}
+      {activeContent && (
+        <div className="mt-6">
+          {activeContent}
         </div>
       )}
     </PageContainer>

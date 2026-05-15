@@ -1,4 +1,4 @@
-// client\components\TabsContainer.tsx
+// client/components/TabsContainer.tsx
 import { useState, ReactNode, useEffect } from "react";
 
 interface Tab {
@@ -10,18 +10,30 @@ interface Tab {
 interface TabsContainerProps {
   tabs: Tab[];
   defaultTab?: string;
+  activeTab?: string;
   onTabChange?: (tabId: string) => void;
 }
 
-export function TabsContainer({ tabs, defaultTab, onTabChange }: TabsContainerProps) {
-  const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id);
+export function TabsContainer({ tabs, defaultTab, activeTab: externalActiveTab, onTabChange }: TabsContainerProps) {
+  const [internalActiveTab, setInternalActiveTab] = useState(defaultTab || tabs[0]?.id);
 
-  // Уведомление родителя о смене вкладки
+  // Синхронизация с внешним activeTab
+  const activeTab = externalActiveTab ?? internalActiveTab;
+
   useEffect(() => {
-    if (onTabChange) {
-      onTabChange(activeTab);
+    if (externalActiveTab !== undefined) {
+      setInternalActiveTab(externalActiveTab);
     }
-  }, [activeTab, onTabChange]);
+  }, [externalActiveTab]);
+
+  const handleTabClick = (tabId: string) => {
+    if (externalActiveTab !== undefined && onTabChange) {
+      onTabChange(tabId);
+    } else {
+      setInternalActiveTab(tabId);
+      if (onTabChange) onTabChange(tabId);
+    }
+  };
 
   return (
     <div className="w-full">
@@ -31,7 +43,7 @@ export function TabsContainer({ tabs, defaultTab, onTabChange }: TabsContainerPr
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabClick(tab.id)}
               className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === tab.id
                   ? 'border-green text-green'
@@ -44,17 +56,19 @@ export function TabsContainer({ tabs, defaultTab, onTabChange }: TabsContainerPr
         </nav>
       </div>
 
-      {/* Содержимое вкладок */}
-      <div className="tab-content">
-        {tabs.map((tab) => (
-          <div
-            key={tab.id}
-            className={`${activeTab === tab.id ? 'block' : 'hidden'}`}
-          >
-            {tab.content}
-          </div>
-        ))}
-      </div>
+      {/* Контент рендерим, только если управляем состоянием сами */}
+      {externalActiveTab === undefined && (
+        <div className="tab-content">
+          {tabs.map((tab) => (
+            <div
+              key={tab.id}
+              className={`${activeTab === tab.id ? 'block' : 'hidden'}`}
+            >
+              {tab.content}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

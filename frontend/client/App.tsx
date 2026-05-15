@@ -43,7 +43,7 @@ const App = () => {
                   <Route path="/document" element={<DocumentDetail />} />
                   <Route path="/filtered-cases" element={<FilteredCases />} />
                   <Route path="/task/:taskCode" element={<TaskDetail />} />
-                  <Route path="/profile" element={<UserProfileDetail />} />
+                  <Route path="/profile/:tabId?" element={<UserProfileDetail />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Layout>
