@@ -17,16 +17,12 @@ export interface ProfileTab {
 
 // Конфигурация вкладок профиля
 export const profileTabs: ProfileTab[] = [
-  {
-    id: "tasks",
-    label: "Мои задачи",
-    minRole: "Сотрудник",
-  },
-  {
-    id: "reports",
-    label: "Репорты",
-    minRole: "Администратор",
-  },
+  { id: "tasks", label: "Задачи", minRole: "Сотрудник" },
+  { id: "cases", label: "Дела", minRole: "Сотрудник" },
+  { id: "documents", label: "Документы", minRole: "Сотрудник" },
+  { id: "reports", label: "Репорты", minRole: "Администратор" },
+  { id: "anonymization", label: "Обезличивание", minRole: "Руководитель" },
+  { id: "administration", label: "Администрирование", minRole: "Администратор" },
 ];
 
 // Проверяет, доступна ли вкладка для указанной роли

@@ -1,6 +1,6 @@
-// client/pages/Anonymization.tsx
-import { useState, useRef } from "react";
-import { PageContainer } from "@/components/PageContainer";
+// frontend/client/components/profile/ProfileAnonymizationTab.tsx
+
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { X, Loader2 } from "lucide-react";
 import { apiClient } from "@/services/api/client";
@@ -8,21 +8,19 @@ import { API_ENDPOINTS } from "@/services/api/endpoints";
 
 type NormalizationType = "detailed_report" | "documents_report" | "none";
 
+interface AnonymizationRule {
+  column: string;
+  type: 'numbered' | 'fixed';
+  replacement: string;
+}
+
 interface CustomRuleInput {
   column: string;
   type: 'numbered' | 'fixed';
   replacement: string;
 }
 
-// ==================== ТИПЫ ДЛЯ ОБЕЗЛИЧИВАНИЯ ====================
-
-export interface AnonymizationRule {
-  column: string;
-  type: 'numbered' | 'fixed';
-  replacement: string;
-}
-
-export interface ColumnInfo {
+interface ColumnInfo {
   name: string;
   type: string;
   unique_count: number;
@@ -30,7 +28,7 @@ export interface ColumnInfo {
   sample: string[];
 }
 
-export interface NormalizeResponse {
+interface NormalizeResponse {
   success: boolean;
   message: string;
   filename: string;
@@ -42,7 +40,7 @@ export interface NormalizeResponse {
   total_rules_in_config: number;
 }
 
-export interface AnonymizeResponse {
+interface AnonymizeResponse {
   success: boolean;
   message: string;
   result_file_type: string;
@@ -58,19 +56,16 @@ export interface AnonymizeResponse {
   }>;
 }
 
-export interface DefaultRulesResponse {
+interface DefaultRulesResponse {
   success: boolean;
   rules: AnonymizationRule[];
   total_rules: number;
   note: string;
 }
 
-export default function Anonymization() {
-  // Состояние выбранного файла
+export function ProfileAnonymizationTab() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  // Тип нормализации: детальный отчет, отчет документов или без нормализации
   const [normalizationType, setNormalizationType] = useState<NormalizationType>("none");
-  // Состояния процесса загрузки и нормализации
   const [uploadLoading, setUploadLoading] = useState(false);
   const [normalizeLoading, setNormalizeLoading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -78,12 +73,10 @@ export default function Anonymization() {
   const [fileUploaded, setFileUploaded] = useState(false);
   const [sourceFileType, setSourceFileType] = useState<string | null>(null);
   
-  // Данные о колонках и правилах, полученные после нормализации
   const [columnsInfo, setColumnsInfo] = useState<ColumnInfo[]>([]);
   const [defaultRules, setDefaultRules] = useState<AnonymizationRule[]>([]);
   const [enabledRules, setEnabledRules] = useState<AnonymizationRule[]>([]);
   
-  // Пользовательские правила (добавляются вручную)
   const [customRules, setCustomRules] = useState<CustomRuleInput[]>([
     { column: "", type: 'numbered', replacement: "" }
   ]);
@@ -109,7 +102,6 @@ export default function Anonymization() {
     }
   };
   
-  // 1. Загрузка файла через общее хранилище с типом anonymization_source
   const handleUploadFile = async () => {
     if (!selectedFile) return;
     
@@ -117,11 +109,10 @@ export default function Anonymization() {
     setUploadError(null);
     
     try {
-      const response = await apiClient.uploadFileByType('anonymization_source', selectedFile);
+      await apiClient.uploadFileByType('anonymization_source', selectedFile);
       setSourceFileType('anonymization_source');
       setFileUploaded(true);
       
-      // После успешной загрузки выполняется нормализация
       setNormalizeLoading(true);
       await handleNormalize('anonymization_source');
       
@@ -134,7 +125,6 @@ export default function Anonymization() {
     }
   };
   
-  // 2. Нормализация загруженного файла в зависимости от выбранного типа
   const handleNormalize = async (fileType: string) => {
     try {
       const response = await apiClient.post<NormalizeResponse>(
@@ -164,7 +154,6 @@ export default function Anonymization() {
     }
   };
   
-  // Удаление файла из хранилища и сброс локального состояния
   const handleRemoveFile = async () => {
     if (sourceFileType) {
       try {
@@ -214,7 +203,6 @@ export default function Anonymization() {
     setCustomRules(prev => prev.filter((_, i) => i !== index));
   };
   
-  // 3. Применение обезличивания к нормализованным данным
   const handleAnonymize = async () => {
     if (!sourceFileType) {
       alert("Сначала загрузите файл");
@@ -224,7 +212,6 @@ export default function Anonymization() {
     try {
       setAnonymizeLoading(true);
       
-      // Формирование активных правил: выбранные из стандартных + пользовательские
       const activeRules = [...enabledRules];
       
       customRules.forEach(rule => {
@@ -257,7 +244,6 @@ export default function Anonymization() {
       );
       
       if (response.success) {
-        // Скачивание обезличенного файла
         const blob = await apiClient.downloadFile(API_ENDPOINTS.ANONYMIZATION_DOWNLOAD, {
           file_type: 'anonymization_result'
         });
@@ -282,31 +268,17 @@ export default function Anonymization() {
     }
   };
   
-  // Загрузка правил по умолчанию из конфигурации (вызывается при монтировании)
-  const loadDefaultRules = async () => {
-    try {
-      const response = await apiClient.get<DefaultRulesResponse>(API_ENDPOINTS.ANONYMIZATION_GET_DEFAULT_RULES);
-      if (response.success) {
-        setDefaultRules(response.rules);
-      }
-    } catch (error) {
-      console.error('Ошибка загрузки правил:', error);
-    }
-  };
-  
   return (
-    <PageContainer>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-text-primary mb-2">Обезличивание отчетов</h1>
-        <p className="text-text-secondary">
-          Загрузите файл для удаления персональных данных
-        </p>
-      </div>
-      
+    <div>
+        <div className="mb-8">
+            <h1 className="text-2xl font-bold text-text-primary mb-2">Обезличивание отчетов</h1>
+            <p className="text-text-secondary">
+            Загрузите файл для удаления персональных данных
+            </p>
+        </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Левая колонка: загрузка файла и выбор типа нормализации */}
+        {/* Левая колонка */}
         <div>
-          {/* Выбор типа нормализации влияет на предобработку файла */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-text-secondary mb-2">
               Тип отчета
@@ -348,7 +320,6 @@ export default function Anonymization() {
             </div>
           </div>
           
-          {/* Выбор файла с интерфейсом, аналогичным модальному окну загрузки */}
           <div className="mb-6">
             <div className="flex items-center gap-3 mb-4">
               <div 
@@ -368,27 +339,15 @@ export default function Anonymization() {
               </div>
               
               {!fileUploaded ? (
-                <Button
-                  onClick={triggerFileInput}
-                  variant="green"
-                  size="rounded"
-                >
+                <Button onClick={triggerFileInput} variant="green" size="rounded">
                   Выбрать файл
                 </Button>
               ) : (
                 <div className="flex gap-2">
-                  <Button
-                    onClick={triggerFileInput}
-                    variant="grayOutline"
-                    size="rounded"
-                  >
+                  <Button onClick={triggerFileInput} variant="grayOutline" size="rounded">
                     Заменить
                   </Button>
-                  <Button
-                    onClick={handleRemoveFile}
-                    variant="grayOutline"
-                    size="rounded"
-                  >
+                  <Button onClick={handleRemoveFile} variant="grayOutline" size="rounded">
                     Удалить
                   </Button>
                 </div>
@@ -403,7 +362,6 @@ export default function Anonymization() {
               />
             </div>
             
-            {/* Кнопка запуска процесса загрузки и нормализации */}
             {selectedFile && !uploadSuccess && (
               <div className="max-w-lg">
                 <Button
@@ -437,10 +395,9 @@ export default function Anonymization() {
           </div>
         </div>
         
-        {/* Правая колонка: управление правилами обезличивания (отображается после успешной нормализации) */}
+        {/* Правая колонка */}
         {uploadSuccess && (
           <div>
-            {/* Стандартные правила, применимые к колонкам отчета */}
             {defaultRules.length > 0 && (
               <div className="mb-6">
                 <h3 className="text-lg font-medium text-text-primary mb-3">
@@ -474,17 +431,12 @@ export default function Anonymization() {
               </div>
             )}
             
-            {/* Пользовательские правила: добавляются вручную для любых колонок */}
             <div className="mb-6">
               <div className="flex justify-between items-center mb-3">
                 <h3 className="text-lg font-medium text-text-primary">
                   Дополнительные правила
                 </h3>
-                <Button
-                  onClick={handleAddCustomRule}
-                  variant="grayOutline"
-                  size="rounded"
-                >
+                <Button onClick={handleAddCustomRule} variant="grayOutline" size="rounded">
                   + Добавить правило
                 </Button>
               </div>
@@ -547,7 +499,6 @@ export default function Anonymization() {
         )}
       </div>
       
-      {/* Кнопка запуска обезличивания (доступна после успешной нормализации) */}
       {uploadSuccess && (
         <div className="mt-8 border-t border-border-default pt-6">
           <div className="max-w-lg mx-auto">
@@ -570,8 +521,6 @@ export default function Anonymization() {
           </div>
         </div>
       )}
-    </PageContainer>
+    </div>
   );
 }
-
-

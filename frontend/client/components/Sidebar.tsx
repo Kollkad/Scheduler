@@ -3,7 +3,6 @@ import { Link, useLocation } from "react-router-dom";
 import { Rainbow, AlertCircle, FileText, Home, ClipboardList, Shield } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { useEffect } from "react";
-import { featureFlags } from '@/config/featureFlags';
 import { useAnalysis } from "@/contexts/AnalysisContext";
 import { formatDate } from "@/utils/dateFormat";
 
@@ -12,7 +11,6 @@ const navigationItems = [
   { id: "rainbow", label: "Rainbow", icon: Rainbow, path: "/rainbow" },
   { id: "terms", label: "Сроки сопровождения", icon: AlertCircle, path: "/terms" },
   { id: "tasks", label: "Задачи сотрудников", icon: ClipboardList, path: "/tasks" },
-  { id: "anonymization", label: "Обезличивание", icon: Shield, path: "/anonymization" },
 ];
 
 export function Sidebar() {
