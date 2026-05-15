@@ -40,6 +40,7 @@ export const API_ENDPOINTS = {
   DOCUMENTS_STATUSES: '/api/documents/v3/document_statuses',
   DOCUMENTS_CHARTS: '/api/documents/v3/analyze_document_charts',
   DOCUMENT_DETAILS: '/api/documents/v3/document',
+  DOCUMENTS_WITH_TASKS: '/api/documents/v3/list/with-tasks',
 
   // ==================== TERMS V3 - LAWSUIT ====================
   TERMS_LAWSUIT_ANALYZE: '/api/terms/v3/lawsuit/analyze_lawsuit',

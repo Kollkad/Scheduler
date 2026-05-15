@@ -12,6 +12,7 @@
 - /statuses: Получение статистики по статусам документов
 - /document: Получение детальной информации о документе
 """
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 import pandas as pd
@@ -24,6 +25,11 @@ from backend.app.document_monitoring_v3.config.special_fields_document_v3 import
 from backend.app.common.modules.field_grouping import (
     safe_convert_value,
     group_fields_by_category
+)
+from backend.app.task_manager.routes.tasks import (
+    _merge_with_check_results,
+    _merge_with_documents,
+    _merge_with_overrides,
 )
 
 router = APIRouter(prefix="/api/documents/v3", tags=["document_monitoring_v3"])
@@ -370,3 +376,79 @@ async def get_document_details_v3(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка получения документа: {str(e)}")
+
+@router.get("/list/with-tasks")
+async def get_documents_with_tasks(
+    executor: Optional[str] = Query(None, description="Фильтр по ответственному исполнителю")
+):
+    """
+    Возвращает список документов с вложенными задачами.
+
+    При указании executor возвращает только документы этого исполнителя.
+
+    Returns:
+        dict: documents (список документов), tasks (плоский список задач с transferCode)
+    """
+    try:
+        documents_df = normalized_manager.get_documents_data()
+        tasks_df = normalized_manager.get_tasks_data()
+        check_results_df = normalized_manager.get_check_results_data()
+
+        if documents_df.empty:
+            return {
+                "success": True,
+                "documents": [],
+                "tasks": [],
+                "message": "Нет загруженных документов"
+            }
+
+        # Фильтрация по исполнителю
+        if executor and COLUMNS["RESPONSIBLE_EXECUTOR"] in documents_df.columns:
+            documents_df = documents_df[documents_df[COLUMNS["RESPONSIBLE_EXECUTOR"]] == executor]
+
+        # Документы: нужные колонки
+        doc_cols = [
+            COLUMNS["TRANSFER_CODE"],
+            COLUMNS["DOCUMENT_CASE_CODE"],
+            COLUMNS["DOCUMENT_TYPE"],
+            COLUMNS["DEPARTMENT_CATEGORY"],
+            COLUMNS["RESPONSIBLE_EXECUTOR"],
+        ]
+        available_doc_cols = [c for c in doc_cols if c in documents_df.columns]
+
+        documents_list = documents_df[available_doc_cols].rename(columns={
+            COLUMNS["TRANSFER_CODE"]: "transferCode",
+            COLUMNS["DOCUMENT_CASE_CODE"]: "caseCode",
+            COLUMNS["DOCUMENT_TYPE"]: "documentType",
+            COLUMNS["DEPARTMENT_CATEGORY"]: "department",
+            COLUMNS["RESPONSIBLE_EXECUTOR"]: "responsibleExecutor",
+        }).fillna("").to_dict(orient="records")
+
+        # Задачи
+        tasks_list = []
+        if not tasks_df.empty and not check_results_df.empty:
+            tasks_enriched = _merge_with_check_results(tasks_df.copy(), check_results_df)
+            tasks_enriched = _merge_with_documents(tasks_enriched, documents_df)
+            tasks_enriched = _merge_with_overrides(tasks_enriched)
+
+            # Для документов targetId = transferCode, как transferCode
+            if "transferCode" in tasks_enriched.columns:
+                tasks_enriched["docTransferCode"] = tasks_enriched["transferCode"]
+
+                task_cols = ["taskCode", "taskText", "isCompleted", "docTransferCode"]
+                available = [c for c in task_cols if c in tasks_enriched.columns]
+                tasks_enriched = tasks_enriched[available].infer_objects(copy=False).fillna("")
+                tasks_list = tasks_enriched.to_dict(orient="records")
+
+        return {
+            "success": True,
+            "documents": documents_list,
+            "tasks": tasks_list,
+            "totalDocuments": len(documents_list),
+            "message": f"Найдено {len(documents_list)} документов"
+        }
+
+    except Exception as e:
+        print(f"❌ Ошибка получения документов с задачами: {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
+

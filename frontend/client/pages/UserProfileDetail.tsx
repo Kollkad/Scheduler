@@ -104,7 +104,7 @@ export function UserProfileDetail() {
       case "cases":
         return <ProfileCasesTab userName={user.name || ""} />;
       case "documents":
-        return <ProfileDocumentsTab />;
+        return <ProfileDocumentsTab userName={user?.name || ""} />;
       case "reports":
         return <ProfileReportsTab />;
       case "anonymization":
