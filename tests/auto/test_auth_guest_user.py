@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from backend.app.main import app
 from backend.app.administration_settings.modules.user_models import UserSession
 from backend.app.administration_settings.modules import authorization_logic
+import pytest
 
 client = TestClient(app)
 
