@@ -209,48 +209,11 @@ async def get_filtered_cases(
         check_results_df = normalized_manager.get_check_results_data()
         cases_df = normalized_manager.get_cases_data()
 
-        # Проверка наличия данных
         if check_results_df.empty or cases_df.empty:
-            # Пробуем получить данные из старого менеджера
-            from backend.app.data_management.modules.data_manager import data_manager
-            from backend.app.terms_of_support_v2.modules.terms_analyzer_v2 import prepare_case_data
-            from backend.app.common.config.terms_checks_config import LAWSUIT_CHECKS_MAPPING
-
-            staged_df = data_manager.get_processed_data("lawsuit_staged")
-
-            if staged_df is None:
-                raise HTTPException(
-                    status_code=404,
-                    detail="Анализ искового производства не выполнен. Сначала вызовите /analyze_lawsuit"
-                )
-
-            # Определение базового этапа и индекса проверки
-            base_stage = None
-            check_index = None
-            for stage_name, checks in LAWSUIT_CHECKS_MAPPING.items():
-                if stage in checks:
-                    base_stage = stage_name
-                    check_index = checks.index(stage)
-                    break
-
-            if base_stage is None:
-                raise HTTPException(status_code=400, detail=f"Неизвестная проверка: {stage}")
-
-            mask = (
-                (staged_df["caseStage"] == base_stage) &
-                (staged_df["monitoringStatus"].str.split(";").str[check_index] == status)
+            raise HTTPException(
+                status_code=404,
+                detail="Анализ искового производства не выполнен. Сначала вызовите /analyze_lawsuit"
             )
-            filtered = staged_df[mask]
-
-            result_cases = [prepare_case_data(row, base_stage, status) for _, row in filtered.iterrows()]
-
-            return {
-                "success": True,
-                "stage": stage,
-                "status": status,
-                "count": len(result_cases),
-                "cases": result_cases
-            }
 
         # Фильтрация check_results по checkCode и monitoringStatus
         filtered_results = check_results_df[
@@ -287,10 +250,7 @@ async def get_filtered_cases(
                 "cases": []
             }
 
-        # Добавление колонки stageCode для совместимости с prepare_filtered_cases_response
         merged["stageCode"] = stage
-
-        # Подготовка ответа
         result_cases = prepare_filtered_cases_response(merged)
 
         return {

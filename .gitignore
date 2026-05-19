@@ -48,15 +48,8 @@ dist-ssr/
 !.env 
 
 # Dev данные
-/backend/app/data/dev_data/*
-!/backend/app/data/dev_data/.gitkeep
-
-# Результаты автотестов
-/backend/app/data/auto_test/
-
-# Reports от нормализации
-/backend/app/data/reports/*
-!/backend/app/data/reports/.gitkeep
+tests/data/dev_data/*
+!tests/data/dev_data/.gitkeep
 
 # Releases
 /project_scripts/releases/

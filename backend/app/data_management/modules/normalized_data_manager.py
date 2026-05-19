@@ -21,7 +21,7 @@ from backend.app.data_management.services.file_storage import file_storage
 from backend.app.common.config.column_names import COLUMNS, VALUES
 from backend.app.data_management.config.stages_config import ALL_STAGES
 from backend.app.data_management.config.checks_config import ALL_CHECKS
-from backend.app.data_management.modules.data_import import load_excel_data
+from backend.app.data_management.modules.data_import import load_excel_data, load_excel_with_fallback_sheet
 from backend.app.data_management.modules.data_clean_documents import clean_documents_data as clean_documents
 from backend.app.data_management.modules.data_clean_detailed import clean_data as clean_detailed
 from backend.app.data_management.modules.gosb_normalization import normalize_detailed_report
@@ -146,10 +146,14 @@ class NormalizedDataManager:
         filepath = file.server_path
         print("Загрузка и очистка детального отчета")
 
-        raw_df = load_excel_data(filepath)
-        cleaned_df = clean_detailed(raw_df)
+        REQUIRED_COLUMNS = [
+            COLUMNS["CASE_CODE"],
+            COLUMNS["CASE_TYPE"],
+            COLUMNS["CASE_NAME"],
+            COLUMNS["GOSB"],
+        ]
+        cleaned_df = load_excel_with_fallback_sheet(filepath, clean_detailed, REQUIRED_COLUMNS)
 
-        from backend.app.common.config.column_names import VALUES
         method_col = COLUMNS["METHOD_OF_PROTECTION"]
         simplified_value = VALUES["SIMPLIFIED_PRODUCTION"]
         claim_value = VALUES["CLAIM_PROCEEDINGS"]

@@ -13,6 +13,55 @@ import zipfile
 import shutil
 
 
+def load_excel_with_fallback_sheet(filepath, clean_func, required_columns):
+    """
+    Загружает Excel, применяет очистку и проверяет наличие обязательных колонок.
+    Если колонок нет — перебирает листы, пока не найдёт подходящий.
+
+    Args:
+        filepath: путь к Excel-файлу
+        clean_func: функция очистки (clean_detailed или clean_documents)
+        required_columns: список обязательных колонок
+
+    Returns:
+        pd.DataFrame: очищенные данные с нужного листа
+
+    Raises:
+        ValueError: если ни один лист не содержит обязательных колонок
+    """
+    # Быстрый путь: активный лист
+    try:
+        raw_df = load_excel_data(filepath)
+        cleaned_df = clean_func(raw_df)
+        if all(col in cleaned_df.columns for col in required_columns):
+            return cleaned_df
+    except Exception:
+        pass
+
+    # Медленный путь: перебор листов
+    print("Обязательные колонки не найдены на активном листе, перебор листов...")
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        wb = load_workbook(filepath, read_only=True, data_only=True, keep_links=False)
+
+        for sheet_name in wb.sheetnames:
+            sheet = wb[sheet_name]
+            data = []
+            for row in sheet.iter_rows(values_only=True):
+                data.append(row)
+
+            df = pd.DataFrame(data)
+            try:
+                cleaned = clean_func(df)
+                if all(col in cleaned.columns for col in required_columns):
+                    print(f"Найден лист '{sheet_name}' с обязательными колонками")
+                    return cleaned
+            except Exception:
+                continue
+
+    raise ValueError("Ни один лист не содержит обязательных колонок")
+
 def load_excel_data(filepath):
     """
     Загрузка данных из Excel файла с приоритетом быстрых методов.
