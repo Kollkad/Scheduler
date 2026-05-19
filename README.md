@@ -52,14 +52,14 @@ project_scripts\run_project.bat
 
 ---
 
-## Настройка тестовых данных
+## Тестирование
 
-Тестовые файлы должны находиться в папке:
-`backend/app/data/dev_data/`
+```bash
+pytest tests/ -v              # все тесты
+pytest tests/ -v -m ci 
+```
 
-Необходимые файлы:
-- `detailed.xlsx` - детальный отчет по судебной работе
-- `documents.xlsx` - отчет по полученным и переданным документам
+Тестовые файлы: `tests/data/dev_data/` (полные) или `tests/data/sample_data/` (урезанные)
 
 ---
 
